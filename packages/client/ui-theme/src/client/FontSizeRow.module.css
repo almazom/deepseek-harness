@@ -34,8 +34,8 @@
 }
 
 /* Stepper pill + unit label. The pill reuses the selector-pill geometry
-   (h36 r18, module fill) holding the px value and an always-visible arrow
-   column; the unit sits outside the pill. */
+   (h36 r18, module fill) holding the px value and an arrow column; the unit
+   sits outside the pill. */
 .control {
   display: inline-flex;
   align-items: center;
@@ -53,13 +53,34 @@
   background: var(--dsw-alias-bg-module-platform);
 }
 
-.value {
+/* Direct numeric input inside the pill: replaces the static value span so
+   expert users type the px value directly; hidden native spinners. */
+.directInput {
+  width: 36px;
   min-width: 18px;
-  text-align: center;
+  border: none;
+  background: transparent;
+  font: inherit;
   font-size: 14px;
   line-height: 22px;
   font-variant-numeric: tabular-nums;
+  text-align: center;
   color: var(--dsw-alias-label-primary);
+  -moz-appearance: textfield;
+  appearance: textfield;
+  outline: none;
+  padding: 0;
+}
+
+.directInput:focus-visible {
+  box-shadow: 0 0 0 2px var(--dsw-alias-brand-primary);
+  border-radius: 6px;
+}
+
+.directInput::-webkit-outer-spin-button,
+.directInput::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }
 
 .unit {
@@ -68,28 +89,24 @@
   color: var(--dsw-alias-label-secondary);
 }
 
-/* Arrow column: anchored right so the value stays pill-centered whether or
-   not the arrows are showing; revealed on hover/focus-within. Hidden with
-   opacity, not visibility: the buttons stay in tab order and in the
-   accessibility tree, so keyboard focus itself triggers the reveal. */
+/* Arrow column: anchored right so the value stays pill-centered. Always
+   visible — the local mobile doctrine keeps touch-first controls out of
+   hover gating, because touch surfaces have no hover to reveal them. */
 .arrows {
   position: absolute;
   right: 8px;
   display: flex;
   flex-direction: column;
   gap: 2px;
-  opacity: 0;
-}
-
-.stepper:hover .arrows,
-.stepper:focus-within .arrows {
-  opacity: 1;
 }
 
 /* Arrow buttons: small chips carrying a translucent wash of the layer-1
    surface (white in light, the elevated layer in dark) over the module fill;
-   hover raises the full layer-1 chip. */
+   hover raises the full layer-1 chip. The ::after overlay expands the pointer
+   hit area (MOB-01) without growing the visible chip; the two stacked zones
+   split at the gap's midpoint so they never overlap. */
 .arrow {
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -103,8 +120,27 @@
   cursor: pointer;
 }
 
+.arrow::after {
+  content: '';
+  position: absolute;
+  inset: -10px;
+}
+
+.arrowUp::after {
+  inset: -10px -10px -1px;
+}
+
+.arrowDown::after {
+  inset: -1px -10px -10px;
+}
+
 .arrow:hover:not(:disabled) {
   background: var(--dsw-alias-bg-layer-1);
+}
+
+.arrow:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--dsw-alias-brand-primary);
 }
 
 .arrow:disabled {

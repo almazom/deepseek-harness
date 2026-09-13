@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
-/** FontSizeRow behavior: value display, arrow clicks drive setFontSize,
- * bound-value arrows disable, display follows the store mirror. */
+/** FontSizeRow behavior: value display, direct numeric input, arrow clicks
+ * drive setFontSize, bound-value arrows disable, display follows the store
+ * mirror, arrow-key stepping, blur clamping. */
 import type { GlobalStandardProps } from '@deepseek-ai/dsh-client-ui-slots'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
@@ -64,12 +65,15 @@ function mount(fontSize = 14) {
 const arrow = (name: string): HTMLButtonElement =>
   screen.getByRole('button', { name }) as HTMLButtonElement
 
+const input = (): HTMLInputElement =>
+  screen.getByRole('spinbutton', { name: 'Font size' }) as HTMLInputElement
+
 describe('FontSizeRow', () => {
   it('renders the title and the current size with both arrows enabled mid-range', () => {
     mount(14)
     expect(screen.getByText('Font size')).toBeDefined()
     expect(screen.getByText('Only affects conversation content')).toBeDefined()
-    expect(screen.getByText('14')).toBeDefined()
+    expect(input().value).toBe('14')
     expect(arrow('Increase font size').disabled).toBe(false)
     expect(arrow('Decrease font size').disabled).toBe(false)
   })
@@ -79,11 +83,66 @@ describe('FontSizeRow', () => {
     fireEvent.click(arrow('Increase font size'))
     expect(b.setFontSize).toHaveBeenCalledWith(15)
     // No store write yet: the display is unchanged.
-    expect(screen.getByText('14')).toBeDefined()
+    expect(input().value).toBe('14')
     act(() => { b.store.actions.sync(15, 1) })
-    expect(screen.getByText('15')).toBeDefined()
+    expect(input().value).toBe('15')
     fireEvent.click(arrow('Decrease font size'))
     expect(b.setFontSize).toHaveBeenCalledWith(14)
+  })
+
+  it('typing a valid value calls setFontSize directly', () => {
+    const b = mount(14)
+    fireEvent.change(input(), { target: { value: '16' } })
+    expect(b.setFontSize).toHaveBeenCalledWith(16)
+  })
+
+  it('out-of-range intermediates stay in the draft and never snap the controlled value back', () => {
+    const b = mount(14)
+    // Typing "13": the intermediate "1" is out of range — the raw text must
+    // survive in the field (no controlled revert), only the final commit fires.
+    fireEvent.change(input(), { target: { value: '1' } })
+    expect(b.setFontSize).not.toHaveBeenCalled()
+    expect(input().value).toBe('1')
+    fireEvent.change(input(), { target: { value: '13' } })
+    expect(b.setFontSize).toHaveBeenCalledWith(13)
+    expect(input().value).toBe('13')
+  })
+
+  it('ArrowUp/ArrowDown on the input step by 1 within bounds', () => {
+    const b = mount(14)
+    fireEvent.keyDown(input(), { key: 'ArrowUp' })
+    expect(b.setFontSize).toHaveBeenCalledWith(15)
+    fireEvent.keyDown(input(), { key: 'ArrowDown' })
+    expect(b.setFontSize).toHaveBeenCalledWith(13)
+  })
+
+  it('blur commits clamped values; an invalid draft restores the persisted value', () => {
+    const b = mount(14)
+    fireEvent.change(input(), { target: { value: '99' } })
+    fireEvent.blur(input())
+    expect(b.setFontSize).toHaveBeenLastCalledWith(17)
+    // Cleared field + blur: the persisted value wins (no drop to the minimum).
+    const nativeSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!
+    nativeSetter.call(input(), '')
+    fireEvent.change(input(), { target: { value: '' } })
+    fireEvent.blur(input())
+    expect(b.setFontSize).not.toHaveBeenCalledWith(12)
+    expect(input().value).toBe('14')
+  })
+
+  it('Enter commits the draft; an arrow-button click discards it and follows the store', () => {
+    const b = mount(14)
+    // Enter commits an in-range draft.
+    fireEvent.change(input(), { target: { value: '16' } })
+    fireEvent.keyDown(input(), { key: 'Enter' })
+    expect(b.setFontSize).toHaveBeenLastCalledWith(16)
+    // A stale out-of-range draft is discarded by an arrow-button click: the
+    // display follows the store value, never the stale text.
+    fireEvent.change(input(), { target: { value: '9' } })
+    expect(input().value).toBe('9')
+    fireEvent.click(arrow('Increase font size'))
+    expect(b.setFontSize).toHaveBeenLastCalledWith(15)
+    expect(input().value).toBe('14')
   })
 
   it('disables the outward arrow at each bound', () => {
