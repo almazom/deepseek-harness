@@ -161,6 +161,8 @@ export function PermissionSelect({ value, locked, command, t }: PermissionSelect
             type="button"
             className={css.trigger}
             aria-label={t('input.accessMode', { name: currentLabel })}
+            aria-haspopup="menu"
+            aria-expanded={open}
             title={current?.description}
             disabled={locked || busy}
             onClick={() => { setOpen(!open) }}

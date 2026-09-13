@@ -1740,6 +1740,21 @@ describe('command launcher chrome and control seats', () => {
     expect(command).not.toHaveBeenCalled()
   })
 
+  it('the Access trigger exposes menu disclosure semantics', () => {
+    const permissions = {
+      options: [{ value: 'read-only', name: 'read-only' }],
+      currentValue: 'read-only',
+    }
+    const { view } = bench({ permissions })
+    const trigger = view.getByLabelText(/^访问模式/) as HTMLButtonElement
+    expect(trigger.getAttribute('aria-haspopup')).toBe('menu')
+    expect(trigger.getAttribute('aria-expanded')).toBe('false')
+    fireEvent.click(trigger)
+    expect(trigger.getAttribute('aria-expanded')).toBe('true')
+    fireEvent.click(view.getByRole('menuitem', { name: '仅可查看' }))
+    expect(trigger.getAttribute('aria-expanded')).toBe('false')
+  })
+
   it('a registered entry fills its seat and receives the locked owner prop', () => {
     const { view, slotCalls } = bench({
       disabled: true,
