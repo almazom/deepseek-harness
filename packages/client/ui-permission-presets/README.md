@@ -25,9 +25,11 @@ Use this package to choose Web GUI permission presets for future sessions or swi
 <a id="use-this-package"></a>
 ## Use this package
 
-Mount this plugin alongside the settings and commands packages; the permission row then appears in General settings, and the `/permission` picker replaces the bare command invocation. The current-session picker is available exactly while the projection key is present; a permission-less composition shows neither picker nor Settings row.
+Mount this plugin alongside the settings and commands packages; the permission row then appears in General settings, and the `/permission` picker replaces the bare command invocation. The current-session picker is available while the session's projection key is present, or while the host serves the permission settings namespace; a permission-less composition shows neither picker nor Settings row.
 
 ### The picker
+
+On surfaces without a materialized session — for example the New Session screen — the picker reads the presets of the permission settings namespace instead: the current default is marked active, and a pick writes it as the new-session default through the same settings mutation the General settings row uses; the current session is never touched.
 
 A pick submits the `/permission <preset>` command line. The argument-bearing form (`/permission <preset>` typed directly) still switches directly; the decoration replaces only the bare invocation. The built-in labels are `Read Only`, `Workspace Write`, and `Full access` in English and `仅可查看`, `工作区内修改`, and `完全权限` in Chinese; `custom` is display state, never a target.
 

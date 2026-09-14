@@ -9,13 +9,13 @@
  * its Settings row and invalidates that row on host settings changes.
  */
 import { Context } from '@deepseek-ai/cordis'
-import { describe, expect, it, onTestFinished } from 'vitest'
+import { describe, expect, it, onTestFinished, vi } from 'vitest'
 import { SlotRegistry } from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
 import { TestRemote } from '@deepseek-ai/dsh-client-test-runtime'
 import { remoteDefaultResponses } from '@deepseek-ai/dsh-client-test-runtime/src/assembly/remote-default-responses.ts'
-import { RemoteMock } from '@deepseek-ai/dsh-remote-mock'
+import { RemoteMock, ok, type RemoteTable } from '@deepseek-ai/dsh-remote-mock'
 import { apply as settingsApply, inject as settingsInject } from '@deepseek-ai/dsh-client-ui-settings/client'
 import type { CommandDecoration, PopupSelectSpec } from '@deepseek-ai/dsh-client-ui-commands/client'
 import type { PermissionSelect } from '@deepseek-ai/dsh-permission-presets/client'
@@ -36,13 +36,13 @@ const SELECT: PermissionSelect = {
   currentValue: 'workspace-write',
 }
 
-async function bench() {
+async function bench(extra: RemoteTable = { unary: {} }) {
   const ctx = new Context()
   await ctx.plugin(SlotRegistry)
   const locale = new LocaleRuntime(ctx)
   locale.setLocale('en')
   ctx.provide('locale', locale)
-  const mock = RemoteMock.create().load(remoteDefaultResponses)
+  const mock = RemoteMock.create().load(remoteDefaultResponses).load(extra)
   onTestFinished(() => { mock.assertNoUnmatched() })
   const remote = new TestRemote(ctx, { settings: mock.remote.settings })
   ctx.slots.register({
@@ -83,6 +83,7 @@ async function bench() {
   await fiber.await()
   return {
     ctx, fiber, locale, values, commands, remote,
+    settingsMutate: mock.remote.settings.mutate as unknown as ReturnType<typeof vi.fn>,
     setResult: (r: { ok: boolean; matched?: boolean }) => { commandResult = r },
     decoration: () => decoration,
     popup: (): PopupSelectSpec => {
@@ -155,9 +156,9 @@ describe('ui-permission browser plugin', () => {
     expect(passthrough.map(option => option.label)).toEqual([
       'Project Files', 'Operator Mode', 'Custom Mode', '__proto__', 'Ask Every Time',
     ])
-    // A projection that vanished between availability and open throws.
-    expect(() => b.popup().options({ sessionId: sid('ghost') }, new AbortController().signal))
-      .toThrow(/not available on this host/)
+    // A session without a projection on a host that serves no defaults row throws on open.
+    await expect(b.popup().options({ sessionId: sid('ghost') }, new AbortController().signal))
+      .rejects.toThrow(/not available on this host/)
   })
 
   it('a pick submits the /permission line; rejection and unmatched throw', async () => {
@@ -170,9 +171,58 @@ describe('ui-permission browser plugin', () => {
     await expect(b.popup().onSelect({ id: 'read-only', label: 'read-only' }, proj)).rejects.toThrow(/permission switch failed/)
     b.setResult({ ok: true, matched: false })
     await expect(b.popup().onSelect({ id: 'read-only', label: 'read-only' }, proj)).rejects.toThrow(/no \/permission command/)
-    // An unmaterialized session throws before any submit.
-    await expect(b.popup().onSelect({ id: 'read-only', label: 'read-only' }, { sessionId: sid('ghost') }))
-      .rejects.toThrow(/not materialized/)
+    // Without a defaults row an unmaterialized pick writes and submits nothing.
+    const submitted = b.commands.length
+    await b.popup().onSelect({ id: 'read-only', label: 'read-only' }, { sessionId: sid('ghost') })
+    expect(b.commands).toHaveLength(submitted)
+  })
+
+  it('unmaterialized surfaces read and write the new-session default', async () => {
+    const permissionView = {
+      ns: 'permission',
+      schema: {
+        uid: 7,
+        refs: {
+          1: { type: 'const', value: 'read-only' },
+          2: { type: 'const', value: 'workspace-write' },
+          3: { type: 'const', value: 'danger-full-access' },
+          4: { type: 'union', list: [1, 2, 3] },
+          7: { type: 'object', dict: { defaultPreset: 4 } },
+        },
+      },
+      value: { defaultPreset: 'workspace-write' },
+      base: { defaultPreset: 'read-only' },
+      applies: 'live',
+      secrets: [],
+      revision: 2,
+    }
+    const b = await bench({ unary: {
+      'settings/describe': ok({ writable: true, hasDocument: false, namespaces: [permissionView] }),
+      'settings/mutate': ok({
+        writable: true,
+        hasDocument: false,
+        namespaces: [{ ...permissionView, value: { defaultPreset: 'read-only' }, revision: 3 }],
+      }),
+    } })
+    const row = b.permissionRow()!
+    const injected = row.inject?.() as PermissionRowInjected | undefined
+    await injected!.load()
+    // No binding exists for this session; the defaults source keeps the picker available.
+    const proj = { sessionId: sid('new') }
+    expect(b.decoration()!.available(proj)).toBe(true)
+    const options = await b.popup().options(proj, new AbortController().signal)
+    expect(options.map(option => option.id)).toEqual(['read-only', 'workspace-write', 'danger-full-access'])
+    expect(options.find(option => option.id === 'workspace-write')?.active).toBe(true)
+    expect(options.map(option => option.label)).toEqual(['Read Only', 'Workspace Write', 'Full access'])
+    expect(options.find(option => option.id === 'danger-full-access')?.confirmation).toBeDefined()
+    // A pick writes the default through the Settings API, not a session command.
+    await b.popup().onSelect({ id: 'read-only', label: 'Read Only' }, proj)
+    expect(b.commands).toEqual([])
+    expect(b.settingsMutate).toHaveBeenCalledWith(
+      'permission',
+      [{ op: 'set', path: ['defaultPreset'], value: 'read-only' }],
+      2,
+    )
   })
 
   it('disposal removes the decoration (HMR safety)', async () => {

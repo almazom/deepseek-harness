@@ -10,7 +10,11 @@
  * write through one path and the pushed projection frame is the one
  * confirmation. The Full access row carries the same explicit risk gate as
  * the composer chip; the shared popup shell owns the modal mechanics.
- * The General-settings row separately writes the default preset for sessions
+ * Surfaces without a materialized session (New Session) have no projection;
+ * there the picker reads the presets of the host's permission settings
+ * namespace — the same new-session default the General-settings row writes —
+ * and a pick writes that default through the host Settings API. The
+ * General-settings row separately writes the default preset for sessions
  * created later through the host Settings API.
  */
 import type { Context as ClientContext } from '@deepseek-ai/cordis'
@@ -23,7 +27,7 @@ import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-client-ui-session/client'
 // Type-only: pulls the ctx.remote merge and the forwarded-event key face
 // (the settings invalidation rides the allowlist) into this program.
-import type {} from '@deepseek-ai/dsh-api-remotes/client'
+import type { SettingsNamespaceView } from '@deepseek-ai/dsh-api-remotes/client'
 import type { CommandUiContract, SelectOption } from '@deepseek-ai/dsh-client-ui-commands/client'
 import type { ClientSessionContext } from '@deepseek-ai/dsh-client-ui-input-trigger/client'
 import type { PermissionSelect } from '@deepseek-ai/dsh-permission-presets/client'
@@ -35,7 +39,10 @@ import {
 import {
   displayPermissionPreset, FULL_ACCESS_PRESET,
 } from './presentation.ts'
-import { PermissionPresetSettingsController } from './settings-store.ts'
+import {
+  PERMISSION_SETTINGS_NS, permissionDefaultOf, PermissionPresetSettingsController,
+} from './settings-store.ts'
+import type { PermissionDefaultOption } from './settings-store.ts'
 
 export type { PermissionRowInjected, PermissionRowProps } from './PermissionRow.tsx'
 export type {
@@ -79,6 +86,38 @@ function optionsOf(value: PermissionSelect, t: (key: string) => string): SelectO
 }
 
 /**
+ * Flatten the new-session defaults row into popup rows with the same
+ * presentation as projection rows.
+ * @param row - defaults read from the permission settings namespace schema.
+ * @param t - picker locale dictionary.
+ * @returns popup rows, the current default marked active.
+ */
+function defaultOptionsOf(
+  row: {
+    currentValue: string
+    options: readonly PermissionDefaultOption[]
+  },
+  t: (key: string) => string,
+): SelectOption[] {
+  return row.options.map(option => ({
+    id: option.id,
+    label: displayPermissionPreset(option.id, option.label, t),
+    ...(option.id === row.currentValue ? { active: true } : {}),
+    ...(option.id === FULL_ACCESS_PRESET
+      ? {
+        confirmation: {
+          title: t('confirm.title'),
+          description: t('confirm.description'),
+          acknowledgeLabel: t('confirm.acknowledge'),
+          cancelLabel: t('confirm.cancel'),
+          confirmLabel: t('confirm.enable'),
+        },
+      }
+      : {}),
+  }))
+}
+
+/**
  * Client plugin body: register the /permission popup picker over the
  * permissions projection.
  * @param ctx - client root context.
@@ -118,6 +157,9 @@ export function apply(ctx: ClientContext): void {
   const t = ctx.locale.bind(ACCESS_NS)
   const sessionFor = (session: ClientSessionContext): SessionFace | undefined =>
     sessions.binding(session.sessionId)?.session
+  const permissionSettingsView = (): SettingsNamespaceView | undefined =>
+    ctx.settingsScope.describe().getSnapshot().view?.namespaces
+      .find(entry => entry.ns === PERMISSION_SETTINGS_NS)
 
   ctx.effect(() => ctx.locale.register('settings.permission', { zh, en }), 'ui-permission: settings row dictionaries')
 
@@ -132,6 +174,10 @@ export function apply(ctx: ClientContext): void {
     select,
   })
 
+  // Picker availability and the defaults fallback read the settings mirror
+  // without the settings page being open, so warm it here. A host whose
+  // describe fails keeps the picker on the projection path only.
+  void controller.load().catch(() => {})
   ctx.effect(() => () => { controller.dispose() }, 'ui-permission: settings row directory')
 
   ctx.slots.inject('settings.general.item', () => ctx.slots.register({
@@ -144,20 +190,32 @@ export function apply(ctx: ClientContext): void {
 
   ctx.effect(() => command.decorate({
     name: 'permission',
-    // The picker exists exactly while the projection does: a permission-less
-    // host serves no key and the bare invocation falls through to the host
-    // command (which is absent too — the line simply misses).
-    available: session => selectOf(sessionFor(session)) !== undefined,
+    // The picker exists while either source does: the session's permissions
+    // projection, or the host's permission settings namespace. Unmaterialized
+    // surfaces such as New Session have no projection; there the picker reads
+    // the new-session default preset and a pick writes it, so the visible
+    // chip never dead-ends. A permission-less host serves neither source and
+    // the bare invocation falls through to the host command (which is absent
+    // too — the line simply misses).
+    available: session =>
+      selectOf(sessionFor(session)) !== undefined ||
+      permissionSettingsView() !== undefined,
     ui: {
       kind: 'popupSelect',
-      options: (session) => {
+      options: async (session) => {
         const value = selectOf(sessionFor(session))
-        if (value === undefined) throw new Error('permission presets are not available on this host')
-        return Promise.resolve(optionsOf(value, t))
+        if (value !== undefined) return optionsOf(value, t)
+        await ctx.settingsScope.describe().ensure()
+        const view = permissionSettingsView()
+        if (view === undefined) throw new Error('permission presets are not available on this host')
+        return defaultOptionsOf(permissionDefaultOf(view, ctx.settingsSchema), t)
       },
       onSelect: async (option, session) => {
         const live = sessionFor(session)
-        if (live === undefined) throw new Error('this session is not materialized yet')
+        if (live === undefined) {
+          await select(option.id)
+          return
+        }
         const result = await live.command(`/permission ${option.id}`)
         if (!result.ok) throw new Error(`permission switch failed: ${result.error.code}: ${result.error.message}`)
         if (!result.value.matched) throw new Error('the host offers no /permission command')

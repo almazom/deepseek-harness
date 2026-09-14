@@ -1,0 +1,6 @@
+# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/bug-fix/2026-09-14-permission-picker-unmaterialized-surfaces.md
+2026-09-14-permission-picker-unmaterialized-surfaces.md: 0a41079b41724750d5d040ba4e66edf2969a4ee6
+2026-09-14-permission-picker-unmaterialized-surfaces.zh.md: bc4fb17779ce42f3d1034271ed1dbe023b061e99
