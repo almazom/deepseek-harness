@@ -35,11 +35,13 @@
   - button "System" [pressed]:
     - img
     - text: System
-  - text: Font size Only affects conversation content 14
-  - button "Increase font size":
-    - img
-  - button "Decrease font size":
-    - img
+  - text: Font size Only affects conversation content, adjustable 12–17
+  - group "Font size":
+    - spinbutton "Font size": "14"
+    - button "Increase font size":
+      - img
+    - button "Decrease font size":
+      - img
   - text: px Conversation display Controls process content in completed turns
   - button "Compact":
     - text: Compact

@@ -445,7 +445,9 @@ describe('web e2e: settings modal and General preferences', () => {
       expect(envelope.result.ok).toBe(true)
       await expect.poll(async () => readFile(join(scaffold.harnessHome, 'settings.yaml'), 'utf8'), { timeout: 5_000 })
         .toMatch(new RegExp(`ui-theme:\n(?:\\s+\\w+: .*\n)*?\\s+fontSize: ${px}`))
-      await page.getByRole('dialog', { name: '设置' }).getByText(String(px), { exact: true }).waitFor({ timeout: 5_000 })
+      await expect
+        .poll(() => page.getByRole('dialog', { name: '设置' }).getByRole('spinbutton', { name: '字号大小' }).inputValue(), { timeout: 5_000 })
+        .toBe(String(px))
       await expect.poll(readFontSize, { timeout: 5_000 }).toBe(`${px}px`)
     }
     expect(await readFontSize()).toBe('14px')
@@ -454,7 +456,8 @@ describe('web e2e: settings modal and General preferences', () => {
     const dialog = page.getByRole('dialog', { name: '设置' })
     await dialog.waitFor({ timeout: 10_000 })
     // The stepper reveals its arrows on hover; the up arrow steps 14 → 15 → 16.
-    await dialog.getByText('14', { exact: true }).hover()
+    // The value lives in the row's number input, not a text node.
+    await dialog.getByRole('spinbutton', { name: '字号大小' }).hover()
     const increase = dialog.getByRole('button', { name: '增大字号' })
     await stepFontSize(increase, 15)
     // 15 is the piecewise boundary: the secondary tier holds at 13px (−2)
@@ -478,7 +481,7 @@ describe('web e2e: settings modal and General preferences', () => {
     await page.getByRole('button', { name: '设置', exact: true }).click()
     const restored = page.getByRole('dialog', { name: '设置' })
     await restored.waitFor({ timeout: 10_000 })
-    await restored.getByText('16', { exact: true }).hover()
+    await restored.getByRole('spinbutton', { name: '字号大小' }).hover()
     const decrease = restored.getByRole('button', { name: '减小字号' })
     await stepFontSize(decrease, 15)
     await stepFontSize(decrease, 14)

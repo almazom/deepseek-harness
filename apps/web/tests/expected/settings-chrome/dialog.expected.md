@@ -35,11 +35,13 @@
   - button "跟随系统" [pressed]:
     - img
     - text: 跟随系统
-  - text: 字号大小 仅影响会话内容的字号 14
-  - button "增大字号":
-    - img
-  - button "减小字号":
-    - img
+  - text: 字号大小 仅影响会话内容的字号，可调范围 12–17
+  - group "字号大小":
+    - spinbutton "字号大小": "14"
+    - button "增大字号":
+      - img
+    - button "减小字号":
+      - img
   - text: px 对话显示 控制已完成轮次的过程内容
   - button "紧凑":
     - text: 紧凑
