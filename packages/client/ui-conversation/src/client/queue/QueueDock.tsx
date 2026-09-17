@@ -96,7 +96,7 @@ export type QueueDockProps = PropsRuntime<'conversation.input.dock'> & InjectFac
  * show sending status and disabled actions until their Host queue rows arrive.
  */
 export function QueueDock(props: QueueDockProps) {
-  const { useSession, updateQueue, notify, loadImage, useSmartSteerMinConfidence, t } = props
+  const { useSession, useProjection, updateQueue, notify, loadImage, useSmartSteerMinConfidence, t } = props
   // The renderer binds the chat seat for every session-scoped entry, but the
   // seat's owner (ui-chat) types it through an augmentation this package's
   // program cannot see: a project reference back to ui-chat would close a
@@ -135,6 +135,13 @@ export function QueueDock(props: QueueDockProps) {
       running, queuedCount: queue.length, rowText: advising?.text ?? '',
     }, minConfidence),
     [advising, minConfidence, queue.length, running],
+  )
+  const liveRun = useProjection('advisor/run')
+  const live = useMemo(
+    () => liveRun !== undefined && advising !== null && liveRun.queuedItemId === advising.id
+      ? liveRun
+      : undefined,
+    [advising, liveRun],
   )
 
   if (rowCount === 0) return null
@@ -420,6 +427,7 @@ export function QueueDock(props: QueueDockProps) {
           lastHuman={lastHuman}
           busy={busy !== null}
           {...advisorRun}
+          live={live}
           minConfidence={minConfidence}
           t={t}
           onSendNow={() => {

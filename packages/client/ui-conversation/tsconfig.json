@@ -51,6 +51,9 @@
       "path": "../../core/session"
     },
     {
+      "path": "../../session/session-advisor-llm"
+    },
+    {
       "path": "../../interaction/commands"
     },
     {

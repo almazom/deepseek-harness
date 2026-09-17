@@ -43,6 +43,10 @@ The advisory prompt and findings are model-visible-by-design and reconstructable
 
 ## Understand the implementation
 
+### Projection vocabulary
+
+The package merges one key into `SessionProjectionMap`: `advisor/run` → `AdvisorRunProjection`. The host dispatcher republishes the whole run value as each phase closes and at settlement (`status: 'running' | 'done' | 'failed'`, completed `steps` with verbatim findings, and the settled `verdict`). Client surfaces read that key through the standard `useProjection` seat — no client-side folding.
+
 ### Design concept
 
 One model call produces the whole decision; the fixed key order in the system prompt turns one stream into four observable phases. The watcher is a pure character-level state machine (nesting depth, string and escape state) that closes a section at the boundary where its value's nesting returns to depth 1, or at the root brace for the final section. It tolerates unknown keys — mapping keys to the fixed `AdvisorStepId` phases and dropping others is the dispatcher's job — and reports a truncated stream through `finish()` instead of throwing.

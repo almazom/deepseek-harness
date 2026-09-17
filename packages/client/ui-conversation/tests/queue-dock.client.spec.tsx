@@ -20,6 +20,7 @@ import {
 import type { SessionPendingInteractionSnapshot } from '@deepseek-ai/dsh-client-ui-session/client'
 import { zh as commonZh } from '@deepseek-ai/dsh-client-locale/src/locales/zh.ts'
 import type { QueueItemId } from '../src/client/contract/queue.ts'
+import type { AdvisorRunProjection } from '@deepseek-ai/dsh-session-advisor-llm'
 import type { ConversationNode } from '../src/client/contract/records.ts'
 import type { InputState } from '../src/client/contract/input.ts'
 import { zh } from '../src/client/locales.ts'
@@ -86,7 +87,7 @@ function makeUseChat(nodes: readonly ConversationNode[]): QueueDockProps['useCha
   })
 }
 
-function kitFor(snapshot: SessionSnapshot, injected: Partial<QueueDockInjected & Pick<QueueDockProps, 'useChat'>> = {}) {
+function kitFor(snapshot: SessionSnapshot, injected: Partial<QueueDockInjected & Pick<QueueDockProps, 'useChat' | 'useProjection'>> = {}) {
   return {
     sessionId: SID,
     t,
@@ -801,5 +802,127 @@ describe('QueueDock smart steer', () => {
     const source = liveSession(pending)
     const view = render(<QueueDock {...kitFor(pending)} useSession={source.useSession} />)
     expect(smartButton(view).disabled).toBe(true)
+  })
+
+  describe('live advisory projection', () => {
+    const TAIL_ZH = '最近的话题是修复登录测试'
+
+    /** A keyed useProjection fake over one pushable advisor/run value. */
+    function projectionKit() {
+      let value: AdvisorRunProjection | undefined
+      const listeners = new Set<() => void>()
+      const subscribe = (fn: () => void) => {
+        listeners.add(fn)
+        return () => { listeners.delete(fn) }
+      }
+      const face = (selector: (current: AdvisorRunProjection | undefined) => unknown) =>
+        useSyncExternalStore(subscribe, () => selector(value))
+      const useProjection = ((_key: string, selector?: (current: AdvisorRunProjection | undefined) => unknown) => (
+        selector === undefined ? face(current => current) : face(selector)
+      )) as unknown as QueueDockProps['useProjection']
+      return {
+        useProjection,
+        push(next: AdvisorRunProjection | undefined): void {
+          value = next
+          for (const listener of [...listeners]) listener()
+        },
+      }
+    }
+
+    function liveValue(over: Partial<AdvisorRunProjection>): AdvisorRunProjection {
+      return {
+        runId: 'run-1' as never,
+        queuedItemId: iid('r1'),
+        status: 'running',
+        steps: [],
+        verdict: undefined,
+        ...over,
+      }
+    }
+
+    it('streams live phases with raw findings and a gate-consistent verdict', () => {
+      const { useProjection, push } = projectionKit()
+      const snap = snapshotWith([row('r1', 'почини тесты', 'почини тесты')])
+      const source = liveSession(snap)
+      const view = render(<QueueDock {...kitFor(snap, { useProjection })} useSession={source.useSession} />)
+      fireEvent.click(smartButton(view))
+      const dialogText = () => view.getByRole('dialog', { name: '智能插话顾问' }).textContent
+
+      act(() => { push(liveValue({ steps: [{ step: 'tail', finding: TAIL_ZH }] })) })
+      expect(dialogText()).toContain('消息尾读')
+      expect(dialogText()).toContain(TAIL_ZH)
+      expect(dialogText()).toContain('进行中')
+      expect(dialogText()).toContain('等待建议判定…')
+
+      act(() => {
+        push(liveValue({
+          status: 'done',
+          steps: [
+            { step: 'tail', finding: TAIL_ZH },
+            { step: 'compare', finding: '队列消息延续同一任务' },
+            { step: 'risk', finding: '代理处于步骤边界，打断成本低' },
+            { step: 'verdict', finding: '倾向立即发送' },
+          ],
+          verdict: {
+            kind: 'send-now', confidence: 0.97, gateThreshold: 0.95,
+            reason: '消息与当前任务一致，发送不会破坏运行',
+          },
+        }))
+      })
+      expect(dialogText()).toContain('队列对照')
+      expect(dialogText()).toContain('边界风险')
+      expect(dialogText()).toContain('消息与当前任务一致，发送不会破坏运行')
+      expect(dialogText()).toContain('置信度 97%')
+      expect(dialogText()).toContain('达到门槛：可以发送。')
+      expect(dialogText()).not.toContain('进行中')
+    })
+
+    it('holds a live verdict below the gate exactly like the tier-1 pre-verdict', () => {
+      const { useProjection, push } = projectionKit()
+      const snap = snapshotWith([row('r1', 'почини тесты', 'почини тесты')])
+      const source = liveSession(snap)
+      const view = render(<QueueDock {...kitFor(snap, { useProjection })} useSession={source.useSession} />)
+      fireEvent.click(smartButton(view))
+      act(() => {
+        push(liveValue({
+          status: 'done',
+          steps: [{ step: 'risk', finding: '发送会打断运行中的回合' }],
+          verdict: {
+            kind: 'hold', confidence: 0.6, gateThreshold: 0.95,
+            reason: '消息与当前任务无关',
+          },
+        }))
+      })
+      const dialog = view.getByRole('dialog', { name: '智能插话顾问' })
+      expect(dialog.textContent).toContain('发送会打断运行中的回合')
+      expect(dialog.textContent).toContain('置信度 60%')
+      expect(dialog.textContent).toContain('低于门槛：默认保留在队列。')
+      expect(dialog.textContent).toContain('消息与当前任务无关')
+    })
+
+    it('falls back to the tier-1 pre-verdict when the run belongs to another row', () => {
+      const { useProjection, push } = projectionKit()
+      push(liveValue({ queuedItemId: iid('other') }))
+      const snap = snapshotWith([row('r1', 'почини тесты', 'почини тесты')])
+      const source = liveSession(snap)
+      const view = render(<QueueDock {...kitFor(snap, { useProjection })} useSession={source.useSession} />)
+      fireEvent.click(smartButton(view))
+      const dialog = view.getByRole('dialog', { name: '智能插话顾问' })
+      expect(dialog.textContent).toContain(DEFER_ZH)
+      expect(dialog.textContent).not.toContain('消息尾读')
+    })
+
+    it('marks a failed run and keeps the instant pre-verdict gate line', () => {
+      const { useProjection, push } = projectionKit()
+      const snap = snapshotWith([row('r1', 'почини тесты', 'почини тесты')])
+      const source = liveSession(snap)
+      const view = render(<QueueDock {...kitFor(snap, { useProjection })} useSession={source.useSession} />)
+      fireEvent.click(smartButton(view))
+      act(() => { push(liveValue({ status: 'failed' })) })
+      const dialog = view.getByRole('dialog', { name: '智能插话顾问' })
+      expect(dialog.textContent).toContain('建议运行未完成')
+      expect(dialog.textContent).toContain('失败')
+      expect(dialog.textContent).toContain(DEFER_ZH)
+    })
   })
 })

@@ -7,6 +7,7 @@
  * @module @deepseek-ai/dsh-session-advisor-llm
  */
 
+import type {} from '@deepseek-ai/dsh-session-projection/types'
 import { createUserMessage } from '@deepseek-ai/dsh-llm'
 import type { Message } from '@deepseek-ai/dsh-llm'
 import { MAX_TIMER_DELAY_MS } from '@deepseek-ai/dsh-timeout'
@@ -21,7 +22,10 @@ import type {
 export type {
   AdvisorLlmConfig,
   AdvisorRunId,
+  AdvisorRunProjection,
   AdvisorRunRequestedEventData,
+  AdvisorRunStep,
+  AdvisorRunVerdict,
   AdvisorStepEventData,
   AdvisorStepId,
   AdvisorVerdictEventData,
@@ -36,6 +40,13 @@ declare module '@deepseek-ai/dsh-session/types' {
     'advisor/step': import('./types.ts').AdvisorStepEventData
     /** Final advisory decision against the Smart-steer confidence gate. */
     'advisor/verdict': import('./types.ts').AdvisorVerdictEventData
+  }
+}
+
+declare module '@deepseek-ai/dsh-session-projection/types' {
+  interface SessionProjectionMap {
+    /** Live advisory side run for one queued message, whole value per step. */
+    'advisor/run': import('./types.ts').AdvisorRunProjection
   }
 }
 

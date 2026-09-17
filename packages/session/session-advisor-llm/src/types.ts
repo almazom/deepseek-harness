@@ -70,3 +70,37 @@ export interface AdvisorLlmConfig {
 
 /** Validated immutable advisor-run policy. */
 export interface ResolvedAdvisorLlmConfig extends AdvisorLlmConfig {}
+
+/** One completed live advisor phase, its finding exactly as the model emitted it. */
+export interface AdvisorRunStep {
+  /** Which fixed cognitive phase completed. */
+  readonly step: AdvisorStepId
+  /** The model's finding for this phase, verbatim. */
+  readonly finding: string
+}
+
+/** The live verdict, compared against the gate with tier-1 semantics. */
+export interface AdvisorRunVerdict {
+  /** Gate outcome: send now, or hold the queued message. */
+  readonly kind: 'send-now' | 'hold'
+  /** Model-reported confidence, clamped to [0, 1]. */
+  readonly confidence: number
+  /** Configured `smartSteerMinConfidence` the verdict was compared against. */
+  readonly gateThreshold: number
+  /** One-sentence verdict rationale quoted from the model output. */
+  readonly reason: string
+}
+
+/** Whole-run projection value; the host republishes it as each step lands and at settlement. */
+export interface AdvisorRunProjection {
+  /** Advisory run this value belongs to. */
+  readonly runId: AdvisorRunId
+  /** Queued message the advisory run decides about. */
+  readonly queuedItemId: MessageId
+  /** Run lifecycle: streaming phases, settled, or ended without a verdict. */
+  readonly status: 'running' | 'done' | 'failed'
+  /** Phases completed so far, in execution order. */
+  readonly steps: readonly AdvisorRunStep[]
+  /** The settled verdict, absent until the run reaches one. */
+  readonly verdict: AdvisorRunVerdict | undefined
+}

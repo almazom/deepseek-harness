@@ -10,6 +10,7 @@
     { "path": "../../../vendor/cordis" },
     { "path": "../../../vendor/schemastery" },
     { "path": "../../core/session" },
+    { "path": "../../session/session-projection" },
     { "path": "../../llm/llm" },
     { "path": "../../util/brand" },
     { "path": "../../util/timeout" }

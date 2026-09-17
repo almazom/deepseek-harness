@@ -53,6 +53,10 @@ Smart-steer 队列顾问单次运行的共享框架、分段流式、超时与�
 
 <a id="design-concept"></a>
 
+### 投影词汇
+
+本包向 `SessionProjectionMap` 合并一个键：`advisor/run` → `AdvisorRunProjection`。宿主分发器在每个阶段闭合时与结算时整体重发布该运行值（`status: 'running' | 'done' | 'failed'`、已完成的 `steps` 及逐字发现、以及最终 `verdict`）。客户端表面通过标准 `useProjection` 座位读取该键——客户端不做折叠。
+
 ### 设计概念
 
 一次模型调用产出完整决策；系统提示中的固定键序把一条流变成四个可观测阶段。观察器是纯字符级状态机（嵌套深度、字符串与转义状态），在值的嵌套回落到深度 1 的边界、或最后一段在根括号处闭合该段。它容忍未知键——把键映射到固定的 `AdvisorStepId` 阶段并丢弃其余是分发器的职责——并以 `finish()` 报告被截断的流而不抛错。

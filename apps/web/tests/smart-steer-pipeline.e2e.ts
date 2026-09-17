@@ -1,9 +1,10 @@
 // Web e2e scenario for the Smart-steer visible reasoning pipeline: opening the
-// advisor sheet reveals the four pipeline rows (pending → running → done) and a
-// confidence-gated verdict. A status-probe row carries tier-1 confidence above
-// the configured gate and reads as deliverable; an instruction row stays below
-// the gate and defaults to keep-queued with its reason visible. The gate value
-// itself is the durable smartSteerMinConfidence section field.
+// advisor sheet shows the four tier-1 pipeline rows done on the first paint
+// (pacing belongs to the live projection, not the deterministic pre-verdict)
+// and a confidence-gated verdict. A status-probe row carries tier-1 confidence
+// above the configured gate and reads as deliverable; an instruction row stays
+// below the gate and defaults to keep-queued with its reason visible. The gate
+// value itself is the durable smartSteerMinConfidence section field.
 // Replay-only: the recorded steering fixture keeps the turn open while rows queue.
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -81,18 +82,15 @@ describe.skipIf(MODE === 'record')('web e2e: smart steer pipeline panel reveals 
     const instructionSheet = page.getByRole('dialog', { name: 'Smart steer advisor' })
     await instructionSheet.waitFor({ timeout: 10_000 })
     const instructionPipeline = instructionSheet.getByRole('list', { name: 'Steer pipeline' })
+    // The tier-1 pre-verdict is computed synchronously: every phase row is
+    // done on the first paint — pacing exists only in the live projection.
     const firstRender = (await instructionPipeline.textContent()) ?? ''
-    expect(firstRender).toContain('Running')
-    expect(firstRender).toContain('Pending')
-    await expect.poll(async () => {
-      const text = (await instructionPipeline.textContent()) ?? ''
-      return [...text.matchAll(/Done/g)].length
-    }, { timeout: 10_000 }).toBe(4)
-    const settledPipeline = (await instructionPipeline.textContent()) ?? ''
-    expect(settledPipeline).toContain('Session status probe')
-    expect(settledPipeline).toContain('Input analysis')
-    expect(settledPipeline).toContain('Risk assessment')
-    expect(settledPipeline).toContain('Verdict')
+    expect([...firstRender.matchAll(/Done/g)]).toHaveLength(4)
+    expect(firstRender).toContain('Session status probe')
+    expect(firstRender).toContain('Input analysis')
+    expect(firstRender).toContain('Risk assessment')
+    expect(firstRender).toContain('Verdict')
+    const settledPipeline = firstRender
     const gateText = (await instructionSheet.textContent()) ?? ''
     expect(gateText).toContain('Confidence 70% — Below the gate: kept queued by default.')
     expect(gateText).toContain('Advise defer: delivered at the next step boundary; the running turn continues undisturbed.')
