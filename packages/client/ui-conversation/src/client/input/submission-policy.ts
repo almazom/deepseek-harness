@@ -10,7 +10,9 @@ import type { SettingsScope } from '@deepseek-ai/dsh-client-ui-settings/client'
 import type {
   BusyEnterBehavior, ComposerSubmitGesture, InputSubmitMode,
 } from '../contract/composer-submission.ts'
-import { BUSY_ENTER_FIELD, DEFAULT_BUSY_ENTER_BEHAVIOR } from '../../submission-settings.ts'
+import {
+  BUSY_ENTER_FIELD, DEFAULT_BUSY_ENTER_BEHAVIOR, DEFAULT_SMART_STEER_MIN_CONFIDENCE,
+} from '../../submission-settings.ts'
 import type { ConversationSettings } from '../../submission-settings.ts'
 
 export { DEFAULT_BUSY_ENTER_BEHAVIOR } from '../../submission-settings.ts'
@@ -46,6 +48,14 @@ export function resolveSubmitMode(
 export class ComposerSubmissionPolicy {
   /** Reactive preference source for the composer bar and the Settings row. */
   readonly busyEnter: SnapshotStore<BusyEnterBehavior> = createSnapshotStore(DEFAULT_BUSY_ENTER_BEHAVIOR)
+  /**
+   * Reactive Smart-steer confidence gate read by the advisor sheet. The gate
+   * is configuration, not a preference: the browser scope only adopts the
+   * durable value and never writes it back.
+   */
+  readonly smartSteerMinConfidence: SnapshotStore<number> = createSnapshotStore(
+    DEFAULT_SMART_STEER_MIN_CONFIDENCE,
+  )
   private readonly host: SettingsScope<ConversationSettings> | undefined
 
   /**
@@ -74,12 +84,15 @@ export class ComposerSubmissionPolicy {
   }
 
   /**
-   * Adopt the scope's accepted durable behavior without writing it back.
+   * Adopt the scope's accepted durable values without writing them back.
    * @param host - the constructor-narrowed scope driving this adoption.
    */
   private adopt(host: SettingsScope<ConversationSettings>): void {
     const section = host.getSnapshot().value
-    if (section === undefined || this.busyEnter.getSnapshot() === section.busyEnter) return
-    this.busyEnter.set(section.busyEnter)
+    if (section === undefined) return
+    if (this.busyEnter.getSnapshot() !== section.busyEnter) this.busyEnter.set(section.busyEnter)
+    if (this.smartSteerMinConfidence.getSnapshot() !== section.smartSteerMinConfidence) {
+      this.smartSteerMinConfidence.set(section.smartSteerMinConfidence)
+    }
   }
 }

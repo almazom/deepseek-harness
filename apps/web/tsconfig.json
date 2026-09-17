@@ -35,6 +35,7 @@
     "tests/plan-control-row.e2e.ts",
     "tests/plan-review.e2e.ts",
     "tests/steering.e2e.ts",
+    "tests/smart-steer-pipeline.e2e.ts",
     "tests/smart-steer.e2e.ts",
     "tests/navigation-panes.e2e.ts",
     "tests/chat-scroll-fixture.ts",
@@ -120,13 +121,118 @@
   ],
   "references": [
     {
+      "path": "../../packages/client/modules"
+    },
+    {
       "path": "../../packages/client/store"
     },
     {
       "path": "../../packages/client/web"
     },
     {
-      "path": "../../packages/client/modules"
+      "path": "../../native/system/packages/entry"
+    },
+    {
+      "path": "../../packages/attachment/attachment"
+    },
+    {
+      "path": "../../packages/boot/app-boot"
+    },
+    {
+      "path": "../../packages/boot/cmdline"
+    },
+    {
+      "path": "../../packages/compaction/compaction"
+    },
+    {
+      "path": "../../packages/core/agent"
+    },
+    {
+      "path": "../../packages/core/scope"
+    },
+    {
+      "path": "../../packages/core/session"
+    },
+    {
+      "path": "../../packages/core/system-prompt"
+    },
+    {
+      "path": "../../packages/interaction/commands"
+    },
+    {
+      "path": "../../packages/llm/deepseek-llm-api-extensions"
+    },
+    {
+      "path": "../../packages/llm/llm"
+    },
+    {
+      "path": "../../packages/session/session-format"
+    },
+    {
+      "path": "../../packages/session/session-format-catalog"
+    },
+    {
+      "path": "../../packages/session/session-format-v0-to-v1"
+    },
+    {
+      "path": "../../packages/session/session-format-v1-to-v2"
+    },
+    {
+      "path": "../../packages/session/session-format-v2-to-v3"
+    },
+    {
+      "path": "../../packages/session/session-persistence"
+    },
+    {
+      "path": "../../packages/session/session-persistence-jsonl"
+    },
+    {
+      "path": "../../packages/session/session-projection"
+    },
+    {
+      "path": "../../packages/test-support/llm-replay"
+    },
+    {
+      "path": "../../packages/test-support/loader-smoke"
+    },
+    {
+      "path": "../../packages/test-support/session-snapshot"
+    },
+    {
+      "path": "../../packages/typert/protocol"
+    },
+    {
+      "path": "../../packages/util/atomic-write"
+    },
+    {
+      "path": "../../packages/util/crypto"
+    },
+    {
+      "path": "../../packages/util/home-paths"
+    },
+    {
+      "path": "../../packages/util/http-proxy"
+    },
+    {
+      "path": "../../packages/util/launch-environment"
+    },
+    {
+      "path": "../../packages/util/timeout"
+    },
+    {
+      "path": "../../packages/util/values"
+    },
+    {
+      "path": "../../vendor/group"
+    },
+    {
+      "path": "../../vendor/hmr"
+    },
+    {
+      "path": "../../vendor/include"
+    },
+    {
+      "path": "../../vendor/timer"
     }
   ]
 }

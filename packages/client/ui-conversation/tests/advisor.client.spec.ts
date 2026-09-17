@@ -75,26 +75,42 @@ describe('tier-1 advisor verdicts', () => {
 describe('advisor pipeline and confidence gate', () => {
   const base = { running: true, queuedCount: 1 }
 
-  it('completes every phase in execution order with a high-confidence status verdict', () => {
-    const result = runAdvisorPipeline({ ...base, rowText: 'что происходит?' })
+  it('completes every phase in order with findings and a high-confidence status verdict', () => {
+    const result = runAdvisorPipeline({ ...base, rowText: 'что происходит?' }, 0.95)
     expect(result.steps.map(step => step.id)).toEqual([...ADVISOR_STEP_IDS])
     expect(result.steps.map(step => step.status)).toEqual(['done', 'done', 'done', 'done'])
     expect(result.outcome).toMatchObject({ kind: 'status', confidence: 0.97 })
+    expect(result.steps.map(step => step.detail?.key)).toEqual([
+      'advisor.detail.sessionRunning', 'advisor.detail.probeMatched',
+      'advisor.detail.interruptRisk', 'advisor.detail.gateAllowed',
+    ])
+    expect(result.steps[3]?.detail).toMatchObject({ params: { p: 97 } })
   })
 
-  it('keeps the defer verdict below the default gate', () => {
-    const result = runAdvisorPipeline({ ...base, rowText: 'fix the login bug' })
+  it('keeps the defer verdict below the default gate with its reasoning chain', () => {
+    const result = runAdvisorPipeline({ ...base, rowText: 'fix the login bug' }, 0.95)
     expect(result.outcome.kind).toBe('defer')
     expect(result.outcome.confidence).toBe(0.7)
+    expect(result.steps.map(step => step.detail?.key)).toEqual([
+      'advisor.detail.sessionRunning', 'advisor.detail.instructionDetected',
+      'advisor.detail.boundaryDelivery', 'advisor.detail.gateHeld',
+    ])
+  })
+
+  it('reports the idle session fact and honors a raised gate', () => {
+    const result = runAdvisorPipeline({ running: false, queuedCount: 2, rowText: 'what?' }, 0.99)
+    expect(result.steps[0]?.detail).toMatchObject({ key: 'advisor.detail.sessionIdle', params: { n: 2 } })
+    expect(gateOutcome(result.outcome, 0.99)).toBe('held')
+    expect(result.steps[3]?.detail).toMatchObject({ key: 'advisor.detail.gateHeld', params: { p: 97 } })
   })
 
   it('gates a confidence at or above the threshold as allowed', () => {
-    const result = runAdvisorPipeline({ ...base, rowText: 'status?' })
+    const result = runAdvisorPipeline({ ...base, rowText: 'status?' }, 0.95)
     expect(gateOutcome(result.outcome, 0.95)).toBe('allowed')
   })
 
   it('gates a confidence below the threshold as held', () => {
-    const result = runAdvisorPipeline({ ...base, rowText: 'fix the login bug' })
+    const result = runAdvisorPipeline({ ...base, rowText: 'fix the login bug' }, 0.95)
     expect(gateOutcome(result.outcome, 0.95)).toBe('held')
   })
 

@@ -1,7 +1,8 @@
 import type { Context } from '@deepseek-ai/cordis'
 import { useEffect, useId, useMemo, useState } from 'react'
 import type { FileAttachmentRef, ImageAttachmentRef } from '@deepseek-ai/dsh-attachment'
-import type { PropsLocale, PropsRuntime, SnapshotSelectorHook } from '@deepseek-ai/dsh-client-ui-slots'
+import type { SnapshotStore } from '@deepseek-ai/dsh-client-store'
+import type { InjectFace, PropsLocale, PropsRuntime, SnapshotSelectorHook } from '@deepseek-ai/dsh-client-ui-slots'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import {
   IconCheckOutline16, IconChevronDownOutline14, IconChevronUpOutline14, IconCloseOutline16,
@@ -11,7 +12,7 @@ import {
 import type { ConversationNode } from '../contract/records.ts'
 import type { QueueAction, QueueItemId, QueueRow } from '../contract/queue.ts'
 import { NS } from '../locales.ts'
-import { advise, lastHumanPreview } from './advisor.ts'
+import { lastHumanPreview, runAdvisorPipeline } from './advisor.ts'
 import { AdvisorSheet } from './AdvisorSheet.tsx'
 import css from './QueueDock.module.css'
 
@@ -21,6 +22,10 @@ export interface QueueDockInjected {
   notify: (level: 'info' | 'error', text: string) => void
   /** Resolve one durable queued image into a session-scoped browser URL. */
   loadImage: (attachment: ImageAttachmentRef) => Promise<string>
+  hooks: {
+    /** Durable Smart-steer confidence gate bound as useSmartSteerMinConfidence. */
+    smartSteerMinConfidence: SnapshotStore<number>
+  }
 }
 
 /**
@@ -83,7 +88,7 @@ function QueueThumb({ attachment, loadImage, label }: {
 }
 
 /** Full props of a dock entry: InputZone owner share + session standard kit + global seat + the locale seat. */
-export type QueueDockProps = PropsRuntime<'conversation.input.dock'> & QueueDockInjected & PropsLocale<'conversation'>
+export type QueueDockProps = PropsRuntime<'conversation.input.dock'> & InjectFace<QueueDockInjected> & PropsLocale<'conversation'>
 
 /**
  * Queue strip: one item renders directly; multiple items default to a
@@ -91,7 +96,7 @@ export type QueueDockProps = PropsRuntime<'conversation.input.dock'> & QueueDock
  * show sending status and disabled actions until their Host queue rows arrive.
  */
 export function QueueDock(props: QueueDockProps) {
-  const { useSession, updateQueue, notify, loadImage, t } = props
+  const { useSession, updateQueue, notify, loadImage, useSmartSteerMinConfidence, t } = props
   // The renderer binds the chat seat for every session-scoped entry, but the
   // seat's owner (ui-chat) types it through an augmentation this package's
   // program cannot see: a project reference back to ui-chat would close a
@@ -111,6 +116,7 @@ export function QueueDock(props: QueueDockProps) {
   }, [pendingSubmissions, queue])
   const rowCount = queue.length + pendingQueue.length
   const running = useSession(s => s.running)
+  const minConfidence = useSmartSteerMinConfidence(value => value)
   const queueMutable = useSession(s => s.subagent === null || s.subagent.address.mode === 'continuable')
   const [editing, setEditing] = useState<{ id: QueueItemId; text: string } | null>(null)
   const [busy, setBusy] = useState<QueueItemId | null>(null)
@@ -123,6 +129,13 @@ export function QueueDock(props: QueueDockProps) {
     if (editing !== null && (!queueMutable || !queue.some(row => row.id === editing.id))) setEditing(null)
     if (advising !== null && !queue.some(row => row.id === advising.id)) setAdvising(null)
   }, [advising, collapsed, editing, queue, queueMutable, rowCount])
+
+  const advisorRun = useMemo(
+    () => runAdvisorPipeline({
+      running, queuedCount: queue.length, rowText: advising?.text ?? '',
+    }, minConfidence),
+    [advising, minConfidence, queue.length, running],
+  )
 
   if (rowCount === 0) return null
 
@@ -406,7 +419,8 @@ export function QueueDock(props: QueueDockProps) {
           rowPreview={advising.preview}
           lastHuman={lastHuman}
           busy={busy !== null}
-          verdict={advise({ running, queuedCount: queue.length, rowText: advising.text ?? '' })}
+          {...advisorRun}
+          minConfidence={minConfidence}
           t={t}
           onSendNow={() => {
             const itemId = advising.id
@@ -421,27 +435,36 @@ export function QueueDock(props: QueueDockProps) {
   )
 }
 
-/** Registers queue actions backed by the session-scoped conversation service. */
-export const queueDockEntry = {
-  name: 'conversation-queue-dock',
-  inject: ['slots', 'conversation', 'sessions', 'uiConversation'],
-  apply(ctx: Context): void {
-    ctx.slots.inject('conversation.input.dock', () => ctx.slots.register({
-      name: 'conversation.input.dock',
-      id: 'queue',
-      order: 20,
-      locale: NS,
-      inject: (sessionId: SessionId): QueueDockInjected => {
-        const actx = ctx.sessions.scope(sessionId)
-        if (actx === undefined) throw new Error(`queue dock: session "${sessionId}" resolved no scope`)
-        const conversation = actx.get('conversation')
-        if (conversation === undefined) throw new Error('queue dock: conversation service unavailable')
-        return {
-          updateQueue: (itemId, action) => conversation.updateQueue(itemId, action),
-          notify: (level, text) => { conversation.input.for(actx).notify(level, text) },
-          loadImage: attachment => ctx.uiConversation.imageUrl(sessionId, attachment),
-        }
-      },
-    }, QueueDock))
-  },
+/**
+ * Creates the queue-dock plugin. The Smart-steer confidence gate store is
+ * the composer submission policy's reactive fact, shared with this entry
+ * through the apply closure; the dock only reads it.
+ * @param gate - reactive source of the durable Smart-steer confidence gate.
+ * @returns the registrable queue-dock plugin.
+ */
+export function createQueueDockEntry(gate: SnapshotStore<number>) {
+  return {
+    name: 'conversation-queue-dock',
+    inject: ['slots', 'conversation', 'sessions', 'uiConversation'],
+    apply(ctx: Context): void {
+      ctx.slots.inject('conversation.input.dock', () => ctx.slots.register({
+        name: 'conversation.input.dock',
+        id: 'queue',
+        order: 20,
+        locale: NS,
+        inject: (sessionId: SessionId): QueueDockInjected => {
+          const actx = ctx.sessions.scope(sessionId)
+          if (actx === undefined) throw new Error(`queue dock: session "${sessionId}" resolved no scope`)
+          const conversation = actx.get('conversation')
+          if (conversation === undefined) throw new Error('queue dock: conversation service unavailable')
+          return {
+            updateQueue: (itemId, action) => conversation.updateQueue(itemId, action),
+            notify: (level, text) => { conversation.input.for(actx).notify(level, text) },
+            loadImage: attachment => ctx.uiConversation.imageUrl(sessionId, attachment),
+            hooks: { smartSteerMinConfidence: gate },
+          }
+        },
+      }, QueueDock))
+    },
+  }
 }

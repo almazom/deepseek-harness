@@ -58,3 +58,62 @@
   font: var(--dsw-font-xs-13);
   line-height: 20px;
 }
+
+/* Pipeline phases: one row per step, revealed top to bottom as the run advances. */
+.pipeline {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pipelineStep {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font: var(--dsw-font-xs-13);
+  color: var(--dsw-alias-label-primary);
+}
+
+.pipelineStatus {
+  flex: none;
+  width: 44px;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+/* Phase body: the label with its reasoning line underneath once the phase completes. */
+.pipelineBody {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  color: var(--dsw-alias-label-primary);
+  overflow-wrap: break-word;
+}
+
+.pipelineDetail {
+  color: var(--dsw-alias-label-secondary);
+}
+
+/* The gate block mirrors the verdict block: label above the outcome lines. */
+.gate {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 10px;
+  border-top: 0.5px solid var(--dsw-alias-border-l1);
+}
+
+.gateConfidence {
+  color: var(--dsw-alias-label-secondary);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.gateOutcome {
+  color: var(--dsw-alias-label-primary);
+  font: var(--dsw-font-xs-13);
+  line-height: 20px;
+}

@@ -59,10 +59,27 @@ export type AdvisorStepId = typeof ADVISOR_STEP_IDS[number]
 /** Lifecycle of one pipeline phase row in the advisor sheet. */
 export type AdvisorStepStatus = 'pending' | 'running' | 'done' | 'failed'
 
-/** One rendered pipeline phase: its identity plus where it currently stands. */
+/** Locale-facing finding one completed phase reports; the panel renders it as the row's reasoning line. */
+export interface AdvisorStepDetail {
+  readonly key:
+    | 'advisor.detail.sessionRunning'
+    | 'advisor.detail.sessionIdle'
+    | 'advisor.detail.probeMatched'
+    | 'advisor.detail.instructionDetected'
+    | 'advisor.detail.interruptRisk'
+    | 'advisor.detail.boundaryDelivery'
+    | 'advisor.detail.gateAllowed'
+    | 'advisor.detail.gateHeld'
+  /** Interpolation values for the locale line; empty for parameter-free findings. */
+  readonly params: Record<string, number>
+}
+
+/** One rendered pipeline phase: its identity, where it stands, and its finding once complete. */
 export interface AdvisorStep {
   readonly id: AdvisorStepId
   readonly status: AdvisorStepStatus
+  /** The phase's finding; present only on a completed phase. */
+  readonly detail?: AdvisorStepDetail
 }
 
 /** Verdict paired with the tier-1 heuristic confidence behind it. */
@@ -93,22 +110,53 @@ export interface AdvisorPipelineResult {
 }
 
 /**
- * Run the full tier-1 pipeline synchronously: snapshot facts in, one outcome
- * out. The caller owns revealing the returned phases over time; the sheet
- * renders them as live rows.
+ * Run the full tier-1 pipeline synchronously: snapshot facts and the gate in,
+ * one outcome plus every phase's finding out. The caller owns revealing the
+ * returned phases over time; the sheet renders them as live rows.
  * @param input - snapshot facts about the session and the advised row.
- * @returns all four phases `done` and the confidence-tagged verdict.
+ * @param minConfidence - the configured gate the verdict phase compares against.
+ * @returns all four phases `done` with their findings and the confidence-tagged verdict.
  */
-export function runAdvisorPipeline(input: AdvisorInput): AdvisorPipelineResult {
-  const steps = ADVISOR_STEP_IDS.map(id => ({ id, status: 'done' as const }))
+export function runAdvisorPipeline(
+  input: AdvisorInput,
+  minConfidence: number,
+): AdvisorPipelineResult {
   const verdict = advise(input)
-  return {
-    steps,
-    outcome: {
-      ...verdict,
-      confidence: verdict.kind === 'status' ? STATUS_PROBE_CONFIDENCE : DEFER_CONFIDENCE,
+  const confidence = verdict.kind === 'status' ? STATUS_PROBE_CONFIDENCE : DEFER_CONFIDENCE
+  const outcome: AdvisorOutcome = { ...verdict, confidence }
+  const probeMatched = verdict.kind === 'status'
+  const percent = Math.round(confidence * 100)
+  const steps: readonly AdvisorStep[] = [
+    {
+      id: 'session-status',
+      status: 'done',
+      detail: input.running
+        ? { key: 'advisor.detail.sessionRunning', params: { n: input.queuedCount } }
+        : { key: 'advisor.detail.sessionIdle', params: { n: input.queuedCount } },
     },
-  }
+    {
+      id: 'input-analysis',
+      status: 'done',
+      detail: probeMatched
+        ? { key: 'advisor.detail.probeMatched', params: {} }
+        : { key: 'advisor.detail.instructionDetected', params: {} },
+    },
+    {
+      id: 'risk-assessment',
+      status: 'done',
+      detail: probeMatched
+        ? { key: 'advisor.detail.interruptRisk', params: {} }
+        : { key: 'advisor.detail.boundaryDelivery', params: {} },
+    },
+    {
+      id: 'verdict',
+      status: 'done',
+      detail: confidence >= minConfidence
+        ? { key: 'advisor.detail.gateAllowed', params: { p: percent } }
+        : { key: 'advisor.detail.gateHeld', params: { p: percent } },
+    },
+  ]
+  return { steps, outcome }
 }
 
 /**

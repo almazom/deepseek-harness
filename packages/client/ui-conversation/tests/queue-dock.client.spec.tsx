@@ -23,7 +23,7 @@ import type { QueueItemId } from '../src/client/contract/queue.ts'
 import type { ConversationNode } from '../src/client/contract/records.ts'
 import type { InputState } from '../src/client/contract/input.ts'
 import { zh } from '../src/client/locales.ts'
-import { QueueDock, queueDockEntry, type QueueDockInjected, type QueueDockProps } from '../src/client/queue/QueueDock.tsx'
+import { QueueDock, createQueueDockEntry, type QueueDockInjected, type QueueDockProps } from '../src/client/queue/QueueDock.tsx'
 
 // Every session-scope fixture carries the resource hook the resources plugin merges into GlobalStandardProps.
 const useResource = (() => ({ status: 'none' as const, value: undefined, failure: undefined })) as GlobalStandardProps['useResource']
@@ -99,6 +99,7 @@ function kitFor(snapshot: SessionSnapshot, injected: Partial<QueueDockInjected &
     useWorkspaces: (() => { throw new Error('unused') }) as never,
     useProjection: (() => undefined) as never,
     useConversation: bindSnapshotSelector(createSnapshotStore(conversationSnapshot())),
+    useSmartSteerMinConfidence: bindSnapshotSelector(createSnapshotStore(0.95)),
     useChat: makeUseChat([]),
     useTrajectory: (() => { throw new Error('unused') }) as QueueDockProps['useTrajectory'],
     useInput: (() => { throw new Error('unused') }) as never,
@@ -632,11 +633,12 @@ describe('QueueDock', () => {
   })
 
   it('registers as the terminal composer-context entry', () => {
-    expect(queueDockEntry.name).toBe('conversation-queue-dock')
-    expect(queueDockEntry.inject).toEqual(['slots', 'conversation', 'sessions', 'uiConversation'])
+    const entry = createQueueDockEntry(createSnapshotStore(0.95))
+    expect(entry.name).toBe('conversation-queue-dock')
+    expect(entry.inject).toEqual(['slots', 'conversation', 'sessions', 'uiConversation'])
     const register = vi.fn(() => () => undefined)
     const inject = vi.fn((_name: string, callback: () => () => void) => callback())
-    queueDockEntry.apply({ slots: { inject, register } } as never)
+    entry.apply({ slots: { inject, register } } as never)
     expect(inject).toHaveBeenCalledWith('conversation.input.dock', expect.any(Function))
     expect(register).toHaveBeenCalledWith(
       expect.objectContaining({ name: 'conversation.input.dock', id: 'queue', order: 20 }),
@@ -709,6 +711,39 @@ describe('QueueDock smart steer', () => {
     const dialog = view.getByRole('dialog', { name: '智能插话顾问' })
     expect(dialog.textContent).toContain(STATUS_ZH)
     expect(dialog.textContent).not.toContain(DEFER_ZH)
+  })
+
+  it('reveals every pipeline row to done with its reasoning line and marks a probe deliverable', async () => {
+    const { view } = openSheet({ text: 'что происходит?', preview: 'что происходит?' })
+    fireEvent.click(smartButton(view))
+    const dialog = view.getByRole('dialog', { name: '智能插话顾问' })
+    await waitFor(() => {
+      const rows = dialog.querySelector('ol[aria-label="插话流水线"]')?.textContent ?? ''
+      expect(rows).toContain('会话状态探测')
+      expect(rows).toContain('输入分析')
+      expect(rows).toContain('风险评估')
+      expect(rows).toContain('判定')
+      expect(rows).toContain('代理运行中，队列中有 1 条消息')
+      expect(rows).toContain('短问句且命中状态探测词')
+      expect(rows).toContain('置信度 97% 达到门槛：允许发送')
+      expect([...rows.matchAll(/完成/g)]).toHaveLength(4)
+    })
+    expect(dialog.textContent).toContain('置信度 97%')
+    expect(dialog.textContent).toContain('达到门槛：可以发送。')
+  })
+
+  it('holds an instruction row below the gate with the defer reasoning', async () => {
+    const { view } = openSheet({})
+    fireEvent.click(smartButton(view))
+    const dialog = view.getByRole('dialog', { name: '智能插话顾问' })
+    await waitFor(() => {
+      const rows = dialog.querySelector('ol[aria-label="插话流水线"]')?.textContent ?? ''
+      expect(rows).toContain('读作真实指令，而非状态询问')
+      expect(rows).toContain('置信度 70% 低于门槛：保留在队列')
+    })
+    expect(dialog.textContent).toContain('置信度 70%')
+    expect(dialog.textContent).toContain('低于门槛：默认保留在队列。')
+    expect(dialog.textContent).toContain(DEFER_ZH)
   })
 
   it('feeds the newest human transcript preview through the chat seat', () => {
