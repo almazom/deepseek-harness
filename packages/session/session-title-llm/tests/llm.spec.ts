@@ -204,6 +204,61 @@ describe('generateSessionTitleWithLlm', () => {
     })
   })
 
+  it('keeps the newest messages and drops older history when the framed request exceeds the budget', async () => {
+    const ctx = new Context()
+    await ctx.plugin(SessionStore)
+    await ctx.plugin(LlmRuntime)
+    const adapter = new RecordingAdapter(SCRIPT)
+    ctx.llm.registerAdapter(['explicit-route'], adapter)
+    const history = () => {
+      const providerRequest = request(ctx)
+      const [oldest, newest] = providerRequest.messages
+      if (oldest === undefined || newest === undefined) throw new Error('expected two source messages')
+      return {
+        providerRequest,
+        messages: [
+          { seq: oldest.seq, text: 'stale history '.repeat(30) },
+          { seq: newest.seq, text: 'current topic' },
+        ],
+      }
+    }
+    const route = { provider: 'explicit-route', model: 'explicit-model' } as const
+
+    const unbounded = history()
+    await generateSessionTitleWithLlm(
+      ctx,
+      resolveSessionTitleLlmConfig({ ...CONFIG, ...route, maxInputBytes: 100_000 }),
+      unbounded.providerRequest,
+      unbounded.messages,
+      TITLE_PROVIDER,
+    )
+    const fullPrompt = adapter.requests[0]?.messages[0]?.content[0]
+    if (fullPrompt?.type !== 'text') throw new Error('expected one framed text prompt')
+    expect(fullPrompt.text).toContain('stale history')
+
+    adapter.requests.length = 0
+    const bounded = history()
+    const result = await generateSessionTitleWithLlm(
+      ctx,
+      resolveSessionTitleLlmConfig({
+        ...CONFIG,
+        ...route,
+        maxInputBytes: Buffer.byteLength(fullPrompt.text, 'utf8') - 1,
+      }),
+      bounded.providerRequest,
+      bounded.messages,
+      TITLE_PROVIDER,
+    )
+
+    expect(result.messageSeqs).toEqual([bounded.messages[1]!.seq])
+    const prompt = adapter.requests[0]?.messages[0]?.content[0]
+    expect(prompt?.type === 'text' && prompt.text).toContain('current topic')
+    expect(prompt?.type === 'text' && prompt.text).not.toContain('stale history')
+    expect(bounded.providerRequest.session.snapshotEvents()
+      .findLast(event => event.type === 'session/title-llm-request')?.data.messageSeqs)
+      .toEqual([bounded.messages[1]!.seq])
+  })
+
   it('requires every deployment limit and a complete optional route pair', () => {
     expect(() => resolveSessionTitleLlmConfig(undefined as never)).toThrow(/configuration is required/)
     expect(() => resolveSessionTitleLlmConfig(null as never)).toThrow(/configuration is required/)

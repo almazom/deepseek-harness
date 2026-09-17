@@ -199,6 +199,29 @@ function frameMessages(messages: readonly SessionTitleUserMessage[]): string {
   return `Generate the session title from this JSON array of human messages:\n${JSON.stringify(messages)}`
 }
 
+/**
+ * Select the newest messages whose JSON-framed request fits one byte budget.
+ *
+ * A recurring revision describes the work in progress, so the newest messages
+ * are kept and older history is left out rather than text inside a message
+ * being truncated. The exact framed request is measured, so the caller's byte
+ * ceiling holds for the complete wire value including its framing and JSON.
+ * @param messages - provider-selected eligible messages in ascending seq order.
+ * @param maxInputBytes - positive UTF-8 byte ceiling for the framed request.
+ * @returns the newest fitting messages in ascending seq order, or empty when the newest message alone exceeds the ceiling.
+ */
+function selectRecentSessionTitleMessages(
+  messages: readonly SessionTitleUserMessage[],
+  maxInputBytes: number,
+): SessionTitleUserMessage[] {
+  const selected: SessionTitleUserMessage[] = []
+  for (const message of [...messages].reverse()) {
+    if (Buffer.byteLength(frameMessages([message, ...selected]), 'utf8') > maxInputBytes) break
+    selected.unshift(message)
+  }
+  return selected
+}
+
 /** Translate terminal finish reasons into an auxiliary-call failure. */
 function finishError(finish: FinishReason): Error | undefined {
   switch (finish.kind) {
@@ -224,7 +247,7 @@ function finishError(finish: FinishReason): Error | undefined {
  * @param ctx - context exposing the registered LLM service.
  * @param config - validated model-provider policy.
  * @param request - service-owned session, route, message snapshot, and cancellation.
- * @param selectedMessages - exact provider-selected subset to frame and attribute.
+ * @param selectedMessages - exact provider-selected subset to bound, frame, and attribute.
  * @param titleProvider - registered title-provider identity recorded with the request.
  * @returns normalized non-empty title, exact source seqs, and used model route.
  */
@@ -239,11 +262,12 @@ export async function generateSessionTitleWithLlm(
   if (selectedMessages.length === 0) {
     throw new Error('session-title-llm: at least one source message is required')
   }
-  const framedInput = frameMessages(selectedMessages)
-  const inputBytes = Buffer.byteLength(framedInput, 'utf8')
-  if (inputBytes > config.maxInputBytes) {
-    throw new Error(`session-title-llm: input is ${inputBytes} bytes, exceeding maxInputBytes ${config.maxInputBytes}`)
+  const boundedMessages = selectRecentSessionTitleMessages(selectedMessages, config.maxInputBytes)
+  if (boundedMessages.length === 0) {
+    const framedAll = Buffer.byteLength(frameMessages(selectedMessages), 'utf8')
+    throw new Error(`session-title-llm: input is ${framedAll} bytes, exceeding maxInputBytes ${config.maxInputBytes}`)
   }
+  const framedInput = frameMessages(boundedMessages)
   const route = resolveRoute(config, request)
   const messages: Message[] = [createUserMessage({
     content: [{ type: 'text', text: framedInput }],
@@ -263,7 +287,7 @@ export async function generateSessionTitleWithLlm(
   })
   request.session.append('session/title-llm-request', {
     titleProvider,
-    messageSeqs: selectedMessages.map(message => message.seq),
+    messageSeqs: boundedMessages.map(message => message.seq),
     route,
     system,
     messages,
@@ -290,7 +314,7 @@ export async function generateSessionTitleWithLlm(
   if (title.length === 0) throw new Error('session-title-llm: title model produced no text')
   return {
     title,
-    messageSeqs: selectedMessages.map(message => message.seq),
+    messageSeqs: boundedMessages.map(message => message.seq),
     model: route,
   }
 }
