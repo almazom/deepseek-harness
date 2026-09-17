@@ -77,10 +77,10 @@ function stepStatus(index: number, revealed: number, count: number): AdvisorStep
 }
 
 /**
- * Bottom-sheet advisor over the conversation: a read-only session snapshot,
- * the live tier-1 pipeline rows, the confidence-gated verdict with its
- * reason, and the override actions. The sheet never talks to services;
- * QueueDock owns the facts and the delivery.
+ * Bottom-sheet advisor over the conversation: the confidence-gated verdict
+ * first (the decision the sheet exists to deliver), then the read-only
+ * session snapshot, then the live tier-1 pipeline reasoning rows. The sheet
+ * never talks to services; QueueDock owns the facts and the delivery.
  */
 export function AdvisorSheet({
   open, running, queuedCount, rowPreview, lastHuman, busy, steps, outcome, minConfidence, t, onSendNow, onClose,
@@ -94,7 +94,7 @@ export function AdvisorSheet({
       title={t('advisor.title')}
       closeLabel={t('advisor.close')}
       className={clsx(css.sheet)}
-      contentClassName={clsx(css.scroll)}
+      contentClassName={clsx(css.frame)}
       footer={(
         <>
           <Button variant="ghost" size="sm" onClick={onClose}>{t('advisor.keepQueued')}</Button>
@@ -102,22 +102,36 @@ export function AdvisorSheet({
         </>
       )}
     >
-      <div className={css.rows}>
-        <div className={css.row}>
-          <span className={css.label}>{t('advisor.field.state')}</span>
-          <span className={css.value}>{running ? t('advisor.state.running') : t('advisor.state.idle')}</span>
+      <div className={clsx(css.scroll)}>
+        <div className={css.gate}>
+          <span className={css.gateConfidence}>{t('advisor.gate.label')}</span>
+          <span className={css.gateOutcome}>
+            {t('advisor.gate.confidence', { p: Math.round(outcome.confidence * 100) })}
+            {' — '}
+            {gate === 'allowed' ? t('advisor.gate.allowed') : t('advisor.gate.held')}
+          </span>
         </div>
-        <div className={css.row}>
-          <span className={css.label}>{t('advisor.field.queued')}</span>
-          <span className={css.value}>{t('advisor.queuedCount', { n: queuedCount })}</span>
+        <div className={css.verdict}>
+          <span className={css.verdictKind}>{t('advisor.verdict.label')}</span>
+          <span className={css.verdictReason}>{t(outcome.reasonKey)}</span>
         </div>
-        <div className={css.row}>
-          <span className={css.label}>{t('advisor.field.message')}</span>
-          <span className={css.value}>{rowPreview}</span>
-        </div>
-        <div className={css.row}>
-          <span className={css.label}>{t('advisor.field.lastHuman')}</span>
-          <span className={css.value}>{lastHuman ?? t('advisor.lastHuman.none')}</span>
+        <div className={css.rows}>
+          <div className={css.row}>
+            <span className={css.label}>{t('advisor.field.state')}</span>
+            <span className={css.value}>{running ? t('advisor.state.running') : t('advisor.state.idle')}</span>
+          </div>
+          <div className={css.row}>
+            <span className={css.label}>{t('advisor.field.queued')}</span>
+            <span className={css.value}>{t('advisor.queuedCount', { n: queuedCount })}</span>
+          </div>
+          <div className={css.row}>
+            <span className={css.label}>{t('advisor.field.message')}</span>
+            <span className={css.value}>{rowPreview}</span>
+          </div>
+          <div className={css.row}>
+            <span className={css.label}>{t('advisor.field.lastHuman')}</span>
+            <span className={css.value}>{lastHuman ?? t('advisor.lastHuman.none')}</span>
+          </div>
         </div>
         <ol className={css.pipeline} aria-label={t('advisor.pipeline.label')}>
           {steps.map((step, index) => {
@@ -137,18 +151,6 @@ export function AdvisorSheet({
             )
           })}
         </ol>
-        <div className={css.gate}>
-          <span className={css.gateConfidence}>{t('advisor.gate.label')}</span>
-          <span className={css.gateOutcome}>
-            {t('advisor.gate.confidence', { p: Math.round(outcome.confidence * 100) })}
-            {' — '}
-            {gate === 'allowed' ? t('advisor.gate.allowed') : t('advisor.gate.held')}
-          </span>
-        </div>
-        <div className={css.verdict}>
-          <span className={css.verdictKind}>{t('advisor.verdict.label')}</span>
-          <span className={css.verdictReason}>{t(outcome.reasonKey)}</span>
-        </div>
       </div>
     </Modal>
   )

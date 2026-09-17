@@ -1,23 +1,55 @@
 /* Bottom-sheet placement for the advisor Modal: pinned to the mask's bottom edge,
-   reading as a panel rising over the composer rather than a centered dialog. */
+   reading as a panel rising over the composer rather than a centered dialog.
+   vh stays as the fallback for browsers without dvh (iOS dynamic chrome). */
 .sheet {
   align-self: flex-end;
   width: min(480px, 100%);
   max-height: min(72vh, 560px);
+  max-height: min(72dvh, 560px);
   border-radius: 16px 16px 0 0;
   margin-top: auto;
 }
 
-/* The snapshot scrolls inside the card while the header and footer stay pinned. */
+/* Modal's .content becomes a fixed frame: its header row and the dialog footer
+   stay pinned while only the snapshot region scrolls. The body wrapper between
+   them is Modal-internal (no class hook), so the frame constrains it
+   structurally as the content's last child. */
+.frame {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.frame > div:last-child {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-height: 0;
+  margin-top: 12px;
+}
+
+/* The snapshot scrolls inside the frame; header and footer stay pinned. */
 .scroll {
+  flex: 1 1 0;
   min-height: 0;
   overflow-y: auto;
+}
+
+/* Phone hit areas: the close affordance and the two override actions meet the
+   44px HIG minimum on coarse pointers; desktop keeps the compact metrics. */
+@media (pointer: coarse) {
+  .sheet button {
+    min-width: 44px;
+    min-height: 44px;
+  }
 }
 
 .rows {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  padding-top: 10px;
+  border-top: 0.5px solid var(--dsw-alias-border-l1);
 }
 
 .row {
@@ -104,6 +136,13 @@
   gap: 4px;
   padding-top: 10px;
   border-top: 0.5px solid var(--dsw-alias-border-l1);
+}
+
+/* The gate opens the sheet (decision first); drop its separator so the
+   scroll region does not start with a border line. */
+.gate:first-child {
+  padding-top: 0;
+  border-top: none;
 }
 
 .gateConfidence {
