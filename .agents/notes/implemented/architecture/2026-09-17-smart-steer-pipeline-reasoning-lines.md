@@ -1,16 +1,26 @@
-# Smart Steer pipeline reasoning lines (SGT-1 round 2)
+# Agent Note: Smart Steer pipeline reasoning lines (SGT-1 round 2)
+
+Status: implemented
+
+English | [中文](2026-09-17-smart-steer-pipeline-reasoning-lines.zh.md)
 
 - Kind: architecture
 - Scope: packages/client/ui-conversation
 - Date: 2026-09-17
 
-## Context
+## Problem
 
 The round-1 Smart Steer advisor panel (2b409fa, 151295b) revealed pipeline phases as status labels only (`Done`), so the operator could not see why a steer was allowed or held. The operator asked for Claude/Codex-style visible reasoning: every phase must state its finding and the verdict must justify itself against the confidence gate.
 
 ## Decision
 
 Findings are locale-owned data, not strings. `runAdvisorPipeline(input, minConfidence)` emits one `AdvisorStepDetail` per completed phase — a typed locale key plus a `Record<string, number>` params object (uniform `{key, params}` shape; parameter-free findings carry `params: {}`). `AdvisorSheet` renders `t(detail.key, detail.params)` as a secondary line under each phase label, so zh/en copy stays in the dictionaries and the model carries no rendering concerns. The verdict phase compares the tier-1 confidence against the `smartSteerMinConfidence` Config field passed down from `QueueDock`; the gate lives only in the validated `submission-settings` schema (`DEFAULT_SMART_STEER_MIN_CONFIDENCE = 0.95`, `z.number().min(0.5).max(1)`), never as a magic number at call sites.
+
+## Alternatives considered
+
+- Keep the status-only labels and surface the reasoning in a tooltip on demand — rejected: the operator asked to read the reason inline, and hiding it behind hover fails the mobile contract the sheet already targets.
+- Emit free-form strings from `runAdvisorPipeline` — rejected: client copy is locale-owned (`verify-client-ui-i18n`), so hardcoded English would break the zh surface and scatter copy outside the dictionaries.
+- Compute findings through a model call at sheet open — rejected for tier-1: the advisor path is deterministic and must not gain latency or nondeterminism; the live model-backed side run is the separate session-advisor-llm policy and lands with its host-side dispatcher.
 
 ## Consequences
 

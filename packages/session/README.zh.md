@@ -22,7 +22,7 @@ session 组让对话持久保存，恢复已发布的日志格式，并使已提
 <a id="packages"></a>
 ## 包
 
-本组分为四个家族：持久存储（持久化 seam、后端、检查点策略）、投影、标题与遥测。每个包 README 负责各自的约定与配置。
+本组分为五个家族：持久存储（持久化 seam、后端、检查点策略）、投影、标题、建议运行与遥测。每个包 README 负责各自的约定与配置。
 
 ### 持久化
 
@@ -54,6 +54,12 @@ session 组让对话持久保存，恢复已发布的日志格式，并使已提
 | [`session-title-llm/`](session-title-llm/README.zh.md) | 供提供方包共享的模型标题生成策略 | 库，不使用 ctx key |
 | [`session-title-first-prompt-llm/`](session-title-first-prompt-llm/README.zh.md) | 根据第一条合格的人类消息为会话生成标题 | 注册到 `ctx.sessionTitle` |
 | [`session-title-all-prompts-llm/`](session-title-all-prompts-llm/README.zh.md) | 根据所有合格的人类消息为会话生成标题 | 注册到 `ctx.sessionTitle` |
+
+### 建议运行
+
+| 包 | 作用 | ctx key |
+|---|---|---|
+| [`session-advisor-llm/`](session-advisor-llm/README.zh.md) | Smart-steer 队列顾问共享的模型化建议运行策略与分段流观察器 | 库，不使用 ctx key |
 
 ### 遥测
 

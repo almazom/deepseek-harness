@@ -377,6 +377,7 @@
       "@deepseek-ai/dsh-session-title-all-prompts-llm": ["./packages/session/session-title-all-prompts-llm/src"],
       "@deepseek-ai/dsh-session-title-first-prompt-llm": ["./packages/session/session-title-first-prompt-llm/src"],
       "@deepseek-ai/dsh-session-title-llm": ["./packages/session/session-title-llm/src"],
+      "@deepseek-ai/dsh-session-advisor-llm": ["./packages/session/session-advisor-llm/src"],
       "@deepseek-ai/dsh-session-turn-outline": ["./packages/session/session-turn-outline/src"],
       "@deepseek-ai/dsh-settings": ["./packages/settings/settings/src"],
       "@deepseek-ai/dsh-settings/invariant": ["./packages/settings/settings/src/invariant.ts"],

@@ -89,6 +89,41 @@ export type SessionEvent<T extends SessionEventType = SessionEventType> = {
 
 ## 事件
 
+### `advisor/*`
+
+<a id="advisorrun-requested--log-only"></a>
+
+#### `advisor/run-requested` — log-only
+
+```ts persistence-catalog
+/** Log-only pre-dispatch record of one advisory side run. */
+'advisor/run-requested': import('./types.ts').AdvisorRunRequestedEventData
+```
+
+来源：[`packages/session/session-advisor-llm/src/index.ts:34`](../packages/session/session-advisor-llm/src/index.ts)
+
+<a id="advisorstep--log-only"></a>
+
+#### `advisor/step` — log-only
+
+```ts persistence-catalog
+/** One advisory cognitive phase completed with its real finding. */
+'advisor/step': import('./types.ts').AdvisorStepEventData
+```
+
+来源：[`packages/session/session-advisor-llm/src/index.ts:36`](../packages/session/session-advisor-llm/src/index.ts)
+
+<a id="advisorverdict--log-only"></a>
+
+#### `advisor/verdict` — log-only
+
+```ts persistence-catalog
+/** Final advisory decision against the Smart-steer confidence gate. */
+'advisor/verdict': import('./types.ts').AdvisorVerdictEventData
+```
+
+来源：[`packages/session/session-advisor-llm/src/index.ts:38`](../packages/session/session-advisor-llm/src/index.ts)
+
 ### `agent/*`
 
 <a id="agentinboxspliced--log-only"></a>

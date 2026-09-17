@@ -1,0 +1,6 @@
+# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-09-17-smart-steer-pipeline-reasoning-lines.md
+2026-09-17-smart-steer-pipeline-reasoning-lines.md: 893c94c8d71ee5f948273ed837ca92700c92c1d8
+2026-09-17-smart-steer-pipeline-reasoning-lines.zh.md: 2b7681868b7e05890b85e38989991a5254324c9e
