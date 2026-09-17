@@ -117,7 +117,7 @@ describe('web e2e: mid-turn steering lands durably and visibly', () => {
     await input.press('Enter')
     const queuedRow = page.getByRole('listitem').filter({ hasText: STEER })
     await queuedRow.waitFor({ timeout: 10_000 })
-    const steerButton = queuedRow.getByRole('button', { name: 'Steer queued message' })
+    const steerButton = queuedRow.getByRole('button', { name: 'Steer queued message', exact: true })
     await expect.poll(() => steerButton.isEnabled(), { timeout: 10_000 }).toBe(true)
     await steerButton.click({ timeout: 10_000 })
     const pendingSteering = page.locator('[data-pending-steering]').filter({ hasText: STEER })
@@ -379,7 +379,7 @@ describe('web e2e: empty-draft Cmd+Enter steers the whole queue', () => {
 
     // Submission echoes carry the same text before the Host queue publishes.
     await expect.poll(
-      () => dock.getByRole('button', { name: 'Steer queued message', disabled: false }).count(),
+      () => dock.getByRole('button', { name: 'Steer queued message', exact: true, disabled: false }).count(),
       { timeout: 10_000 },
     ).toBe(2)
     await page.getByRole('textbox', { name: 'Cmd/Ctrl+Enter steers all queued messages', exact: true })

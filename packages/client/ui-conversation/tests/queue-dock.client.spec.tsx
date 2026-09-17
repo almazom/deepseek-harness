@@ -12,6 +12,7 @@ import type {
 } from '@deepseek-ai/dsh-api-session-controller/client'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { SnapshotSelectorHook } from '@deepseek-ai/dsh-client-ui-slots'
+import { EMPTY_CHAT_SNAPSHOT } from '@deepseek-ai/dsh-client-ui-chat/client'
 import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
 import {
   bindSnapshotSelector, conversationSnapshot, makeTranslate,
@@ -19,6 +20,7 @@ import {
 import type { SessionPendingInteractionSnapshot } from '@deepseek-ai/dsh-client-ui-session/client'
 import { zh as commonZh } from '@deepseek-ai/dsh-client-locale/src/locales/zh.ts'
 import type { QueueItemId } from '../src/client/contract/queue.ts'
+import type { ConversationNode } from '../src/client/contract/records.ts'
 import type { InputState } from '../src/client/contract/input.ts'
 import { zh } from '../src/client/locales.ts'
 import { QueueDock, queueDockEntry, type QueueDockInjected, type QueueDockProps } from '../src/client/queue/QueueDock.tsx'
@@ -75,7 +77,16 @@ const INPUT_STATE: InputState = { draft: '', attachmentIds: [], draftRev: 0, pha
 const t: QueueDockProps['t'] = makeTranslate(zh, commonZh)
 const usePanelInfo: GlobalStandardProps['usePanelInfo'] = selector => selector({ activePanelId: null })
 
-function kitFor(snapshot: SessionSnapshot, injected: Partial<QueueDockInjected> = {}) {
+/** Chat-seat stub over the empty Chat target, overriding only the legacy slice
+ * the Smart-steer advisor consumes. */
+function makeUseChat(nodes: readonly ConversationNode[]): QueueDockProps['useChat'] {
+  return selector => selector({
+    ...EMPTY_CHAT_SNAPSHOT,
+    legacy: { ...EMPTY_CHAT_SNAPSHOT.legacy, nodes },
+  })
+}
+
+function kitFor(snapshot: SessionSnapshot, injected: Partial<QueueDockInjected & Pick<QueueDockProps, 'useChat'>> = {}) {
   return {
     sessionId: SID,
     t,
@@ -88,7 +99,7 @@ function kitFor(snapshot: SessionSnapshot, injected: Partial<QueueDockInjected> 
     useWorkspaces: (() => { throw new Error('unused') }) as never,
     useProjection: (() => undefined) as never,
     useConversation: bindSnapshotSelector(createSnapshotStore(conversationSnapshot())),
-    useChat: (() => { throw new Error('unused') }) as QueueDockProps['useChat'],
+    useChat: makeUseChat([]),
     useTrajectory: (() => { throw new Error('unused') }) as QueueDockProps['useTrajectory'],
     useInput: (() => { throw new Error('unused') }) as never,
     inputActions: { setDraft: () => {}, submit: () => {} } as never,
@@ -349,7 +360,7 @@ describe('QueueDock', () => {
     fireEvent.click(getByRole('button', { name: '2 条排队消息' }))
     expect([...container.querySelectorAll('li')].map(item => item.textContent))
       .toEqual(['第一条排队消息', 'image [image]'])
-    expect(container.querySelectorAll('button')).toHaveLength(7)
+    expect(container.querySelectorAll('button')).toHaveLength(9)
     expect(container.querySelectorAll('[aria-label="编辑排队消息"]')).toHaveLength(2)
     expect(container.querySelectorAll('[aria-label="删除排队消息"]')).toHaveLength(2)
     expect(container.querySelectorAll('[aria-label="插话发送"]')).toHaveLength(2)
@@ -631,5 +642,129 @@ describe('QueueDock', () => {
       expect.objectContaining({ name: 'conversation.input.dock', id: 'queue', order: 20 }),
       QueueDock,
     )
+  })
+})
+
+describe('QueueDock smart steer', () => {
+  const STEER_ZH = '插话发送'
+  const SMART_ZH = '智能插话发送'
+  const DEFER_ZH = '建议稍后送达：将在下一个步骤边界投递，当前运行不受干扰。'
+  const STATUS_ZH = '这看起来是状态询问：上方快照已回答，无需打断运行。'
+  const FAILED_ZH = '智能插话失败，请重试。'
+
+  const humanNodes: readonly ConversationNode[] = [
+    { kind: 'assistant', seq: 1, time: 1, turn: 1, step: 1, blocks: [] } as ConversationNode,
+    {
+      kind: 'user', seq: 2, time: 2, source: { kind: 'user' },
+      content: [{ type: 'text', text: 'первый вопрос' }],
+    } as ConversationNode,
+    {
+      kind: 'steering', messageId: 'm1' as never, seq: 3, time: 3, source: { kind: 'user' },
+      content: [{ type: 'text', text: 'поправка' }],
+    } as ConversationNode,
+  ]
+
+  function smartButton(view: { getByRole: (role: 'button', options?: { name?: string }) => HTMLElement }): HTMLButtonElement {
+    return view.getByRole('button', { name: SMART_ZH }) as HTMLButtonElement
+  }
+
+  function openSheet(
+    rowProps: Partial<QueuedMessage> & { id?: string },
+    injected: Partial<QueueDockInjected & Pick<QueueDockProps, 'useChat'>> = {},
+  ) {
+    const snap = snapshotWith([row('r1', 'почини тесты', 'почини тесты'), ...[]].map(r => ({ ...r, ...rowProps })))
+    const source = liveSession(snap)
+    const props = kitFor(snap, injected)
+    const view = render(<QueueDock {...props} useSession={source.useSession} />)
+    return { snap, source, props, view }
+  }
+
+  it('renders the smart steer button right of steer and opens the sheet with snapshot and verdict', () => {
+    const { view } = openSheet({})
+    const steer = view.getByRole('button', { name: STEER_ZH })
+    const smart = smartButton(view)
+    expect(steer.compareDocumentPosition(smart) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    fireEvent.click(smart)
+    const dialog = view.getByRole('dialog', { name: '智能插话顾问' })
+    expect(dialog.textContent).toContain('运行中')
+    expect(dialog.textContent).toContain('1 条')
+    expect(dialog.textContent).toContain('почини тесты')
+    expect(dialog.textContent).toContain('（暂无）')
+    expect(dialog.textContent).toContain('顾问判定')
+    expect(dialog.textContent).toContain(DEFER_ZH)
+  })
+
+  it('is disabled while the agent is idle and carries the unavailable hint', () => {
+    const snap = { ...snapshotWith([row('r1', 'почини тесты')]), running: false }
+    const source = liveSession(snap)
+    const view = render(<QueueDock {...kitFor(snap)} useSession={source.useSession} />)
+    const smart = smartButton(view)
+    expect(smart.disabled).toBe(true)
+    expect(smart.getAttribute('title')).toBe('仅运行中可使用智能插话')
+  })
+
+  it('classifies a status probe row into the status verdict', () => {
+    const { view } = openSheet({ text: 'что происходит?', preview: 'что происходит?' })
+    fireEvent.click(smartButton(view))
+    const dialog = view.getByRole('dialog', { name: '智能插话顾问' })
+    expect(dialog.textContent).toContain(STATUS_ZH)
+    expect(dialog.textContent).not.toContain(DEFER_ZH)
+  })
+
+  it('feeds the newest human transcript preview through the chat seat', () => {
+    const { view } = openSheet({}, { useChat: makeUseChat(humanNodes) })
+    fireEvent.click(smartButton(view))
+    expect(view.getByRole('dialog', { name: '智能插话顾问' }).textContent).toContain('поправка')
+  })
+
+  it('sends the row through the ordinary steer action and closes the sheet', async () => {
+    const updateQueue = vi.fn(() => Promise.resolve())
+    const { view } = openSheet({}, { updateQueue })
+    fireEvent.click(smartButton(view))
+    fireEvent.click(view.getByRole('button', { name: '仍然立即发送' }))
+    await waitFor(() => expect(updateQueue).toHaveBeenCalledWith(iid('r1'), { kind: 'steer' }))
+    await waitFor(() => expect(view.queryByRole('dialog', { name: '智能插话顾问' })).toBeNull())
+  })
+
+  it('keeps the sheet open on steering failure and notifies', async () => {
+    const notify = vi.fn()
+    const { view } = openSheet({}, { updateQueue: vi.fn(() => Promise.reject(new Error('steer-unavailable'))), notify })
+    fireEvent.click(smartButton(view))
+    fireEvent.click(view.getByRole('button', { name: '仍然立即发送' }))
+    await waitFor(() => expect(notify).toHaveBeenCalledWith('error', FAILED_ZH))
+    expect(view.getByRole('dialog', { name: '智能插话顾问' }).textContent).toContain(DEFER_ZH)
+  })
+
+  it('keeps the row queued without any delivery on keep-queued', () => {
+    const updateQueue = vi.fn(() => Promise.resolve())
+    const { view } = openSheet({}, { updateQueue })
+    fireEvent.click(smartButton(view))
+    fireEvent.click(view.getByRole('button', { name: '保留在队列' }))
+    expect(view.queryByRole('dialog', { name: '智能插话顾问' })).toBeNull()
+    expect(updateQueue).not.toHaveBeenCalled()
+  })
+
+  it('closes the sheet when the advised row leaves the queue', () => {
+    const { source, view } = openSheet({})
+    fireEvent.click(smartButton(view))
+    expect(view.getByRole('dialog', { name: '智能插话顾问' }).textContent).toContain(DEFER_ZH)
+    act(() => { source.push(snapshotWith([])) })
+    expect(view.queryByRole('dialog', { name: '智能插话顾问' })).toBeNull()
+  })
+
+  it('renders a disabled smart placeholder in the pending submission echo', () => {
+    const pending = {
+      ...snapshotWith([]),
+      pendingSubmissions: [{
+        requestId: 'req-local-queue' as never,
+        placement: 'queued' as const,
+        time: 1,
+        text: '等待上传',
+        attachments: [],
+      }],
+    }
+    const source = liveSession(pending)
+    const view = render(<QueueDock {...kitFor(pending)} useSession={source.useSession} />)
+    expect(smartButton(view).disabled).toBe(true)
   })
 })

@@ -1,15 +1,18 @@
 import type { Context } from '@deepseek-ai/cordis'
 import { useEffect, useId, useMemo, useState } from 'react'
 import type { FileAttachmentRef, ImageAttachmentRef } from '@deepseek-ai/dsh-attachment'
-import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
+import type { PropsLocale, PropsRuntime, SnapshotSelectorHook } from '@deepseek-ai/dsh-client-ui-slots'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import {
   IconCheckOutline16, IconChevronDownOutline14, IconChevronUpOutline14, IconCloseOutline16,
   FileTypeIcon, fileSizeText, IconEditOutline16, IconQueueOutline14, IconSendOutline14,
-  IconTrashOutline16, projectUserText, Tooltip,
+  IconSendSmartOutline14, IconTrashOutline16, projectUserText, Tooltip,
 } from '@deepseek-ai/dsh-client-ui-primitives'
+import type { ConversationNode } from '../contract/records.ts'
 import type { QueueAction, QueueItemId, QueueRow } from '../contract/queue.ts'
 import { NS } from '../locales.ts'
+import { advise, lastHumanPreview } from './advisor.ts'
+import { AdvisorSheet } from './AdvisorSheet.tsx'
 import css from './QueueDock.module.css'
 
 /** Queue operations injected by the session-scoped registration. */
@@ -87,7 +90,16 @@ export type QueueDockProps = PropsRuntime<'conversation.input.dock'> & QueueDock
  * collapsible count header; an empty queue renders nothing. Local submissions
  * show sending status and disabled actions until their Host queue rows arrive.
  */
-export function QueueDock({ useSession, updateQueue, notify, loadImage, t }: QueueDockProps) {
+export function QueueDock(props: QueueDockProps) {
+  const { useSession, updateQueue, notify, loadImage, t } = props
+  // The renderer binds the chat seat for every session-scoped entry, but the
+  // seat's owner (ui-chat) types it through an augmentation this package's
+  // program cannot see: a project reference back to ui-chat would close a
+  // reference cycle (ui-chat references this package). The advisor reads only
+  // the legacy conversation slice, so it narrows the bound seat structurally
+  // and degrades to "none" when a composition ships without the chat plugin.
+  const useChat = (props as Partial<Record<'useChat', SnapshotSelectorHook<{ readonly legacy: { readonly nodes: readonly ConversationNode[] } }>>>).useChat
+  const lastHuman = useChat?.(s => lastHumanPreview(s.legacy.nodes))
   const inbox = useSession(s => s.queue)
   const queue = useMemo(() => inbox.filter(row => row.placement === 'queued'), [inbox])
   const pendingSubmissions = useSession(s => s.pendingSubmissions)
@@ -103,12 +115,14 @@ export function QueueDock({ useSession, updateQueue, notify, loadImage, t }: Que
   const [editing, setEditing] = useState<{ id: QueueItemId; text: string } | null>(null)
   const [busy, setBusy] = useState<QueueItemId | null>(null)
   const [collapsed, setCollapsed] = useState(true)
+  const [advising, setAdvising] = useState<QueueRow | null>(null)
   const listId = useId()
 
   useEffect(() => {
     if (rowCount === 0 && !collapsed) setCollapsed(true)
     if (editing !== null && (!queueMutable || !queue.some(row => row.id === editing.id))) setEditing(null)
-  }, [collapsed, editing, queue, queueMutable, rowCount])
+    if (advising !== null && !queue.some(row => row.id === advising.id)) setAdvising(null)
+  }, [advising, collapsed, editing, queue, queueMutable, rowCount])
 
   if (rowCount === 0) return null
 
@@ -297,6 +311,18 @@ export function QueueDock({ useSession, updateQueue, notify, loadImage, t }: Que
                             <IconSendOutline14 />
                           </button>
                         </Tooltip>
+                        <Tooltip label={t('queue.steerSmart')} side="bottom" delayMs={500} disabled={!running}>
+                          <button
+                            type="button"
+                            className={css.action}
+                            aria-label={t('queue.steerSmart')}
+                            title={running ? undefined : t('queue.steerSmart.unavailable')}
+                            disabled={busy !== null || !running}
+                            onClick={() => { setAdvising(row) }}
+                          >
+                            <IconSendSmartOutline14 />
+                          </button>
+                        </Tooltip>
                       </>
                     )}
                 </div>}
@@ -357,12 +383,40 @@ export function QueueDock({ useSession, updateQueue, notify, loadImage, t }: Que
                   >
                     <IconSendOutline14 />
                   </button>
+                  <button
+                    type="button"
+                    className={css.action}
+                    aria-label={t('queue.steerSmart')}
+                    title={t('queue.sending')}
+                    disabled
+                  >
+                    <IconSendSmartOutline14 />
+                  </button>
                 </div>}
               </li>
             )
           })}
         </ul>
       </div>
+      {advising !== null && (
+        <AdvisorSheet
+          open
+          running={running}
+          queuedCount={queue.length}
+          rowPreview={advising.preview}
+          lastHuman={lastHuman}
+          busy={busy !== null}
+          verdict={advise({ running, queuedCount: queue.length, rowText: advising.text ?? '' })}
+          t={t}
+          onSendNow={() => {
+            const itemId = advising.id
+            void applyAction(itemId, { kind: 'steer' }, t('queue.steerSmartFailed')).then((delivered) => {
+              if (delivered) setAdvising(current => current?.id === itemId ? null : current)
+            })
+          }}
+          onClose={() => { setAdvising(null) }}
+        />
+      )}
     </div>
   )
 }

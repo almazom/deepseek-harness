@@ -1,0 +1,60 @@
+/* Bottom-sheet placement for the advisor Modal: pinned to the mask's bottom edge,
+   reading as a panel rising over the composer rather than a centered dialog. */
+.sheet {
+  align-self: flex-end;
+  width: min(480px, 100%);
+  max-height: min(72vh, 560px);
+  border-radius: 16px 16px 0 0;
+  margin-top: auto;
+}
+
+/* The snapshot scrolls inside the card while the header and footer stay pinned. */
+.scroll {
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.rows {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.row {
+  display: flex;
+  gap: 12px;
+  font: var(--dsw-font-xs-13);
+}
+
+.label {
+  flex: none;
+  width: 118px;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.value {
+  min-width: 0;
+  color: var(--dsw-alias-label-primary);
+  overflow-wrap: break-word;
+  white-space: pre-wrap;
+}
+
+.verdict {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 10px;
+  border-top: 0.5px solid var(--dsw-alias-border-l1);
+}
+
+.verdictKind {
+  color: var(--dsw-alias-label-secondary);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.verdictReason {
+  color: var(--dsw-alias-label-primary);
+  font: var(--dsw-font-xs-13);
+  line-height: 20px;
+}

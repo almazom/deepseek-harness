@@ -802,6 +802,15 @@ export const IconSendOutline14 = ({ size = 14, className }: IconProps) => (
   </svg>
 )
 
+/** Send arrow over a double tail bar — the checked Smart-steer delivery, sibling of the plain send arrow. */
+export const IconSendSmartOutline14 = ({ size = 14, className }: IconProps) => (
+  <svg width={size} height={size} className={className} viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M7 0.5L12.2 5.5H9.4V6.8H4.6V5.5H1.8L7 0.5Z" fill="currentColor" />
+    <path d="M5 7.6H6.4V13H5V7.6Z" fill="currentColor" />
+    <path d="M7.6 7.6H9V13H7.6V7.6Z" fill="currentColor" />
+  </svg>
+)
+
 /** ic_queue_outline_14 (figma extract): open chat bubble with two queued lines. */
 export const IconQueueOutline14 = ({ size = 14, className }: IconProps) => (
   <svg width={size} height={size} className={className} viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">

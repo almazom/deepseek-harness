@@ -227,7 +227,7 @@ describe.skipIf(MODE === 'record')('web e2e: composer interrupt for a running co
       }, new AbortController().signal)
       await page.getByRole('button', { name: 'Edit queued message' }).waitFor({ timeout: 15_000 })
       expect(await page.getByRole('button', { name: 'Remove queued message' }).count()).toBe(1)
-      expect(await page.getByRole('button', { name: 'Steer queued message' }).count()).toBe(1)
+      expect(await page.getByRole('button', { name: 'Steer queued message', exact: true }).count()).toBe(1)
       await compareOrRefreshGolden(
         OFFLINE_COMPOSER_EXPECTED,
         await captureStableAria(page, '[class*="centerCol"]', scaffold.workspaceCwd),

@@ -121,7 +121,7 @@ describe('web e2e: queue row actions', () => {
       const pending = page.locator('[data-queue-dock] [data-submission-echo]')
       await pending.getByRole('status').waitFor()
       expect(await pending.getByRole('status').textContent()).toBe('Sending…')
-      expect(await pending.getByRole('button').count()).toBe(3)
+      expect(await pending.getByRole('button').count()).toBe(4)
       expect(await pending.getByRole('button').evaluateAll(buttons =>
         buttons.every(button => (button as HTMLButtonElement).disabled))).toBe(true)
       expect(await input.textContent()).toBe('')
