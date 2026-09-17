@@ -38,6 +38,7 @@ apps/web/dist/
 .artifacts/
 artifacts/
 .dsh-build/
+.goal-evidence/
 .playwright-mcp/
 .orig
 .worktrees/
