@@ -4,7 +4,9 @@
  * host command; options flatten the session's permissions projection with
  * the current value active and `custom` excluded; availability follows the
  * projection key's presence; a pick submits the /permission line through
- * Session.command and surfaces rejection/unmatched as thrown errors; fiber
+ * Session.command and surfaces rejection/unmatched as thrown errors; a pick
+ * on an unmaterialized session routes to the new-session default write and
+ * submits no line; fiber
  * disposal removes the contribution (HMR safety). The same plugin registers
  * its Settings row and invalidates that row on host settings changes.
  */
@@ -155,9 +157,11 @@ describe('ui-permission browser plugin', () => {
     expect(passthrough.map(option => option.label)).toEqual([
       'Project Files', 'Operator Mode', 'Custom Mode', '__proto__', 'Ask Every Time',
     ])
-    // A projection that vanished between availability and open throws.
-    expect(() => b.popup().options({ sessionId: sid('ghost') }, new AbortController().signal))
-      .toThrow(/not available on this host/)
+    // A projection that vanished between availability and open rejects: this
+    // host exposes no permission settings namespace either, so the no-session
+    // defaults fallback has no second source to serve.
+    await expect(b.popup().options({ sessionId: sid('ghost') }, new AbortController().signal))
+      .rejects.toThrow(/not available on this host/)
   })
 
   it('a pick submits the /permission line; rejection and unmatched throw', async () => {
@@ -170,9 +174,11 @@ describe('ui-permission browser plugin', () => {
     await expect(b.popup().onSelect({ id: 'read-only', label: 'read-only' }, proj)).rejects.toThrow(/permission switch failed/)
     b.setResult({ ok: true, matched: false })
     await expect(b.popup().onSelect({ id: 'read-only', label: 'read-only' }, proj)).rejects.toThrow(/no \/permission command/)
-    // An unmaterialized session throws before any submit.
-    await expect(b.popup().onSelect({ id: 'read-only', label: 'read-only' }, { sessionId: sid('ghost') }))
-      .rejects.toThrow(/not materialized/)
+    // A pick on an unmaterialized session routes to the new-session default
+    // write through the settings controller; no /permission line is submitted.
+    const submitted = b.commands.length
+    await b.popup().onSelect({ id: 'read-only', label: 'read-only' }, { sessionId: sid('ghost') })
+    expect(b.commands.length).toBe(submitted)
   })
 
   it('disposal removes the decoration (HMR safety)', async () => {
