@@ -21,7 +21,6 @@
   - img
   - img
   - text: Context injection @deepseek-ai/dsh-system-prompt
-- paragraph: partial
 - status: Deep diving...
 - list:
   - listitem:
@@ -32,6 +31,8 @@
     - button "Remove queued message" [disabled]:
       - img
     - button "Steer queued message" [disabled]:
+      - img
+    - button "Smart steer queued message" [disabled]:
       - img
 - textbox "Message or run a task, / commands, @ files or sessions"
 - button "Add files or run commands":

@@ -20,7 +20,6 @@
 - button "Thought for a while":
   - text: Thought for a while
   - img
-- paragraph: partial
 - text: Stopped
 - button "Copy":
   - img
@@ -44,6 +43,8 @@
       - img
     - button "Steer queued message" [disabled]:
       - img
+    - button "Smart steer queued message" [disabled]:
+      - img
   - listitem:
     - text: Queue item preserved after stop
     - button "Edit queued message":
@@ -51,6 +52,8 @@
     - button "Remove queued message":
       - img
     - button "Steer queued message" [disabled]:
+      - img
+    - button "Smart steer queued message" [disabled]:
       - img
 - textbox "Message or run a task, / commands, @ files or sessions"
 - button "Add files or run commands":

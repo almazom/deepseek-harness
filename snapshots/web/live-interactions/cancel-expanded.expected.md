@@ -24,7 +24,6 @@
   - img
   - img
   - text: Context injection @deepseek-ai/dsh-system-prompt
-- paragraph: partial
 - text: Stopped
 - button "Copy":
   - img

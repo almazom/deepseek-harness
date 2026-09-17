@@ -21,7 +21,6 @@
   - img
   - img
   - text: Context injection @deepseek-ai/dsh-system-prompt
-- paragraph: partial
 - status: Deep diving...
 - button "2 queued messages" [disabled] [expanded]
 - list:
@@ -32,6 +31,8 @@
     - button "Remove queued message":
       - img
     - button "Steer queued message":
+      - img
+    - button "Smart steer queued message":
       - img
   - listitem:
     - textbox "Edit queued message": Edited queue item

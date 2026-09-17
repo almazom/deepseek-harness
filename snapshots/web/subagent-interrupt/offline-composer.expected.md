@@ -23,7 +23,6 @@
   - img
   - img
   - text: Context injection @deepseek-ai/dsh-system-prompt
-- paragraph: partial
 - status: Deep diving...
 - list:
   - listitem:
@@ -33,6 +32,8 @@
     - button "Remove queued message":
       - img
     - button "Steer queued message":
+      - img
+    - button "Smart steer queued message":
       - img
 - textbox "Parent session offline; sending is unavailable but you can still stop the run" [disabled]
 - button "Add files or run commands" [disabled]:

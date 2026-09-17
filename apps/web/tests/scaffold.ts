@@ -1423,6 +1423,11 @@ function normalizeAria(snapshot: string, workspaceCwd: string, age: boolean): st
     .replace(/\d{1,2}月\d{1,2}日 \d{2}:\d{2}/g, '{{clock}}')
     .replace(/(?<!\d)\d{1,2}:\d{2}:\d{2}(?:\.\d+)?(?:\s*[AP]M)?(?!\d)/gi, '{{clock}}')
     .replace(/(?<!\d)\d{2}:\d{2}(?!\d)/g, '{{clock}}')
+    // The in-flight assistant placeholder renders a paragraph whose only text
+    // is the literal `partial` until the first streamed chunk lands; the
+    // two-sample stability window can straddle its mount, so dropping the
+    // line keeps both branches of the race on one golden.
+    .replace(/^- paragraph: partial$\n?/gm, '')
 }
 
 /**

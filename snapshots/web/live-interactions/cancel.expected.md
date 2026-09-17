@@ -20,7 +20,6 @@
 - button "Thought for a while":
   - text: Thought for a while
   - img
-- paragraph: partial
 - text: Stopped
 - button "Copy":
   - img

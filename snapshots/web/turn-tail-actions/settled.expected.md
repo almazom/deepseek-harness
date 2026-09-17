@@ -20,7 +20,6 @@
 - button "1 tool call · 1 message":
   - text: 1 tool call · 1 message
   - img
-- paragraph: partial
 - text: Stopped
 - button "Copy":
   - img
