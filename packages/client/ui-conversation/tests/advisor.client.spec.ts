@@ -3,7 +3,9 @@
 import { describe, expect, it } from 'vitest'
 import type { ContentBlock } from '@deepseek-ai/dsh-llm/types'
 import type { ConversationNode } from '../src/client/contract/records.ts'
-import { advise, lastHumanPreview } from '../src/client/queue/advisor.ts'
+import {
+  ADVISOR_STEP_IDS, advise, gateOutcome, lastHumanPreview, runAdvisorPipeline,
+} from '../src/client/queue/advisor.ts'
 
 const user = (text: string, seq = 1): ConversationNode => ({
   kind: 'user', seq, time: seq, source: { kind: 'user' },
@@ -67,6 +69,37 @@ describe('tier-1 advisor verdicts', () => {
     expect(advise({ ...base, rowText: '' })).toEqual({
       kind: 'defer', reasonKey: 'advisor.verdict.defer',
     })
+  })
+})
+
+describe('advisor pipeline and confidence gate', () => {
+  const base = { running: true, queuedCount: 1 }
+
+  it('completes every phase in execution order with a high-confidence status verdict', () => {
+    const result = runAdvisorPipeline({ ...base, rowText: 'что происходит?' })
+    expect(result.steps.map(step => step.id)).toEqual([...ADVISOR_STEP_IDS])
+    expect(result.steps.map(step => step.status)).toEqual(['done', 'done', 'done', 'done'])
+    expect(result.outcome).toMatchObject({ kind: 'status', confidence: 0.97 })
+  })
+
+  it('keeps the defer verdict below the default gate', () => {
+    const result = runAdvisorPipeline({ ...base, rowText: 'fix the login bug' })
+    expect(result.outcome.kind).toBe('defer')
+    expect(result.outcome.confidence).toBe(0.7)
+  })
+
+  it('gates a confidence at or above the threshold as allowed', () => {
+    const result = runAdvisorPipeline({ ...base, rowText: 'status?' })
+    expect(gateOutcome(result.outcome, 0.95)).toBe('allowed')
+  })
+
+  it('gates a confidence below the threshold as held', () => {
+    const result = runAdvisorPipeline({ ...base, rowText: 'fix the login bug' })
+    expect(gateOutcome(result.outcome, 0.95)).toBe('held')
+  })
+
+  it('gates exactly at the configured minimum as allowed', () => {
+    expect(gateOutcome({ kind: 'status', reasonKey: 'advisor.verdict.status', confidence: 0.9 }, 0.9)).toBe('allowed')
   })
 })
 

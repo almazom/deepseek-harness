@@ -2,11 +2,14 @@
 
 import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-settings'
-import { CONVERSATION_SETTINGS_NAMESPACE, ConversationSettingsSchema } from './submission-settings.ts'
+import {
+  CONVERSATION_SETTINGS_NAMESPACE, ConversationSettingsSchema,
+} from './submission-settings.ts'
 
 export {
   BUSY_ENTER_BEHAVIORS, BUSY_ENTER_FIELD, CONVERSATION_SETTINGS_NAMESPACE,
-  DEFAULT_BUSY_ENTER_BEHAVIOR, type BusyEnterBehavior, type ConversationSettings,
+  DEFAULT_BUSY_ENTER_BEHAVIOR, DEFAULT_SMART_STEER_MIN_CONFIDENCE,
+  SMART_STEER_MIN_CONFIDENCE_FIELD, type BusyEnterBehavior, type ConversationSettings,
 } from './submission-settings.ts'
 
 /**

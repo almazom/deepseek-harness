@@ -50,6 +50,80 @@ export function advise(input: AdvisorInput): AdvisorVerdict {
   return { kind: 'defer', reasonKey: 'advisor.verdict.defer' }
 }
 
+/** Identifiers of the sequential advisor pipeline phases, in execution order. */
+export const ADVISOR_STEP_IDS = ['session-status', 'input-analysis', 'risk-assessment', 'verdict'] as const
+
+/** One advisor pipeline phase identifier. */
+export type AdvisorStepId = typeof ADVISOR_STEP_IDS[number]
+
+/** Lifecycle of one pipeline phase row in the advisor sheet. */
+export type AdvisorStepStatus = 'pending' | 'running' | 'done' | 'failed'
+
+/** One rendered pipeline phase: its identity plus where it currently stands. */
+export interface AdvisorStep {
+  readonly id: AdvisorStepId
+  readonly status: AdvisorStepStatus
+}
+
+/** Verdict paired with the tier-1 heuristic confidence behind it. */
+export interface AdvisorOutcome extends AdvisorVerdict {
+  /**
+   * Tier-1 heuristic confidence in [0, 1] — a rule-match score, not a
+   * probability. Compared against the configured `smartSteerMinConfidence`
+   * gate: at or above the gate the pipeline marks the row deliverable,
+   * below it the sheet defaults to KEEP QUEUED with the reasons shown.
+   */
+  readonly confidence: number
+}
+
+/** Confidence the tier-1 rules assign a recognized status probe. */
+const STATUS_PROBE_CONFIDENCE = 0.97
+
+/** Confidence the tier-1 rules assign everything else (never crosses the gate). */
+const DEFER_CONFIDENCE = 0.7
+
+/**
+ * Result of one full pipeline run: every phase completed plus the gated
+ * outcome. The pure run never leaves a phase `failed` — that state exists
+ * for the future LLM tier's error paths.
+ */
+export interface AdvisorPipelineResult {
+  readonly steps: readonly AdvisorStep[]
+  readonly outcome: AdvisorOutcome
+}
+
+/**
+ * Run the full tier-1 pipeline synchronously: snapshot facts in, one outcome
+ * out. The caller owns revealing the returned phases over time; the sheet
+ * renders them as live rows.
+ * @param input - snapshot facts about the session and the advised row.
+ * @returns all four phases `done` and the confidence-tagged verdict.
+ */
+export function runAdvisorPipeline(input: AdvisorInput): AdvisorPipelineResult {
+  const steps = ADVISOR_STEP_IDS.map(id => ({ id, status: 'done' as const }))
+  const verdict = advise(input)
+  return {
+    steps,
+    outcome: {
+      ...verdict,
+      confidence: verdict.kind === 'status' ? STATUS_PROBE_CONFIDENCE : DEFER_CONFIDENCE,
+    },
+  }
+}
+
+/**
+ * Apply the confidence gate to one pipeline outcome.
+ * @param outcome - the pipeline's verdict with its tier-1 confidence.
+ * @param minConfidence - the configured gate in [0.5, 1].
+ * @returns `allowed` when the confidence reaches the gate, otherwise `held`.
+ */
+export function gateOutcome(
+  outcome: AdvisorOutcome,
+  minConfidence: number,
+): 'allowed' | 'held' {
+  return outcome.confidence >= minConfidence ? 'allowed' : 'held'
+}
+
 /**
  * Newest human-visible transcript preview (user or steering node), oldest-first scan
  * from the tail. Attachment-only or empty messages are skipped in favor of the next
