@@ -18,6 +18,7 @@ The advisor answers one question per queued message — "should this message int
 - [Use this package](#use-this-package)
   - [Events](#events)
   - [Configuration](#configuration)
+  - [Host dispatcher](#host-dispatcher)
 - [Understand the implementation](#understand-the-implementation)
   - [Design concept](#design-concept)
   - [Source map](#source-map)
@@ -27,25 +28,30 @@ The advisor answers one question per queued message — "should this message int
 
 ### Events
 
-The package merges three required-on-read event types into `SessionEventMap`:
+The package merges four required-on-read event types into `SessionEventMap`:
 
 | Event | Payload | Role |
 | --- | --- | --- |
 | `advisor/run-requested` | `AdvisorRunRequestedEventData` | Log-only pre-dispatch record: exact system prompt, snapshot messages, route, token cap. |
 | `advisor/step` | `AdvisorStepEventData` | One completed phase (`tail`, `compare`, `risk`, `verdict`) with the model's verbatim finding. |
-| `advisor/verdict` | `AdvisorVerdictEventData` | Final `send-now` / `hold` decision with confidence and the gate threshold it was compared against. |
+| `advisor/verdict` | `AdvisorVerdictEventData` | Final `send-now` / `hold` decision with the model's confidence. |
+| `advisor/failed` | `AdvisorFailedEventData` | Run ended without a verdict: stream failure, timeout, contract violation, or a framing failure before the request event (then `runId` is null). |
 
-The advisory prompt and findings are model-visible-by-design and reconstructable from these events (model-visible ⟺ logged). Projections that show the run live in a client read these events; they must not re-derive findings.
+The advisory prompt and findings are model-visible-by-design and reconstructable from these events (model-visible ⟺ logged). Projections that show the run live in a client read these events; they must not re-derive findings. The client compares the model's confidence against its own `smartSteerMinConfidence` gate — the gate is not re-logged in the payload.
 
 ### Configuration
 
-`AdvisorLlmConfig` is required with no defaults: `maxInputBytes` (UTF-8 cap applied to the complete framed snapshot, oldest tail entries dropped first), `maxOutputTokens`, `timeoutMs` (end-to-end run deadline), and the optional paired `provider`/`model` route override. Resolve through `resolveAdvisorLlmConfig` before dispatch; unknown keys fail loud at load.
+`AdvisorLlmConfig` is required with no defaults: `maxInputBytes` (UTF-8 cap applied to the complete framed snapshot, oldest tail entries dropped first), `maxOutputTokens`, `timeoutMs` (end-to-end run deadline), `tailEntries` and `recentRequests` (snapshot framing widths), and the paired `provider`/`model` route override. Resolve through `resolveAdvisorLlmConfig` before dispatch; unknown keys fail loud at load. The advisory policy tolerates an absent route, while the dispatcher service rejects any unpaired or missing pair at load (misconfiguration fails loud).
 
 ## Understand the implementation
 
 ### Projection vocabulary
 
-The package merges one key into `SessionProjectionMap`: `advisor/run` → `AdvisorRunProjection`. The host dispatcher republishes the whole run value as each phase closes and at settlement (`status: 'running' | 'done' | 'failed'`, completed `steps` with verbatim findings, and the settled `verdict`). Client surfaces read that key through the standard `useProjection` seat — no client-side folding.
+The package merges one key into the session-projection maps: `advisor/run` → `AdvisorRunProjection | null`. The pure fold unit in `src/projection.ts` turns the `advisor/*` events into the whole-run value: `status: 'running' | 'done' | 'failed'`, completed `steps` with verbatim findings, and the settled `verdict`; a second `advisor/run-requested` replaces the previous run, and the value is `null` before the first run. The dispatcher registers the unit on mount and removes it on disposal. Client surfaces read that key through the standard `useProjection` seat — no client-side folding.
+
+### Host dispatcher
+
+`src/dispatcher.ts` default-exports `QueueAdvisorService`, the model-backed side-run entry. The session controller's `advise` queue action — a member of the existing `QueueAction` union, so no new Remote method — resolves this optional service and calls `run({session, queuedItemId, queuedMessage})`; the run rejects only when the deployment mounts no dispatcher (the client's tier-1 sheet stands). The service reads the conversation snapshot through `ctx.sessionQuery.readSession` (no synchronous event-log reads), appends `advisor/run-requested` whose branded seq becomes the `runId`, streams the auxiliary route through `AdvisorSectionWatcher`, and appends an `advisor/step` per closed section, `advisor/verdict` on a contract-valid verdict, or `advisor/failed` on stream failure, timeout, contract violation, or a framing failure before the request event. The dispatcher is not part of shipped profile defaults; mounting is a deployment decision declared in `cordis.yml` with explicit config values.
 
 ### Design concept
 
@@ -55,6 +61,8 @@ One model call produces the whole decision; the fixed key order in the system pr
 
 - `src/types.ts` — event payloads, `AdvisorRunId`, `AdvisorStepId`, and the deployment policy types.
 - `src/index.ts` — `SessionEventMap` merge, config schema and resolver, `buildAdvisorMessages` (byte-bounded snapshot framing), `buildAdvisorSystemPrompt` (pinned section contract), `AdvisorSectionWatcher`.
+- `src/projection.ts` — the pure `advisor/run` fold unit and its state/wire schemas.
+- `src/dispatcher.ts` — the `QueueAdvisorService` plugin: snapshot read, run events, stream dispatch, section landing.
 
 ## Model Experience
 
@@ -74,7 +82,7 @@ No main-request invalidation. The fixed system instruction is reusable across ru
 
 ## Known Limitations and Deferred Work
 
-- The host-side dispatcher (queue-advisor plugin wiring the LLM service, run events, and controller command) lands with its consuming consumer; this package ships the shared policy and the section watcher it needs.
+- The Web profile mounts `QueueAdvisorService` with explicit `provider`/`model` values; other profiles opt in through a `cordis.yml` row with the same explicit shape.
 
 ### Dev Note
 

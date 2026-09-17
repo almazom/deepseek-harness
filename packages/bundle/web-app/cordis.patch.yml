@@ -29,6 +29,7 @@
     path: ':memory:'
     openAt: never
 
+
 - id: tools
   config:
     # TEMPORARY workaround: DSH_TOOLS_MODE (native|ptc|both) opts a whole dsh
@@ -42,6 +43,21 @@
 # `dsh.client` rows are the browser roster the modules node half scans into
 # window.__DSH_BOOT__; the modules row is simultaneously a host row.
 - insert:
+    # Smart-steer advisory side runs: the queue dock's smart button asks the
+    # host for the /btw-style side question. The route mirrors the default
+    # agent route; the run logs advisor/* events and never mutates agent
+    # history.
+    - id: queue-advisor
+      name: '@deepseek-ai/dsh-session-advisor-llm/dispatcher'
+      config:
+        maxInputBytes: 8192
+        maxOutputTokens: 256
+        timeoutMs: 60000
+        tailEntries: 12
+        recentRequests: 5
+        provider: deepseek-official
+        model: deepseek-flash
+
     # Host-owned opt-in sampled when a new Web session receives its preset
     # delegation tools. The Plugins page edits this settings namespace.
     - id: subagent-model-selection-settings

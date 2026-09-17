@@ -138,7 +138,7 @@ export function QueueDock(props: QueueDockProps) {
   )
   const liveRun = useProjection('advisor/run')
   const live = useMemo(
-    () => liveRun !== undefined && advising !== null && liveRun.queuedItemId === advising.id
+    () => liveRun != null && advising !== null && liveRun.queuedItemId === advising.id
       ? liveRun
       : undefined,
     [advising, liveRun],
@@ -338,7 +338,15 @@ export function QueueDock(props: QueueDockProps) {
                             aria-label={t('queue.steerSmart')}
                             title={running ? undefined : t('queue.steerSmart.unavailable')}
                             disabled={busy !== null || !running}
-                            onClick={() => { setAdvising(row) }}
+                            onClick={() => {
+                              setAdvising(row)
+                              // Ask the host for the live advisory side run; the
+                              // sheet already shows the instant tier-1 verdict,
+                              // and the advisor/run projection replaces it as
+                              // the model's phases land. Absent deployments
+                              // reject the action and the tier-1 sheet stands.
+                              void updateQueue(row.id, { kind: 'advise' }).catch(() => undefined)
+                            }}
                           >
                             <IconSendSmartOutline14 />
                           </button>

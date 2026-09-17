@@ -48,9 +48,15 @@ export interface AdvisorVerdictEventData {
   readonly kind: 'send-now' | 'hold'
   /** Model-reported confidence, clamped to [0, 1]. */
   readonly confidence: number
-  /** Configured `smartSteerMinConfidence` the verdict was compared against. */
-  readonly gateThreshold: number
   /** One-sentence verdict rationale quoted from the model output. */
+  readonly reason: string
+}
+
+/** Ended advisory run: the stream died before a verdict, the model broke the contract, or the run failed before its request event. */
+export interface AdvisorFailedEventData {
+  /** Advisory run that ended without a verdict; null when the failure happened before the request event was logged. */
+  readonly runId: AdvisorRunId | null
+  /** Exact diagnostic for the log; never shown to the model. */
   readonly reason: string
 }
 
@@ -62,6 +68,10 @@ export interface AdvisorLlmConfig {
   readonly maxOutputTokens: number
   /** End-to-end advisory request deadline in milliseconds. */
   readonly timeoutMs: number
+  /** Longest conversation tail kept in the framed snapshot. */
+  readonly tailEntries: number
+  /** Longest distinct-request list kept in the framed snapshot. */
+  readonly recentRequests: number
   /** Optional explicit provider route; must be paired with `model`. */
   readonly provider?: string
   /** Optional explicit model id; must be paired with `provider`. */
@@ -85,8 +95,6 @@ export interface AdvisorRunVerdict {
   readonly kind: 'send-now' | 'hold'
   /** Model-reported confidence, clamped to [0, 1]. */
   readonly confidence: number
-  /** Configured `smartSteerMinConfidence` the verdict was compared against. */
-  readonly gateThreshold: number
   /** One-sentence verdict rationale quoted from the model output. */
   readonly reason: string
 }
@@ -102,5 +110,5 @@ export interface AdvisorRunProjection {
   /** Phases completed so far, in execution order. */
   readonly steps: readonly AdvisorRunStep[]
   /** The settled verdict, absent until the run reaches one. */
-  readonly verdict: AdvisorRunVerdict | undefined
+  readonly verdict?: AdvisorRunVerdict | undefined
 }

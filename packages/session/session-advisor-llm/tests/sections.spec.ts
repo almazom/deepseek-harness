@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Message } from '@deepseek-ai/dsh-llm'
+import { MAX_TIMER_DELAY_MS } from '@deepseek-ai/dsh-timeout'
 import {
   ADVISOR_STEP_IDS,
   AdvisorSectionWatcher,
@@ -81,6 +82,14 @@ describe('AdvisorSectionWatcher', () => {
     expect(sections[sections.length - 1]!.key).toBe('verdict')
     expect(watcher.finish().closed).toBe(true)
   })
+
+  it('excludes the root brace from a primitive-valued final section', () => {
+    const watcher = new AdvisorSectionWatcher()
+    const sections = watcher.push('{"tail": {"finding": "x"}, "note": "hi"}')
+    expect(sections.map(s => s.key)).toEqual(['tail', 'note'])
+    expect(sections[1]!.raw).toBe('"hi"')
+    expect(watcher.finish().closed).toBe(true)
+  })
 })
 
 describe('resolveAdvisorLlmConfig', () => {
@@ -88,6 +97,8 @@ describe('resolveAdvisorLlmConfig', () => {
     maxInputBytes: 8192,
     maxOutputTokens: 512,
     timeoutMs: 15000,
+    tailEntries: 12,
+    recentRequests: 5,
   }
 
   it('accepts the minimal policy and freezes the resolved copy', () => {
@@ -101,13 +112,16 @@ describe('resolveAdvisorLlmConfig', () => {
       'unknown config key "extra"',
     )
     expect(() =>
-      resolveAdvisorLlmConfig({ ...base, provider: 'p' } as AdvisorLlmConfig),
+      resolveAdvisorLlmConfig({ ...base, provider: 'p' }),
     ).toThrow('provider and model must be paired')
     expect(() => resolveAdvisorLlmConfig({ ...base, maxOutputTokens: 0 })).toThrow(
       'maxOutputTokens must be a positive integer',
     )
     expect(() => resolveAdvisorLlmConfig(null as unknown as AdvisorLlmConfig)).toThrow(
       'configuration is required',
+    )
+    expect(() => resolveAdvisorLlmConfig({ ...base, timeoutMs: MAX_TIMER_DELAY_MS + 1 })).toThrow(
+      `timeoutMs must not exceed ${MAX_TIMER_DELAY_MS}`,
     )
   })
 })
@@ -142,6 +156,18 @@ describe('buildAdvisorMessages', () => {
     expect(() =>
       buildAdvisorMessages({ ...snapshot, queuedMessage: 'y'.repeat(200), maxInputBytes: 100 }),
     ).toThrow('queued message exceeds maxInputBytes')
+  })
+
+  it('rejects a frame whose tail cannot shrink below the byte cap', () => {
+    expect(() =>
+      buildAdvisorMessages({
+        ...snapshot,
+        queuedMessage: 'q',
+        tail: [{ role: 'assistant' as const, text: 'z'.repeat(50) }],
+        recentRequests: [],
+        maxInputBytes: 40,
+      }),
+    ).toThrow('snapshot exceeds maxInputBytes')
   })
 })
 

@@ -4,6 +4,7 @@ import type { Agent, Inbox, ModelSelectionRef } from '@deepseek-ai/dsh-agent'
 import { AttachmentError, AttachmentId } from '@deepseek-ai/dsh-attachment'
 import type { ImageAttachmentRef } from '@deepseek-ai/dsh-attachment'
 import { createAssistantMessage, createUserMessage, MessageId } from '@deepseek-ai/dsh-llm'
+import type QueueAdvisorService from '@deepseek-ai/dsh-session-advisor-llm/dispatcher'
 import SessionStore, {
   SESSION_FORMAT_VERSION, Session, SessionId, SessionLogOffset, SessionSeq,
 } from '@deepseek-ai/dsh-session'
@@ -448,6 +449,44 @@ describe('Session attachment authorization', () => {
     await expectFailure(controller.attachment({
       sessionId: SessionId('unreadable'), attachmentId: AttachmentId('att'),
     }), 'gateway/internal')
+    await ctx.fiber.dispose()
+  })
+})
+
+describe('Session queue advise action', () => {
+  it('rejects with session/advisor-unavailable when the deployment mounts no dispatcher', async () => {
+    const { ctx, controller, agent, inbox } = await commandHarness()
+    const queued = createUserMessage({ content: [{ type: 'text', text: 'queued' }], source: { kind: 'user' } })
+    inbox.append('next-turn', queued)
+    await expectFailure(Promise.resolve().then(() => controller.updateQueue({
+      sessionId: agent.id, itemId: queued.id, action: { kind: 'advise' },
+    })), 'session/advisor-unavailable')
+    await ctx.fiber.dispose()
+  })
+
+  it('hands the queued text to the mounted dispatcher without awaiting or propagating its failure', async () => {
+    const { ctx, controller, agent, inbox } = await commandHarness()
+    const runs: Array<{ queuedItemId: MessageId; queuedMessage: string }> = []
+    let failRun: ((error: Error) => void) | undefined
+    ctx.provide('queueAdvisor', {
+      run: (request: { queuedItemId: string; queuedMessage: string }) => {
+        runs.push({ queuedItemId: MessageId(request.queuedItemId), queuedMessage: request.queuedMessage })
+        return new Promise((_resolve, reject) => { failRun = reject })
+      },
+    } as unknown as QueueAdvisorService)
+    const queued = createUserMessage({
+      content: [{ type: 'text', text: 'also run the typecheck' }],
+      source: { kind: 'user' },
+    })
+    inbox.append('next-turn', queued)
+    expect(controller.updateQueue({
+      sessionId: agent.id, itemId: queued.id, action: { kind: 'advise' },
+    })).toEqual({ accepted: true })
+    expect(runs).toEqual([{ queuedItemId: queued.id, queuedMessage: 'also run the typecheck' }])
+    const warn = vi.spyOn(ctx.logger, 'warn')
+    failRun?.(new Error('no advisory route'))
+    await vi.waitFor(() => { expect(warn).toHaveBeenCalledTimes(1) })
+    expect(inbox.nextTurn.map(item => item.id)).toEqual([queued.id])
     await ctx.fiber.dispose()
   })
 })

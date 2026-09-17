@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto'
 import type { Context } from '@deepseek-ai/cordis'
 import { brandString } from '@deepseek-ai/dsh-brand'
 import type { Agent, ModelSelection as AgentModelSelection } from '@deepseek-ai/dsh-agent'
+import type {} from '@deepseek-ai/dsh-session-advisor-llm/dispatcher'
 import { AttachmentError } from '@deepseek-ai/dsh-attachment'
 import type {
   AttachmentAdmissionPart, FileAttachmentRef, ImageAttachmentRef,
@@ -482,6 +483,26 @@ export class SessionCommandController {
         agent.inbox.remove(request.itemId)
         agent.steer(message)
         break
+      case 'advise': {
+        const advisor = this.ctx.get('queueAdvisor')
+        if (advisor === undefined) {
+          throw new RemoteError('session/advisor-unavailable', 'this deployment mounts no queue advisor', {
+            itemId: request.itemId,
+          })
+        }
+        const queuedMessage = message.content
+          .filter((block): block is Extract<typeof block, { type: 'text' }> => block.type === 'text')
+          .map(block => block.text)
+          .join('')
+        advisor.run({ session: agent.session, queuedItemId: request.itemId, queuedMessage }).catch(
+          (error: unknown): void => {
+            this.ctx.logger.warn(
+              `session-controller: advisory run for item "${request.itemId}" failed to start: ${String(error)}`,
+            )
+          },
+        )
+        break
+      }
       /* v8 ignore next 2 -- closed-union exhaustiveness guard */
       default:
         assertNever(request.action, 'queue action')

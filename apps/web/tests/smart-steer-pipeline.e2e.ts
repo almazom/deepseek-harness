@@ -17,6 +17,7 @@ import { connectFreshWorkspace, newEnglishPage, saveFailureShot } from './suppor
 
 const SNAPSHOT_DIR = fileURLToPath(new URL('../../../snapshots/web/steering', import.meta.url))
 const FIXTURE = join(SNAPSHOT_DIR, 'session.v3.jsonl')
+const TIER1_OVERLAY = fileURLToPath(new URL('./smart-steer-pipeline.overlay.yml', import.meta.url))
 const MODE = webSnapshotMode()
 const REPLAY_PACE_MS = 500
 
@@ -36,7 +37,16 @@ describe.skipIf(MODE === 'record')('web e2e: smart steer pipeline panel reveals 
   const sessionEvents: SessionEvent[] = []
 
   beforeAll(async () => {
-    scaffold = await launchWebScaffold({ replayFixture: FIXTURE, paceMs: REPLAY_PACE_MS, compareReplaySession: false })
+    // This scenario pins the tier-1 instant pre-verdict integration, so it
+    // boots the opt-out deployment shape: the overlay disables the mounted
+    // queue-advisor row, the smart button's advise call rejects with
+    // session/advisor-unavailable, and the tier-1 sheet stands deterministically.
+    scaffold = await launchWebScaffold({
+      replayFixture: FIXTURE,
+      paceMs: REPLAY_PACE_MS,
+      compareReplaySession: false,
+      extraOverlayPath: TIER1_OVERLAY,
+    })
     scaffold.ctx.on('session/event', (_session, event) => { sessionEvents.push(event) })
     browser = await chromium.launch()
     page = await newEnglishPage(browser)

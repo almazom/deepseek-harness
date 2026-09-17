@@ -25,5 +25,5 @@ The Smart-steer advisor sheet paced its reasoning rows with `useStepReveal`, a 1
 ## Consequences
 
 - The sheet's verdict and gate lines now have three sources — tier-1 outcome, live running, live verdict, live failure fallback — each covered by queue-dock component tests; a new live branch must update all of them or fail the fallback test.
-- The host dispatcher does not exist yet: `advisor/run` reads `undefined` everywhere in production, so the sheet behaves exactly as the tier-1 sheet did, and the projection vocabulary is the only shipped surface of the live run.
+- The host dispatcher shipped in [the queue-action dispatcher note](2026-09-18-advisor-side-run-dispatcher-rides-queue-action.md); until a profile mounts it, `advisor/run` reads `null` in production and the sheet behaves exactly as the tier-1 sheet did.
 - Deleting the reveal timer makes the tier-1 sheet visually instant; the replay e2e assertions that waited for rows reach their final state on the first paint instead of after 600 ms.

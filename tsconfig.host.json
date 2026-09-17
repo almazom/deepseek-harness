@@ -27,6 +27,8 @@
     "apps/web/tests/plan-review.e2e.ts",
     "apps/web/tests/steering.e2e.ts",
     "apps/web/tests/smart-steer.e2e.ts",
+    "apps/web/tests/smart-steer-pipeline.e2e.ts",
+    "apps/web/tests/smart-steer-advisor.e2e.ts",
     "apps/web/tests/navigation-panes.e2e.ts",
     "apps/web/tests/chat-scroll-fixture.ts",
     "apps/web/tests/trajectory-virtualization.e2e.ts",

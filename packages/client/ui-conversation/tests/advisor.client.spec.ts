@@ -10,16 +10,16 @@ import {
 const user = (text: string, seq = 1): ConversationNode => ({
   kind: 'user', seq, time: seq, source: { kind: 'user' },
   content: [{ type: 'text', text }],
-}) as ConversationNode
+})
 
 const steering = (text: string, seq = 1): ConversationNode => ({
   kind: 'steering', messageId: `m${seq}` as never, seq, time: seq, source: { kind: 'user' },
   content: [{ type: 'text', text }],
-}) as ConversationNode
+})
 
 const assistant = (seq = 1): ConversationNode => ({
   kind: 'assistant', seq, time: seq, turn: 1, step: 1, blocks: [],
-}) as ConversationNode
+})
 
 const CONTEXT: ConversationNode = {
   kind: 'context', seq: 0, time: 0, source: { kind: 'plugin', plugin: 'compact' },

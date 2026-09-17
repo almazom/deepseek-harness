@@ -1,0 +1,6 @@
+# The smart-steer pipeline scenario pins the tier-1 instant pre-verdict
+# integration, so this overlay opts the scenario's deployment out of the
+# mounted queue-advisor row: the smart button's advise call rejects with
+# session/advisor-unavailable and the tier-1 sheet stands.
+- id: queue-advisor
+  disabled: true

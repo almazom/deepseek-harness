@@ -25,5 +25,5 @@ Smart-steer 顾问面板用 `useStepReveal` 安排推理行的出现节奏——
 ## 后果
 
 - 面板的判定与门槛行现在有三种来源——tier-1 结果、实时进行中、实时判定、实时失败回退——每一支都由 queue-dock 组件测试覆盖；新增实时分支必须同时更新它们，否则回退测试会失败。
-- 宿主分发器尚未存在：生产环境中 `advisor/run` 处处读作 `undefined`，因此面板行为与原 tier-1 面板完全一致，投影词汇是实时运行唯一已发布的表面。
+- 宿主分发器已随[队列动作分发器笔记](2026-09-18-advisor-side-run-dispatcher-rides-queue-action.zh.md)落地；在某个 profile 挂载它之前，生产环境中 `advisor/run` 读作 `null`，面板行为与原 tier-1 面板完全一致。
 - 删除揭示计时器让 tier-1 面板在视觉上即时呈现；等待推理行的 replay e2e 断言改为在首次绘制即达最终状态，而不再等待 600 毫秒。

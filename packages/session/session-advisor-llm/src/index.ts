@@ -20,6 +20,7 @@ import type {
 } from './types.ts'
 
 export type {
+  AdvisorFailedEventData,
   AdvisorLlmConfig,
   AdvisorRunId,
   AdvisorRunProjection,
@@ -40,13 +41,15 @@ declare module '@deepseek-ai/dsh-session/types' {
     'advisor/step': import('./types.ts').AdvisorStepEventData
     /** Final advisory decision against the Smart-steer confidence gate. */
     'advisor/verdict': import('./types.ts').AdvisorVerdictEventData
+    /** Advisory run that ended without a verdict. */
+    'advisor/failed': import('./types.ts').AdvisorFailedEventData
   }
 }
 
 declare module '@deepseek-ai/dsh-session-projection/types' {
   interface SessionProjectionMap {
     /** Live advisory side run for one queued message, whole value per step. */
-    'advisor/run': import('./types.ts').AdvisorRunProjection
+    'advisor/run': import('./types.ts').AdvisorRunProjection | null
   }
 }
 
@@ -66,6 +69,8 @@ const CONFIG_KEYS: ReadonlySet<string> = new Set([
   'maxInputBytes',
   'maxOutputTokens',
   'timeoutMs',
+  'tailEntries',
+  'recentRequests',
   'provider',
   'model',
 ])
@@ -75,12 +80,11 @@ export const AdvisorLlmConfigFields = {
   maxInputBytes: z.number().step(1).min(1).required(),
   maxOutputTokens: z.number().step(1).min(1).required(),
   timeoutMs: z.number().step(1).min(1).max(MAX_TIMER_DELAY_MS).required(),
+  tailEntries: z.number().step(1).min(1).required(),
+  recentRequests: z.number().step(1).min(1).required(),
   provider: z.string(),
   model: z.string(),
 }
-
-/** Shared Loader schema with no library defaults. */
-export const AdvisorLlmConfigSchema: z<AdvisorLlmConfig> = z.object(AdvisorLlmConfigFields)
 
 /** Validate one positive integer limit. */
 function assertPositiveInteger(name: string, value: number): void {
@@ -106,6 +110,8 @@ export function resolveAdvisorLlmConfig(config: AdvisorLlmConfig): ResolvedAdvis
   assertPositiveInteger('maxInputBytes', value.maxInputBytes)
   assertPositiveInteger('maxOutputTokens', value.maxOutputTokens)
   assertPositiveInteger('timeoutMs', value.timeoutMs)
+  assertPositiveInteger('tailEntries', value.tailEntries)
+  assertPositiveInteger('recentRequests', value.recentRequests)
   if (value.timeoutMs > MAX_TIMER_DELAY_MS) {
     throw new Error(`session-advisor-llm: timeoutMs must not exceed ${MAX_TIMER_DELAY_MS}`)
   }
@@ -222,7 +228,7 @@ export class AdvisorSectionWatcher {
    */
   push(delta: string): readonly AdvisorSection[] {
     for (let i = 0; i < delta.length; i += 1) {
-      const char = delta[i]
+      const char = delta.charAt(i)
       this.#buffer += char
       if (this.#inString) {
         if (this.#escape) this.#escape = false

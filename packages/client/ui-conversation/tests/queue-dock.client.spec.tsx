@@ -656,15 +656,15 @@ describe('QueueDock smart steer', () => {
   const FAILED_ZH = '智能插话失败，请重试。'
 
   const humanNodes: readonly ConversationNode[] = [
-    { kind: 'assistant', seq: 1, time: 1, turn: 1, step: 1, blocks: [] } as ConversationNode,
+    { kind: 'assistant', seq: 1, time: 1, turn: 1, step: 1, blocks: [] },
     {
       kind: 'user', seq: 2, time: 2, source: { kind: 'user' },
       content: [{ type: 'text', text: 'первый вопрос' }],
-    } as ConversationNode,
+    },
     {
       kind: 'steering', messageId: 'm1' as never, seq: 3, time: 3, source: { kind: 'user' },
       content: [{ type: 'text', text: 'поправка' }],
-    } as ConversationNode,
+    },
   ]
 
   function smartButton(view: { getByRole: (role: 'button', options?: { name?: string }) => HTMLElement }): HTMLButtonElement {
@@ -695,6 +695,17 @@ describe('QueueDock smart steer', () => {
     expect(dialog.textContent).toContain('（暂无）')
     expect(dialog.textContent).toContain('顾问判定')
     expect(dialog.textContent).toContain(DEFER_ZH)
+  })
+
+  it('fires the advise queue action when the row smart button is pressed', () => {
+    const updateQueue = vi.fn(() => Promise.resolve())
+    const snap = snapshotWith([row('r1', 'почини тесты', 'почини тесты')])
+    const source = liveSession(snap)
+    const view = render(
+      <QueueDock {...kitFor(snap, { updateQueue })} useSession={source.useSession} />,
+    )
+    fireEvent.click(smartButton(view))
+    expect(updateQueue).toHaveBeenCalledExactlyOnceWith(iid('r1'), { kind: 'advise' })
   })
 
   it('is disabled while the agent is idle and carries the unavailable hint', () => {
@@ -758,8 +769,8 @@ describe('QueueDock smart steer', () => {
     const { view } = openSheet({}, { updateQueue })
     fireEvent.click(smartButton(view))
     fireEvent.click(view.getByRole('button', { name: '仍然立即发送' }))
-    await waitFor(() => expect(updateQueue).toHaveBeenCalledWith(iid('r1'), { kind: 'steer' }))
-    await waitFor(() => expect(view.queryByRole('dialog', { name: '智能插话顾问' })).toBeNull())
+    await waitFor(() => { expect(updateQueue).toHaveBeenCalledWith(iid('r1'), { kind: 'steer' }) })
+    await waitFor(() => { expect(view.queryByRole('dialog', { name: '智能插话顾问' })).toBeNull() })
   })
 
   it('keeps the sheet open on steering failure and notifies', async () => {
@@ -767,17 +778,19 @@ describe('QueueDock smart steer', () => {
     const { view } = openSheet({}, { updateQueue: vi.fn(() => Promise.reject(new Error('steer-unavailable'))), notify })
     fireEvent.click(smartButton(view))
     fireEvent.click(view.getByRole('button', { name: '仍然立即发送' }))
-    await waitFor(() => expect(notify).toHaveBeenCalledWith('error', FAILED_ZH))
+    await waitFor(() => { expect(notify).toHaveBeenCalledWith('error', FAILED_ZH) })
     expect(view.getByRole('dialog', { name: '智能插话顾问' }).textContent).toContain(DEFER_ZH)
   })
 
   it('keeps the row queued without any delivery on keep-queued', () => {
+    // Opening the sheet itself fires the read-only `advise` side run; the
+    // keep-queued decision must still deliver nothing else (no edit/remove/steer).
     const updateQueue = vi.fn(() => Promise.resolve())
     const { view } = openSheet({}, { updateQueue })
     fireEvent.click(smartButton(view))
     fireEvent.click(view.getByRole('button', { name: '保留在队列' }))
     expect(view.queryByRole('dialog', { name: '智能插话顾问' })).toBeNull()
-    expect(updateQueue).not.toHaveBeenCalled()
+    expect(updateQueue).toHaveBeenCalledExactlyOnceWith(iid('r1'), { kind: 'advise' })
   })
 
   it('closes the sheet when the advised row leaves the queue', () => {
@@ -809,20 +822,20 @@ describe('QueueDock smart steer', () => {
 
     /** A keyed useProjection fake over one pushable advisor/run value. */
     function projectionKit() {
-      let value: AdvisorRunProjection | undefined
+      let value: AdvisorRunProjection | null = null
       const listeners = new Set<() => void>()
       const subscribe = (fn: () => void) => {
         listeners.add(fn)
         return () => { listeners.delete(fn) }
       }
-      const face = (selector: (current: AdvisorRunProjection | undefined) => unknown) =>
+      const face = (selector: (current: AdvisorRunProjection | null) => unknown) =>
         useSyncExternalStore(subscribe, () => selector(value))
-      const useProjection = ((_key: string, selector?: (current: AdvisorRunProjection | undefined) => unknown) => (
+      const useProjection = ((_key: string, selector?: (current: AdvisorRunProjection | null) => unknown) => (
         selector === undefined ? face(current => current) : face(selector)
       )) as unknown as QueueDockProps['useProjection']
       return {
         useProjection,
-        push(next: AdvisorRunProjection | undefined): void {
+        push: (next: AdvisorRunProjection | null): void => {
           value = next
           for (const listener of [...listeners]) listener()
         },
@@ -864,7 +877,7 @@ describe('QueueDock smart steer', () => {
             { step: 'verdict', finding: '倾向立即发送' },
           ],
           verdict: {
-            kind: 'send-now', confidence: 0.97, gateThreshold: 0.95,
+            kind: 'send-now', confidence: 0.97,
             reason: '消息与当前任务一致，发送不会破坏运行',
           },
         }))
@@ -888,7 +901,7 @@ describe('QueueDock smart steer', () => {
           status: 'done',
           steps: [{ step: 'risk', finding: '发送会打断运行中的回合' }],
           verdict: {
-            kind: 'hold', confidence: 0.6, gateThreshold: 0.95,
+            kind: 'hold', confidence: 0.6,
             reason: '消息与当前任务无关',
           },
         }))
