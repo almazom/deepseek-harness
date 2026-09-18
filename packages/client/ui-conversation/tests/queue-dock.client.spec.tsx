@@ -1046,4 +1046,81 @@ describe('QueueDock advisor side-runtime', () => {
     act(() => { push(liveValue({ runId: 'run-2' as never, queuedItemId: iid('r2'), status: 'running' })) })
     expect(view.getByRole('dialog', { name: '智能插话顾问' })).toBeTruthy()
   })
+
+  it('auto-opens a rowless /side run over the latest human message on an empty queue', () => {
+    const { useProjection, push } = projectionKit()
+    const nodes: readonly ConversationNode[] = [
+      { kind: 'user', seq: 1, time: 1, source: { kind: 'user' }, content: [{ type: 'text', text: 'последний вопрос' }] },
+    ]
+    const snap = snapshotWith([])
+    const source = liveSession(snap)
+    const view = render(
+      <QueueDock {...kitFor(snap, { useProjection, useChat: makeUseChat(nodes) })} useSession={source.useSession} />,
+    )
+    expect(view.queryByRole('dialog', { name: '智能插话顾问' })).toBeNull()
+
+    act(() => {
+      push(liveValue({ queuedItemId: iid('m-side'), status: 'running', steps: [{ step: 'tail', finding: RUN_FINDING_ZH }] }))
+    })
+    const dialog = view.getByRole('dialog', { name: '智能插话顾问' })
+    expect(dialog.textContent).toContain('顾问对象')
+    expect(dialog.textContent).toContain('последний вопрос')
+    expect(dialog.textContent).toContain(RUN_FINDING_ZH)
+    // No queue row backs the anchor: delivery actions, the follow-up composer,
+    // and the steering gate stay out of the sheet.
+    expect(view.queryByRole('button', { name: '仍然立即发送' })).toBeNull()
+    expect(view.queryByRole('button', { name: '保留在队列' })).toBeNull()
+    expect(view.queryByRole('textbox', { name: FOLLOW_LABEL_ZH })).toBeNull()
+    expect(dialog.textContent).not.toContain('置信度门槛')
+    expect(dialog.textContent).not.toContain('排队消息')
+  })
+
+  it('keeps a drained row-anchored run closed instead of reopening it as rowless', () => {
+    const { useProjection, push } = projectionKit()
+    const snap = snapshotWith([row('r1', 'почини тесты', 'почини тесты'), row('r2', 'второй вопрос', 'второй вопрос')])
+    const source = liveSession(snap)
+    const view = render(<QueueDock {...kitFor(snap, { useProjection })} useSession={source.useSession} />)
+    act(() => { push(liveValue({ status: 'running' })) })
+    expect(view.getByRole('dialog', { name: '智能插话顾问' })).toBeTruthy()
+
+    // The override delivers the advised row while another row stays queued:
+    // the sheet closes, and no rowless adoption may resurrect the same run.
+    act(() => { source.push(snapshotWith([row('r2', 'второй вопрос', 'второй вопрос')])) })
+    expect(view.queryByRole('dialog', { name: '智能插话顾问' })).toBeNull()
+
+    // After the queue drains too, the same run id still stays closed; only a
+    // new run id adopts the rowless /side form.
+    act(() => { source.push(snapshotWith([])) })
+    act(() => { push(liveValue({ status: 'done', verdict: { kind: 'send-now', confidence: 0.97, reason: '一致' } })) })
+    expect(view.queryByRole('dialog', { name: '智能插话顾问' })).toBeNull()
+    act(() => { push(liveValue({ runId: 'run-2' as never, queuedItemId: iid('msg-9') as never, status: 'running' })) })
+    const dialog = view.getByRole('dialog', { name: '智能插话顾问' })
+    expect(dialog.textContent).toContain('顾问对象')
+  })
+
+  it('keeps an explicitly dismissed rowless run closed', () => {
+    const { useProjection, push } = projectionKit()
+    const snap = snapshotWith([])
+    const source = liveSession(snap)
+    const view = render(<QueueDock {...kitFor(snap, { useProjection })} useSession={source.useSession} />)
+    act(() => { push(liveValue({ queuedItemId: iid('m-side'), status: 'running' })) })
+    expect(view.getByRole('dialog', { name: '智能插话顾问' })).toBeTruthy()
+
+    fireEvent.click(view.getByRole('button', { name: CLOSE_ZH }))
+    expect(view.queryByRole('dialog', { name: '智能插话顾问' })).toBeNull()
+    act(() => {
+      push(liveValue({ queuedItemId: iid('m-side'), status: 'done', verdict: { kind: 'send-now', confidence: 0.97, reason: '一致' } }))
+    })
+    expect(view.queryByRole('dialog', { name: '智能插话顾问' })).toBeNull()
+  })
+
+  it('does not adopt a run anchored to no pending row while rows are queued', () => {
+    const { useProjection, push } = projectionKit()
+    const snap = snapshotWith([row('r1', 'почини тесты')])
+    const source = liveSession(snap)
+    const view = render(<QueueDock {...kitFor(snap, { useProjection })} useSession={source.useSession} />)
+    act(() => { push(liveValue({ queuedItemId: iid('m-side'), status: 'running' })) })
+    expect(view.queryByRole('dialog', { name: '智能插话顾问' })).toBeNull()
+    expect(view.queryByText(RUN_FINDING_ZH)).toBeNull()
+  })
 })

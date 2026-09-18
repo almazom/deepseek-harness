@@ -1,21 +1,25 @@
 /**
  * Human-facing `/side` (alias `/btw`) command over the mounted queue advisor:
  * the typed question starts one advisory side run about the most recently
- * queued message, mirroring the queue smart-button advise path.
+ * queued message, mirroring the queue smart-button advise path; with an empty
+ * queue it falls back to the latest delivered human message so the command
+ * works whenever the conversation has one.
  * @module @deepseek-ai/dsh-command-side
  */
 
 import type { Context } from '@deepseek-ai/cordis'
 import { CommandDefinitionId } from '@deepseek-ai/dsh-commands/brand'
 import type { CommandInvocation, CommandResult } from '@deepseek-ai/dsh-commands'
+import type { MessageId } from '@deepseek-ai/dsh-llm/brand'
 import type {} from '@deepseek-ai/dsh-session-advisor-llm/dispatcher'
+import { latestHumanProjectionDefinition, messageText } from './projection.ts'
 
 export const name = 'command-side'
-export const inject = ['commands']
+export const inject = ['commands', 'sessionProjections']
 
-const USAGE = 'Usage: /side <question> — ask the advisor about the latest queued message. /btw is an alias.'
+const USAGE = 'Usage: /side <question> — ask the advisor about the latest queued message, or the latest conversation message when the queue is empty. /btw is an alias.'
 
-/** Longest queued-message preview kept in the success text. */
+/** Longest advised-message preview kept in the success text. */
 const PREVIEW_LIMIT = 80
 
 /**
@@ -28,20 +32,20 @@ const SIDE_COMMAND_NAMES = ['side', 'btw'] as const
 /** Command description per registered spelling. */
 function commandDescription(commandName: string): string {
   return commandName === 'side'
-    ? 'Ask the advisor a side question about the latest queued message'
-    : 'Alias of /side: ask the advisor about the latest queued message'
+    ? 'Ask the advisor a side question about the current conversation'
+    : 'Alias of /side: ask the advisor about the current conversation'
 }
 
-/** Shorten one queued message for direct command output without cutting mid-word padding. */
+/** Shorten one advised message for direct command output without cutting mid-word padding. */
 function preview(text: string): string {
   return text.length > PREVIEW_LIMIT ? `${text.slice(0, PREVIEW_LIMIT - 3)}...` : text
 }
 
 /**
- * Fire one advisory run over the most recently queued message. Mirrors the
- * session controller's `advise` queue action: the run starts fire-and-forget
- * (its events stream through the advisor sheet), while the command result
- * only reports the start.
+ * Fire one advisory run over the most recently queued message, or — when the
+ * queue is empty — over the latest delivered human message. The run starts
+ * fire-and-forget (its events stream through the advisor sheet), while the
+ * command result only reports the start.
  */
 function executeSideCommand(ctx: Context, invocation: CommandInvocation): CommandResult {
   const question = invocation.rawInput.trim()
@@ -53,29 +57,40 @@ function executeSideCommand(ctx: Context, invocation: CommandInvocation): Comman
     return { kind: 'error', text: 'This deployment mounts no queue advisor, so /side has no advisor to ask.' }
   }
   const latest = invocation.agent.inbox.nextTurn.at(-1) ?? invocation.agent.inbox.nextStep.at(-1)
-  if (latest === undefined) {
-    return {
-      kind: 'error',
-      text: `No queued message to ask about: queue a message while the turn runs, then ask again.\n${USAGE}`,
+  let anchoredId: MessageId
+  let advisedText: string
+  if (latest !== undefined) {
+    anchoredId = latest.id
+    advisedText = messageText(latest.content)
+  } else {
+    // The empty-queue fallback reads maintained projection state, never a
+    // synchronous scan of historical events.
+    const anchor = ctx.sessionProjections.stateOf(invocation.agent.session, 'command-side/latest-human')
+    if (anchor === undefined || anchor === null) {
+      return {
+        kind: 'error',
+        text: `No message to advise about yet: send a message first, then ask again.\n${USAGE}`,
+      }
     }
+    anchoredId = anchor.id
+    advisedText = anchor.text
   }
-  const queuedMessage = latest.content
-    .filter((block): block is Extract<typeof block, { type: 'text' }> => block.type === 'text')
-    .map(block => block.text)
-    .join('')
   const started = advisor.run({
     session: invocation.agent.session,
-    queuedItemId: latest.id,
-    queuedMessage,
+    queuedItemId: anchoredId,
+    queuedMessage: advisedText,
     question,
   })
   void started.catch((error: unknown): void => {
-    ctx.logger.warn(`command-side: advisory run for item "${latest.id}" failed to start: ${String(error)}`)
+    ctx.logger.warn(`command-side: advisory run for item "${anchoredId}" failed to start: ${String(error)}`)
   })
-  return { kind: 'success', text: `Advisor side run started for queued message "${preview(queuedMessage)}".` }
+  return latest !== undefined
+    ? { kind: 'success', text: `Advisor side run started for queued message "${preview(advisedText)}".` }
+    : { kind: 'success', text: `Advisor side run started for the latest message "${preview(advisedText)}".` }
 }
 
 export function apply(ctx: Context): void {
+  ctx.sessionProjections.register(latestHumanProjectionDefinition)
   for (const commandName of SIDE_COMMAND_NAMES) {
     ctx.commands.register({
       definitionId: CommandDefinitionId(`@deepseek-ai/dsh-command-side/${commandName}`),

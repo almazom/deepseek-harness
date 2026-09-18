@@ -1,5 +1,5 @@
 import type { Context } from '@deepseek-ai/cordis'
-import { useEffect, useId, useMemo, useState } from 'react'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { FileAttachmentRef, ImageAttachmentRef } from '@deepseek-ai/dsh-attachment'
 import type { SnapshotStore } from '@deepseek-ai/dsh-client-store'
@@ -16,6 +16,17 @@ import { NS } from '../locales.ts'
 import { lastHumanPreview, runAdvisorPipeline } from './advisor.ts'
 import { AdvisorSheet } from './AdvisorSheet.tsx'
 import css from './QueueDock.module.css'
+
+/**
+ * What the advisor sheet is anchored to: a pending queue row, or — for a
+ * /side fallback run on an empty queue — the latest delivered message.
+ */
+interface AdvisingAnchor {
+  readonly id: string
+  readonly preview: string
+  /** True when the anchor is a delivered message instead of a pending queue row. */
+  readonly rowless: boolean
+}
 
 /** Queue operations injected by the session-scoped registration. */
 export interface QueueDockInjected {
@@ -122,9 +133,12 @@ export function QueueDock(props: QueueDockProps) {
   const [editing, setEditing] = useState<{ id: QueueItemId; text: string } | null>(null)
   const [busy, setBusy] = useState<QueueItemId | null>(null)
   const [collapsed, setCollapsed] = useState(true)
-  const [advising, setAdvising] = useState<QueueRow | null>(null)
+  const [advising, setAdvising] = useState<AdvisingAnchor | null>(null)
   /** Run ids the operator explicitly closed; the auto-open skips them until a new run starts. */
   const [dismissedRuns, setDismissedRuns] = useState<ReadonlySet<string>>(new Set())
+  /** Run ids already adopted with a pending row; their drain must not re-adopt
+   * them as rowless /side fallbacks. */
+  const rowAnchoredRuns = useRef<ReadonlySet<string>>(new Set())
   /** Peek state: the sheet is collapsed into the pill while its side run streams on. */
   const [peek, setPeek] = useState(false)
   /** Settled advisory answers for the advised row, counting the initial run. */
@@ -134,13 +148,13 @@ export function QueueDock(props: QueueDockProps) {
   useEffect(() => {
     if (rowCount === 0 && !collapsed) setCollapsed(true)
     if (editing !== null && (!queueMutable || !queue.some(row => row.id === editing.id))) setEditing(null)
-    if (advising !== null && !queue.some(row => row.id === advising.id)) { setAdvising(null); setPeek(false) }
+    if (advising !== null && !advising.rowless && !queue.some(row => row.id === advising.id)) { setAdvising(null); setPeek(false) }
     if (advising === null) setPeek(false)
   }, [advising, collapsed, editing, queue, queueMutable, rowCount])
 
   const advisorRun = useMemo(
     () => runAdvisorPipeline({
-      running, queuedCount: queue.length, rowText: advising?.text ?? '',
+      running, queuedCount: queue.length, rowText: advising?.preview ?? '',
     }, minConfidence),
     [advising, minConfidence, queue.length, running],
   )
@@ -153,15 +167,34 @@ export function QueueDock(props: QueueDockProps) {
   )
   const liveRunning = live?.status === 'running'
 
+  // Remember runs seen while a row-anchored sheet is open — including sheets
+  // opened by the smart button, which bypass adoption. After that row drains,
+  // the same run must not be re-adopted as a rowless /side fallback.
+  useEffect(() => {
+    if (liveRun == null || advising === null || advising.rowless) return
+    if (liveRun.queuedItemId !== advising.id) return
+    rowAnchoredRuns.current = new Set(rowAnchoredRuns.current).add(liveRun.runId)
+  }, [advising, liveRun])
+
   // A /side command starts the run without the dock's smart button, so the
   // sheet would never open and the streamed answer would be unreadable. Adopt
   // any projected run whose queued row is still pending, unless the operator
-  // explicitly closed that run's sheet.
+  // explicitly closed that run's sheet. A run anchored to no pending row is a
+  // /side fallback over a delivered message; adopt it only while the queue is
+  // empty and the run never had a pending row, so a row-anchored run that just
+  // drained keeps its cleanup semantics instead of reopening as rowless.
   useEffect(() => {
     if (advising !== null || liveRun == null || dismissedRuns.has(liveRun.runId)) return
     const row = queue.find(candidate => candidate.id === liveRun.queuedItemId)
-    if (row !== undefined) setAdvising(row)
-  }, [advising, dismissedRuns, liveRun, queue])
+    if (row !== undefined) {
+      rowAnchoredRuns.current = new Set(rowAnchoredRuns.current).add(liveRun.runId)
+      setAdvising({ id: row.id, preview: row.preview, rowless: false })
+      return
+    }
+    if (rowCount === 0 && !rowAnchoredRuns.current.has(liveRun.runId)) {
+      setAdvising({ id: liveRun.queuedItemId, preview: lastHuman ?? '', rowless: true })
+    }
+  }, [advising, dismissedRuns, lastHuman, liveRun, queue, rowCount])
 
   /** Close the sheet or pill, remembering the current run so it stays closed. */
   const dismissAdvising = (): void => {
@@ -170,8 +203,6 @@ export function QueueDock(props: QueueDockProps) {
     }
     setAdvising(null)
   }
-
-  if (rowCount === 0) return null
 
   const interactionActive = queueMutable && (editing !== null || busy !== null)
   const expanded = !collapsed || interactionActive
@@ -201,6 +232,90 @@ export function QueueDock(props: QueueDockProps) {
       { kind: 'edit', content: [{ type: 'text', text: editing.text }] },
       t('queue.editFailed'),
     )) setEditing(null)
+  }
+
+  /** Delivery callbacks exist only while a pending row backs the anchor. */
+  const rowActions = advising !== null && !advising.rowless
+    ? {
+      followUp: {
+        disabled: liveRunning,
+        onSubmit: (question: string) => {
+          const row = queue.find(candidate => candidate.id === advising.id)
+          if (row === undefined) return
+          setPeekAnswers(current => current + 1)
+          void applyAction(row.id, { kind: 'advise', question }, t('queue.steerSmartFailed')).catch(() => undefined)
+        },
+      },
+      onSendNow: () => {
+        const row = queue.find(candidate => candidate.id === advising.id)
+        if (row === undefined) return
+        void applyAction(row.id, { kind: 'steer' }, t('queue.steerSmartFailed')).then((delivered) => {
+          if (delivered) setAdvising(current => current?.id === row.id ? null : current)
+        })
+      },
+    }
+    : {}
+
+  /** Peek pill portal plus the advisor sheet, rendered over the dock or alone. */
+  const advisorSurface = (
+    <>
+      {advising !== null && peek && createPortal(
+        /* The peek pill outlives the dock column: a pending ask_user_question
+           card hides the dock, but peek must stay reachable over any card. */
+        <div className={css.peekPortal}>
+          <div className={css.peek}>
+            <span className={css.peekTitle}>{t('advisor.title')}</span>
+            <span className={css.peekMeta}>{t('advisor.peek.answers', { n: peekAnswers })}{liveRunning ? ` · ${t('advisor.live.working')}` : ''}</span>
+            <button
+              type="button"
+              className={css.peekBtn}
+              aria-label={t('advisor.expand')}
+              onClick={() => { setPeek(false) }}
+            >
+              <IconChevronUpOutline14 />
+            </button>
+            <button
+              type="button"
+              className={css.peekBtn}
+              aria-label={t('advisor.close')}
+              onClick={dismissAdvising}
+            >
+              <IconCloseOutline16 />
+            </button>
+          </div>
+        </div>,
+        document.body,
+      )}
+      {advising !== null && !peek && (
+        <AdvisorSheet
+          open
+          running={running}
+          queuedCount={queue.length}
+          rowPreview={advising.preview}
+          rowless={advising.rowless}
+          lastHuman={lastHuman}
+          busy={busy !== null}
+          {...advisorRun}
+          live={live}
+          minConfidence={minConfidence}
+          {...rowActions}
+          onCollapse={() => { setPeek(true) }}
+          t={t}
+          onClose={dismissAdvising}
+        />
+      )}
+    </>
+  )
+
+  // The dock column is queue-owned, but a /side fallback run advises over a
+  // delivered message with nothing queued: the sheet must render anyway.
+  if (rowCount === 0 && advising === null) return null
+  if (rowCount === 0) {
+    return (
+      <div className={css.dock} data-queue-dock="">
+        {advisorSurface}
+      </div>
+    )
   }
 
   return (
@@ -366,7 +481,7 @@ export function QueueDock(props: QueueDockProps) {
                             title={running ? undefined : t('queue.steerSmart.unavailable')}
                             disabled={busy !== null || !running}
                             onClick={() => {
-                              setAdvising(row)
+                              setAdvising({ id: row.id, preview: row.preview, rowless: false })
                               setPeek(false)
                               setPeekAnswers(0)
                               // Ask the host for the live advisory side run; the
@@ -455,63 +570,7 @@ export function QueueDock(props: QueueDockProps) {
           })}
         </ul>
       </div>
-      {advising !== null && peek && createPortal(
-        /* The peek pill outlives the dock column: a pending ask_user_question
-           card hides the dock, but peek must stay reachable over any card. */
-        <div className={css.peekPortal}>
-          <div className={css.peek}>
-            <span className={css.peekTitle}>{t('advisor.title')}</span>
-            <span className={css.peekMeta}>{t('advisor.peek.answers', { n: peekAnswers })}{liveRunning ? ` · ${t('advisor.live.working')}` : ''}</span>
-            <button
-              type="button"
-              className={css.peekBtn}
-              aria-label={t('advisor.expand')}
-              onClick={() => { setPeek(false) }}
-            >
-              <IconChevronUpOutline14 />
-            </button>
-            <button
-              type="button"
-              className={css.peekBtn}
-              aria-label={t('advisor.close')}
-              onClick={dismissAdvising}
-            >
-              <IconCloseOutline16 />
-            </button>
-          </div>
-        </div>,
-        document.body,
-      )}
-      {advising !== null && !peek && (
-        <AdvisorSheet
-          open
-          running={running}
-          queuedCount={queue.length}
-          rowPreview={advising.preview}
-          lastHuman={lastHuman}
-          busy={busy !== null}
-          {...advisorRun}
-          live={live}
-          minConfidence={minConfidence}
-          followUp={{
-            disabled: liveRunning,
-            onSubmit: (question) => {
-              const itemId = advising.id
-              setPeekAnswers(current => current + 1)
-              void applyAction(itemId, { kind: 'advise', question }, t('queue.steerSmartFailed')).catch(() => undefined)
-            },
-          }}
-          onCollapse={() => { setPeek(true) }}
-          t={t}
-          onSendNow={() => {
-            const itemId = advising.id
-            void applyAction(itemId, { kind: 'steer' }, t('queue.steerSmartFailed')).then((delivered) => {
-              if (delivered) setAdvising(current => current?.id === itemId ? null : current)
-            })
-          }}
-          onClose={dismissAdvising}
-        />
-      )}
+      {advisorSurface}
     </div>
   )
 }

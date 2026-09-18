@@ -19,6 +19,8 @@ export interface AdvisorSheetProps {
   queuedCount: number
   /** The advised row's projected preview text. */
   rowPreview: string
+  /** True for a /side fallback run: no pending row backs the anchor. */
+  rowless: boolean
   /** Newest human transcript preview; undefined before any human input. */
   lastHuman: string | undefined
   /** Whether another queue mutation is in flight; disables the override action. */
@@ -44,7 +46,8 @@ export interface AdvisorSheetProps {
   /** Collapses the sheet into the dock's peek pill; the side run keeps streaming. */
   onCollapse?: () => void
   t: Translator
-  onSendNow: () => void
+  /** Delivers the advised row now; absent for a rowless run, which owns no row. */
+  onSendNow?: () => void
   onClose: () => void
 }
 
@@ -81,7 +84,8 @@ const STATUS_LABELS: Record<AdvisorStepStatus, ConversationKey> = {
  * and the delivery.
  */
 export function AdvisorSheet({
-  open, running, queuedCount, rowPreview, lastHuman, busy, steps, outcome, minConfidence, live, followUp, onCollapse, t, onSendNow, onClose,
+  open, running, queuedCount, rowPreview, rowless, lastHuman, busy, steps, outcome, minConfidence,
+  live, followUp, onCollapse, t, onSendNow, onClose,
 }: AdvisorSheetProps) {
   const gate = gateOutcome(outcome, minConfidence)
   const liveAllowed = live?.verdict !== undefined && live.verdict.confidence >= minConfidence
@@ -114,8 +118,12 @@ export function AdvisorSheet({
               <IconChevronDownOutline14 />
             </button>
           )}
-          <Button variant="ghost" size="sm" onClick={onClose}>{t('advisor.keepQueued')}</Button>
-          <Button variant="primary" size="sm" disabled={busy} onClick={onSendNow}>{t('advisor.sendNow')}</Button>
+          {onSendNow !== undefined && (
+            <>
+              <Button variant="ghost" size="sm" onClick={onClose}>{t('advisor.keepQueued')}</Button>
+              <Button variant="primary" size="sm" disabled={busy} onClick={onSendNow}>{t('advisor.sendNow')}</Button>
+            </>
+          )}
           {!full && (
             <button
               type="button"
@@ -130,26 +138,28 @@ export function AdvisorSheet({
       )}
     >
       <div className={clsx(css.scroll)}>
-        <div className={css.gate}>
-          <span className={css.gateConfidence}>{t('advisor.gate.label')}</span>
-          {live?.verdict === undefined && (live === undefined || liveSettled) && (
-            <span className={css.gateOutcome}>
-              {t('advisor.gate.confidence', { p: Math.round(outcome.confidence * 100) })}
-              {' — '}
-              {gate === 'allowed' ? t('advisor.gate.allowed') : t('advisor.gate.held')}
-            </span>
-          )}
-          {live?.verdict !== undefined && (
-            <span className={css.gateOutcome}>
-              {t('advisor.gate.confidence', { p: Math.round(live.verdict.confidence * 100) })}
-              {' — '}
-              {liveAllowed ? t('advisor.gate.allowed') : t('advisor.gate.held')}
-            </span>
-          )}
-          {live !== undefined && live.verdict === undefined && !liveSettled && (
-            <span className={css.gateOutcome}>{t('advisor.live.pendingGate')}</span>
-          )}
-        </div>
+        {!rowless && (
+          <div className={css.gate}>
+            <span className={css.gateConfidence}>{t('advisor.gate.label')}</span>
+            {live?.verdict === undefined && (live === undefined || liveSettled) && (
+              <span className={css.gateOutcome}>
+                {t('advisor.gate.confidence', { p: Math.round(outcome.confidence * 100) })}
+                {' — '}
+                {gate === 'allowed' ? t('advisor.gate.allowed') : t('advisor.gate.held')}
+              </span>
+            )}
+            {live?.verdict !== undefined && (
+              <span className={css.gateOutcome}>
+                {t('advisor.gate.confidence', { p: Math.round(live.verdict.confidence * 100) })}
+                {' — '}
+                {liveAllowed ? t('advisor.gate.allowed') : t('advisor.gate.held')}
+              </span>
+            )}
+            {live !== undefined && live.verdict === undefined && !liveSettled && (
+              <span className={css.gateOutcome}>{t('advisor.live.pendingGate')}</span>
+            )}
+          </div>
+        )}
         <div className={css.verdict}>
           <span className={css.verdictKind}>{t('advisor.verdict.label')}</span>
           {live?.verdict === undefined && (live === undefined || liveSettled) && (
@@ -167,12 +177,14 @@ export function AdvisorSheet({
             <span className={css.label}>{t('advisor.field.state')}</span>
             <span className={css.value}>{running ? t('advisor.state.running') : t('advisor.state.idle')}</span>
           </div>
+          {!rowless && (
+            <div className={css.row}>
+              <span className={css.label}>{t('advisor.field.queued')}</span>
+              <span className={css.value}>{t('advisor.queuedCount', { n: queuedCount })}</span>
+            </div>
+          )}
           <div className={css.row}>
-            <span className={css.label}>{t('advisor.field.queued')}</span>
-            <span className={css.value}>{t('advisor.queuedCount', { n: queuedCount })}</span>
-          </div>
-          <div className={css.row}>
-            <span className={css.label}>{t('advisor.field.message')}</span>
+            <span className={css.label}>{t(rowless ? 'advisor.field.about' : 'advisor.field.message')}</span>
             <span className={css.value}>{rowPreview}</span>
           </div>
           <div className={css.row}>

@@ -9,3 +9,5 @@
   - option "Permission Switch the permission preset (sandbox mode + approval policy)"
   - option "Model Select the model for this conversation"
   - option "Export Download this Session log as a ZIP archive"
+  - 'option "btw Alias of /side: ask the advisor about the current conversation"'
+  - option "side Ask the advisor a side question about the current conversation"

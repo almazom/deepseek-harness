@@ -7994,6 +7994,10 @@ importers:
         version: link:../../core/tools
 
   packages/session/command-side:
+    dependencies:
+      zod:
+        specifier: ^4.4.3
+        version: 4.4.3
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:^

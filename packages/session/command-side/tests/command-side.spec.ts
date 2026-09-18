@@ -9,6 +9,7 @@ import SessionStore, { Session, SessionId } from '@deepseek-ai/dsh-session'
 import type { QueueAdvisorRequest } from '@deepseek-ai/dsh-session-advisor-llm/dispatcher'
 import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 import * as commandSide from '@deepseek-ai/dsh-command-side'
+import { latestHumanProjectionDefinition } from '../src/projection.ts'
 import { createInboxStub } from '@deepseek-ai/dsh-agent-loop-testkit'
 
 const USAGE_SNIPPET = 'Usage: /side <question>'
@@ -108,11 +109,21 @@ function queue(test: Harness, text: string, target: 'next-turn' | 'next-step' = 
   }))
 }
 
+/** Append one delivered human message to the session log. */
+function deliver(test: Harness, text: string): string {
+  const message = createUserMessage({
+    content: [{ type: 'text', text }],
+    source: { kind: 'user' },
+  })
+  test.session.append('user/message', message, { surfaceOp: 'append' })
+  return message.id
+}
+
 describe('@deepseek-ai/dsh-command-side registration', () => {
   it('registers both spellings with Loader-safe exports and disposes them', async () => {
     const test = await harness()
     expect(commandSide.name).toBe('command-side')
-    expect(commandSide.inject).toEqual(['commands'])
+    expect(commandSide.inject).toEqual(['commands', 'sessionProjections'])
     expect('default' in commandSide).toBe(false)
     const loader = Object.create(Loader.prototype) as Loader
     expect(loader.unwrapExports(commandSide)).toBe(commandSide)
@@ -121,13 +132,13 @@ describe('@deepseek-ai/dsh-command-side registration', () => {
     expect(listed).toContainEqual({
       definitionId: '@deepseek-ai/dsh-command-side/side',
       name: 'side',
-      description: 'Ask the advisor a side question about the latest queued message',
+      description: 'Ask the advisor a side question about the current conversation',
       input: { hint: '<question>' },
     })
     expect(listed).toContainEqual({
       definitionId: '@deepseek-ai/dsh-command-side/btw',
       name: 'btw',
-      description: 'Alias of /side: ask the advisor about the latest queued message',
+      description: 'Alias of /side: ask the advisor about the current conversation',
       input: { hint: '<question>' },
     })
     expect(test.ctx.commands.find(test.agent, 'side')).toBeDefined()
@@ -172,19 +183,71 @@ describe('/side and /btw execution', () => {
     })
   })
 
-  it('trims the question, refuses a blank one, and reports an empty queue', async () => {
+  it('trims the question and refuses a blank one', async () => {
     const test = await harness()
 
     const blank = await run(test, '/side   ')
     expect(blank.kind).toBe('error')
     expect(blank.text).toContain('A side question is required.')
     expect(blank.text).toContain(USAGE_SNIPPET)
+  })
 
+  it('falls back to the latest delivered human message when the queue is empty', async () => {
+    const test = await harness()
+    const first = deliver(test, 'почини тесты')
+    const second = deliver(test, 'now look at the failing log')
+
+    const result = await run(test, '/side what did you check first?')
+    expect(result).toEqual({
+      kind: 'success',
+      text: 'Advisor side run started for the latest message "now look at the failing log".',
+    })
+    expect(test.advisorRuns).toHaveLength(1)
+    expect(test.advisorRuns[0]).toMatchObject({
+      queuedItemId: second,
+      queuedMessage: 'now look at the failing log',
+      question: 'what did you check first?',
+    })
+    expect(first).not.toBe(second)
+  })
+
+  it('never advises over injected context or assistant messages in the fallback', async () => {
+    const test = await harness()
+    deliver(test, 'the real question')
+    test.session.append('user/message', createUserMessage({
+      content: [{ type: 'text', text: 'file-change notice injected by the host' }],
+      source: { kind: 'agent.inject' as never },
+    }), { surfaceOp: 'append' })
+
+    const result = await run(test, '/side about what?')
+    expect(result.kind).toBe('success')
+    expect(test.advisorRuns[0]).toMatchObject({
+      queuedMessage: 'the real question',
+    })
+  })
+
+  it('skips attachment-only human messages in the fallback', async () => {
+    const test = await harness()
+    deliver(test, 'the real question')
+    test.session.append('user/message', createUserMessage({
+      content: [{ type: 'image', attachment: { attachmentId: 'att-1', mediaType: 'image/png', bytes: 1, width: 1, height: 1 } as never }],
+      source: { kind: 'user' },
+    }), { surfaceOp: 'append' })
+
+    const result = await run(test, '/side about what?')
+    expect(result.kind).toBe('success')
+    expect(test.advisorRuns[0]).toMatchObject({
+      queuedMessage: 'the real question',
+    })
+  })
+
+  it('errors on an empty queue when the session has no delivered human message', async () => {
     const drained = await harness()
     const noQueue = await run(drained, '/side anything?')
     expect(noQueue.kind).toBe('error')
-    expect(noQueue.text).toContain('No queued message to ask about:')
+    expect(noQueue.text).toContain('No message to advise about yet:')
     expect(noQueue.text).toContain(USAGE_SNIPPET)
+    expect(drained.advisorRuns).toHaveLength(0)
   })
 
   it('errors without a mounted advisor and without hitting the inbox', async () => {
@@ -223,5 +286,12 @@ describe('/side and /btw execution', () => {
       text: `Advisor side run started for queued message "${'x'.repeat(77)}...".`,
     })
     expect(test.advisorRuns[0]?.queuedMessage).toBe(longText)
+  })
+
+  it('validates the projection state schema on durable readback', () => {
+    const state = { id: 'm-1', text: 'почини тесты' }
+    expect(latestHumanProjectionDefinition.stateSchema.parse(state)).toEqual(state)
+    expect(latestHumanProjectionDefinition.stateSchema.safeParse({ ...state, id: 7 }).success).toBe(false)
+    expect(latestHumanProjectionDefinition.stateSchema.safeParse({ ...state, extra: true }).success).toBe(false)
   })
 })
