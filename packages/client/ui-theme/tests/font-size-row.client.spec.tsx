@@ -122,8 +122,9 @@ describe('FontSizeRow', () => {
     fireEvent.blur(input())
     expect(b.setFontSize).toHaveBeenLastCalledWith(17)
     // Cleared field + blur: the persisted value wins (no drop to the minimum).
+    // oxlint-disable-next-line typescript/unbound-method -- the IDL value setter requires the element receiver, applied explicitly below
     const nativeSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!
-    nativeSetter.call(input(), '')
+    Reflect.apply(nativeSetter, input(), [''])
     fireEvent.change(input(), { target: { value: '' } })
     fireEvent.blur(input())
     expect(b.setFontSize).not.toHaveBeenCalledWith(12)
