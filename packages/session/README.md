@@ -60,6 +60,7 @@ The group splits into five families: durable storage (persistence seam, backends
 | Package | Role | ctx key |
 |---|---|---|
 | [`session-advisor-llm/`](session-advisor-llm/README.md) | Advisory-run policy, section-stream watcher, and the host dispatcher for the Smart-steer queue advisor | `ctx.queueAdvisor` (optional, Web profile) |
+| [`command-side/`](command-side/README.md) | `/side` (`/btw`) slash command that starts one advisor side run over the latest queued message | `ctx.queueAdvisor` (optional, consumer) |
 
 ### Telemetry
 
