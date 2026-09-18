@@ -123,6 +123,8 @@ export function QueueDock(props: QueueDockProps) {
   const [busy, setBusy] = useState<QueueItemId | null>(null)
   const [collapsed, setCollapsed] = useState(true)
   const [advising, setAdvising] = useState<QueueRow | null>(null)
+  /** Run ids the operator explicitly closed; the auto-open skips them until a new run starts. */
+  const [dismissedRuns, setDismissedRuns] = useState<ReadonlySet<string>>(new Set())
   /** Peek state: the sheet is collapsed into the pill while its side run streams on. */
   const [peek, setPeek] = useState(false)
   /** Settled advisory answers for the advised row, counting the initial run. */
@@ -150,6 +152,24 @@ export function QueueDock(props: QueueDockProps) {
     [advising, liveRun],
   )
   const liveRunning = live?.status === 'running'
+
+  // A /side command starts the run without the dock's smart button, so the
+  // sheet would never open and the streamed answer would be unreadable. Adopt
+  // any projected run whose queued row is still pending, unless the operator
+  // explicitly closed that run's sheet.
+  useEffect(() => {
+    if (advising !== null || liveRun == null || dismissedRuns.has(liveRun.runId)) return
+    const row = queue.find(candidate => candidate.id === liveRun.queuedItemId)
+    if (row !== undefined) setAdvising(row)
+  }, [advising, dismissedRuns, liveRun, queue])
+
+  /** Close the sheet or pill, remembering the current run so it stays closed. */
+  const dismissAdvising = (): void => {
+    if (liveRun != null && advising?.id === liveRun.queuedItemId) {
+      setDismissedRuns(previous => new Set(previous).add(liveRun.runId))
+    }
+    setAdvising(null)
+  }
 
   if (rowCount === 0) return null
 
@@ -454,7 +474,7 @@ export function QueueDock(props: QueueDockProps) {
               type="button"
               className={css.peekBtn}
               aria-label={t('advisor.close')}
-              onClick={() => { setAdvising(null) }}
+              onClick={dismissAdvising}
             >
               <IconCloseOutline16 />
             </button>
@@ -489,7 +509,7 @@ export function QueueDock(props: QueueDockProps) {
               if (delivered) setAdvising(current => current?.id === itemId ? null : current)
             })
           }}
-          onClose={() => { setAdvising(null) }}
+          onClose={dismissAdvising}
         />
       )}
     </div>

@@ -129,6 +129,39 @@ function imageRow(id: string, refId: string, text = ''): QueuedMessage {
   }
 }
 
+/** A keyed useProjection fake over one pushable advisor/run value. */
+function projectionKit() {
+  let value: AdvisorRunProjection | null = null
+  const listeners = new Set<() => void>()
+  const subscribe = (fn: () => void) => {
+    listeners.add(fn)
+    return () => { listeners.delete(fn) }
+  }
+  const face = (selector: (current: AdvisorRunProjection | null) => unknown) =>
+    useSyncExternalStore(subscribe, () => selector(value))
+  const useProjection = ((_key: string, selector?: (current: AdvisorRunProjection | null) => unknown) => (
+    selector === undefined ? face(current => current) : face(selector)
+  )) as unknown as QueueDockProps['useProjection']
+  return {
+    useProjection,
+    push: (next: AdvisorRunProjection | null): void => {
+      value = next
+      for (const listener of [...listeners]) listener()
+    },
+  }
+}
+
+function liveValue(over: Partial<AdvisorRunProjection>): AdvisorRunProjection {
+  return {
+    runId: 'run-1' as never,
+    queuedItemId: iid('r1'),
+    status: 'running',
+    steps: [],
+    verdict: undefined,
+    ...over,
+  }
+}
+
 describe('QueueDock', () => {
   it('renders null while the queue is empty', () => {
     const snap = snapshotWith([])
@@ -820,39 +853,6 @@ describe('QueueDock smart steer', () => {
   describe('live advisory projection', () => {
     const TAIL_ZH = '最近的话题是修复登录测试'
 
-    /** A keyed useProjection fake over one pushable advisor/run value. */
-    function projectionKit() {
-      let value: AdvisorRunProjection | null = null
-      const listeners = new Set<() => void>()
-      const subscribe = (fn: () => void) => {
-        listeners.add(fn)
-        return () => { listeners.delete(fn) }
-      }
-      const face = (selector: (current: AdvisorRunProjection | null) => unknown) =>
-        useSyncExternalStore(subscribe, () => selector(value))
-      const useProjection = ((_key: string, selector?: (current: AdvisorRunProjection | null) => unknown) => (
-        selector === undefined ? face(current => current) : face(selector)
-      )) as unknown as QueueDockProps['useProjection']
-      return {
-        useProjection,
-        push: (next: AdvisorRunProjection | null): void => {
-          value = next
-          for (const listener of [...listeners]) listener()
-        },
-      }
-    }
-
-    function liveValue(over: Partial<AdvisorRunProjection>): AdvisorRunProjection {
-      return {
-        runId: 'run-1' as never,
-        queuedItemId: iid('r1'),
-        status: 'running',
-        steps: [],
-        verdict: undefined,
-        ...over,
-      }
-    }
-
     it('streams live phases with raw findings and a gate-consistent verdict', () => {
       const { useProjection, push } = projectionKit()
       const snap = snapshotWith([row('r1', 'почини тесты', 'почини тесты')])
@@ -945,7 +945,9 @@ describe('QueueDock advisor side-runtime', () => {
   const FOLLOW_SEND_ZH = '发送追问'
   const EXPAND_ZH = '展开面板'
   const COLLAPSE_ZH = '收起为迷你条'
+  const CLOSE_ZH = '关闭'
   const ANSWERS_ZH = (n: number): string => `${n} 个回答`
+  const RUN_FINDING_ZH = '最近的话题是修复登录测试'
 
   function openAdvised(
     injected: Partial<QueueDockInjected & Pick<QueueDockProps, 'useChat' | 'useProjection'>> = {},
@@ -995,5 +997,53 @@ describe('QueueDock advisor side-runtime', () => {
     expect((view.getByRole('button', { name: FOLLOW_SEND_ZH }) as HTMLButtonElement).disabled).toBe(true)
     fireEvent.click(view.getByRole('button', { name: COLLAPSE_ZH }))
     expect(screen.getByText(`${ANSWERS_ZH(0)} · 建议会话读取会话快照中…`)).toBeTruthy()
+  })
+
+  it('auto-opens the sheet when a projected run starts without the smart button', () => {
+    // A /side command starts the run host-side; no dock button is clicked.
+    const { useProjection, push } = projectionKit()
+    const snap = snapshotWith([row('r1', 'почини тесты', 'почини тесты')])
+    const source = liveSession(snap)
+    const view = render(<QueueDock {...kitFor(snap, { useProjection })} useSession={source.useSession} />)
+    expect(view.queryByRole('dialog', { name: '智能插话顾问' })).toBeNull()
+
+    act(() => { push(liveValue({ status: 'running', steps: [{ step: 'tail', finding: RUN_FINDING_ZH }] })) })
+    const dialog = view.getByRole('dialog', { name: '智能插话顾问' })
+    expect(dialog.textContent).toContain(RUN_FINDING_ZH)
+  })
+
+  it('keeps an explicitly closed run closed and reopens for a new run', () => {
+    const { useProjection, push } = projectionKit()
+    const snap = snapshotWith([row('r1', 'почини тесты', 'почини тесты')])
+    const source = liveSession(snap)
+    const view = render(<QueueDock {...kitFor(snap, { useProjection })} useSession={source.useSession} />)
+    act(() => { push(liveValue({ status: 'running' })) })
+    expect(view.getByRole('dialog', { name: '智能插话顾问' })).toBeTruthy()
+
+    // Closing during the run must not be undone by the auto-open effect.
+    fireEvent.click(view.getByRole('button', { name: CLOSE_ZH }))
+    expect(view.queryByRole('dialog', { name: '智能插话顾问' })).toBeNull()
+    act(() => { push(liveValue({ status: 'done', verdict: { kind: 'send-now', confidence: 0.97, reason: '一致' } })) })
+    expect(view.queryByRole('dialog', { name: '智能插话顾问' })).toBeNull()
+
+    act(() => { push(liveValue({ runId: 'run-2' as never, status: 'running' })) })
+    expect(view.getByRole('dialog', { name: '智能插话顾问' })).toBeTruthy()
+  })
+
+  it('auto-opens a new run over another queued row while a dismissed run stays dismissed', () => {
+    const { useProjection, push } = projectionKit()
+    const snap = snapshotWith([row('r1', 'почини тесты', 'почини тесты'), row('r2', 'второй вопрос', 'второй вопрос')])
+    const source = liveSession(snap)
+    const view = render(<QueueDock {...kitFor(snap, { useProjection })} useSession={source.useSession} />)
+    act(() => { push(liveValue({ status: 'running' })) })
+    fireEvent.click(view.getByRole('button', { name: CLOSE_ZH }))
+    expect(view.queryByRole('dialog', { name: '智能插话顾问' })).toBeNull()
+    // The dismissed id settling later never resurrects its sheet.
+    act(() => { push(liveValue({ status: 'done', verdict: { kind: 'send-now', confidence: 0.97, reason: '一致' } })) })
+    expect(view.queryByRole('dialog', { name: '智能插话顾问' })).toBeNull()
+
+    // A run over another pending row carries a new run id: it auto-opens.
+    act(() => { push(liveValue({ runId: 'run-2' as never, queuedItemId: iid('r2'), status: 'running' })) })
+    expect(view.getByRole('dialog', { name: '智能插话顾问' })).toBeTruthy()
   })
 })

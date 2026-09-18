@@ -5,7 +5,7 @@ Status: implemented
 [English](2026-09-21-command-side-btw-alias-second-queueadvisor-consumer.md) | 中文
 
 - Kind: feature
-- Scope: packages/session/command-side, packages/preset/agent-presets, packages/bundle
+- Scope: packages/session/command-side, packages/client/ui-conversation, packages/preset/agent-presets, packages/bundle
 - Date: 2026-09-21
 
 ## 问题
@@ -14,7 +14,7 @@ Status: implemented
 
 ## 决策
 
-新包 `packages/session/command-side` 注册两个共享同一处理器的 `CommandDefinition`（`side` 与 `btw`），因为命令契约没有别名概念（`CommandDescriptor` 只有 `name`）。处理器通过严格服务存储解析可选的 `queueAdvisor` 服务，选取最新一条待处理项（先取 `nextTurn` 末尾，否则 `nextStep` 末尾），原样拼接其文本块，并以即发即忘方式携带键入的问题调用 `queueAdvisor.run`——这是会话控制器 `advise` 队列动作的逐字镜像，使该命令成为队列顾问能力缝的第二个消费者，而不是新的 Remote 表面。启动失败只记录警告，已返回的命令成功结果保持不变，与智能按钮路径的接受语义一致。
+新包 `packages/session/command-side` 注册两个共享同一处理器的 `CommandDefinition`（`side` 与 `btw`），因为命令契约没有别名概念（`CommandDescriptor` 只有 `name`）。处理器通过严格服务存储解析可选的 `queueAdvisor` 服务，选取最新一条待处理项（先取 `nextTurn` 末尾，否则 `nextStep` 末尾），原样拼接其文本块，并以即发即忘方式携带键入的问题调用 `queueAdvisor.run`——这是会话控制器 `advise` 队列动作的逐字镜像，使该命令成为队列顾问能力缝的第二个消费者，而不是新的 Remote 表面。启动失败只记录警告，已返回的命令成功结果保持不变，与智能按钮路径的接受语义一致。由于命令发起的运行不经过停靠栏的智能按钮，队列停靠栏会收养任何排队行仍待处理的 `advisor/run` 投影：顾问面板自动打开，流式判定可读；显式关闭某次运行会记录其 id，该投影存续期间面板保持关闭——新运行 id 对应另一条待处理行时仍会自动打开。
 
 ## 已考虑的替代方案
 
@@ -25,6 +25,7 @@ Status: implemented
 ## 后果
 
 - 两种拼写都出现在命令发现 UI 中；注册表级别的别名概念继续推迟，直到第二个命令需要它。
+- 命令发起的运行无需任何队列交互即可见：面板自行打开，Escape 后保持关闭；智能按钮仍可按需打开面板。
 - 命令落定后的启动失败只体现为主机警告加顾问面板缺席——命令结果已报告成功；把迟到的失败折叠进 `command/done` 需要命令平面尚未提供的生命周期回放缝。
 - 本包走标准组合行（standard/ptc/cordis 预设、base bundle 补丁与依赖、web-app 浏览器平面 `disabled: true`），无头与浏览器包保持不变。
 - `session-advisor-llm` 的 README 现在记录了其 invariant 伴随包的省略原因（本变更验证 README 时双语配对门暴露了该缺口）。

@@ -5,7 +5,7 @@ Status: implemented
 English | [中文](2026-09-21-command-side-btw-alias-second-queueadvisor-consumer.zh.md)
 
 - Kind: feature
-- Scope: packages/session/command-side, packages/preset/agent-presets, packages/bundle
+- Scope: packages/session/command-side, packages/client/ui-conversation, packages/preset/agent-presets, packages/bundle
 - Date: 2026-09-21
 
 ## Problem
@@ -14,7 +14,7 @@ Advisor side runs were reachable only through the queue dock's smart button: an 
 
 ## Decision
 
-New package `packages/session/command-side` registers two `CommandDefinition`s, `side` and `btw`, sharing one handler, because the command contract has no alias concept (`CommandDescriptor` carries `name` only). The handler resolves the optional `queueAdvisor` service through the strict service store, picks the latest pending item (`nextTurn` last, else `nextStep` last), joins the item's text blocks verbatim, and fires `queueAdvisor.run` fire-and-forget with the typed question — a literal mirror of the session controller's `advise` queue action, making the command the second consumer of the queue-advisor capability seam rather than a new Remote surface. Start failures log a warning and leave the already-returned command success intact, matching the smart-button path's acceptance semantics.
+New package `packages/session/command-side` registers two `CommandDefinition`s, `side` and `btw`, sharing one handler, because the command contract has no alias concept (`CommandDescriptor` carries `name` only). The handler resolves the optional `queueAdvisor` service through the strict service store, picks the latest pending item (`nextTurn` last, else `nextStep` last), joins the item's text blocks verbatim, and fires `queueAdvisor.run` fire-and-forget with the typed question — a literal mirror of the session controller's `advise` queue action, making the command the second consumer of the queue-advisor capability seam rather than a new Remote surface. Start failures log a warning and leave the already-returned command success intact, matching the smart-button path's acceptance semantics. Because a command-initiated run never passes through the dock's smart button, the queue dock adopts any projected `advisor/run` whose queued row is still pending: the advisor sheet auto-opens so the streamed verdict is readable, and explicitly closing a run records its id so the sheet stays closed while that projection persists — a new run id over another pending row still auto-opens.
 
 ## Alternatives considered
 
@@ -25,6 +25,7 @@ New package `packages/session/command-side` registers two `CommandDefinition`s, 
 ## Consequences
 
 - Both spellings appear in command discovery UI; a registry-level alias concept stays deferred until a second command needs it.
+- A command-initiated run is visible without any queue interaction: the sheet opens by itself and Escape keeps it closed; the smart button still opens the sheet on demand.
 - A start failure after the command settles surfaces only as the host warning plus the advisor sheet's absence — the command result already reported success; folding a late failure into `command/done` needs a lifecycle replay seam the command plane does not expose.
 - The package rides the standard composition rows (standard/ptc/cordis presets, base bundle patch and dependencies, web-app browser-plane `disabled: true`), so headless and browser bundles stay unchanged.
 - `session-advisor-llm`'s README now records its invariant-companion omission reason (the bilingual pairing gate surfaced the gap while this change's READMEs were verified).

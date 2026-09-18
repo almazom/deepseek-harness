@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-09-21-command-side-btw-alias-second-queueadvisor-consumer.md
-2026-09-21-command-side-btw-alias-second-queueadvisor-consumer.md: db81eb5bfbc9b6d277dc11223e0f5c7d85d75468
-2026-09-21-command-side-btw-alias-second-queueadvisor-consumer.zh.md: 417eaa85497b2cb4c98df45eba19dfd111f2bd02
+2026-09-21-command-side-btw-alias-second-queueadvisor-consumer.md: 13873492a0df178035c6248dba58686e21bec351
+2026-09-21-command-side-btw-alias-second-queueadvisor-consumer.zh.md: 023844ce1123d6d19a73b01427c2b3ee12095675
