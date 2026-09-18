@@ -427,6 +427,9 @@
 - id: command-goal
   disabled: true
 
+- id: command-side
+  disabled: true
+
 - id: tool-goal
   disabled: true
 

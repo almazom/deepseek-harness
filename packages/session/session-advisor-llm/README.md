@@ -87,3 +87,5 @@ No main-request invalidation. The fixed system instruction is reusable across ru
 ### Dev Note
 
 The section watcher reports any closed top-level key, not only the four contract keys: the dispatcher owns mapping keys to `AdvisorStepId` phases so a provider that adds keys degrades to fewer visible steps instead of a failed run.
+
+- No invariant companion is published: the dispatcher-to-projection relationship is durably recorded in the session log and already observed by the real-composition dispatcher tests; no independent runtime observation can diverge from them.
