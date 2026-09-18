@@ -259,6 +259,14 @@
 
 /* Peek pill: the collapsed advisor sheet riding above the composer. No mask —
    the conversation stays interactive while the advisory side run streams on. */
+.peekPortal {
+  position: fixed;
+  left: 12px;
+  bottom: calc(12px + env(safe-area-inset-bottom));
+  /* Above page cards that hide the dock column, below the Modal mask (1000). */
+  z-index: 900;
+}
+
 .peek {
   display: flex;
   align-items: center;

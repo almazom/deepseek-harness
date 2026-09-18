@@ -5,7 +5,7 @@
  */
 import type { GlobalStandardProps } from '@deepseek-ai/dsh-client-ui-slots'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { act, cleanup, fireEvent, render, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { useSyncExternalStore } from 'react'
 import type {
   QueuedMessage, SessionListState, SessionSnapshot,
@@ -979,8 +979,9 @@ describe('QueueDock advisor side-runtime', () => {
     const { view } = openAdvised({})
     fireEvent.click(view.getByRole('button', { name: COLLAPSE_ZH }))
     expect(view.queryByRole('dialog', { name: '智能插话顾问' })).toBeNull()
-    expect(view.getByText(ANSWERS_ZH(0))).toBeTruthy()
-    fireEvent.click(view.getByRole('button', { name: EXPAND_ZH }))
+    // The pill portals to document.body so it stays above any page card.
+    expect(screen.getByText(ANSWERS_ZH(0))).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: EXPAND_ZH }))
     expect(view.getByRole('dialog', { name: '智能插话顾问' })).toBeTruthy()
     expect(view.queryByText(ANSWERS_ZH(0))).toBeNull()
   })
@@ -993,6 +994,6 @@ describe('QueueDock advisor side-runtime', () => {
     expect((view.getByRole('textbox', { name: FOLLOW_LABEL_ZH }) as HTMLInputElement).disabled).toBe(true)
     expect((view.getByRole('button', { name: FOLLOW_SEND_ZH }) as HTMLButtonElement).disabled).toBe(true)
     fireEvent.click(view.getByRole('button', { name: COLLAPSE_ZH }))
-    expect(view.getByText(`${ANSWERS_ZH(0)} · 建议会话读取会话快照中…`)).toBeTruthy()
+    expect(screen.getByText(`${ANSWERS_ZH(0)} · 建议会话读取会话快照中…`)).toBeTruthy()
   })
 })

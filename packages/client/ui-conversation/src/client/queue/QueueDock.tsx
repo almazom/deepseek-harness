@@ -1,5 +1,6 @@
 import type { Context } from '@deepseek-ai/cordis'
 import { useEffect, useId, useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import type { FileAttachmentRef, ImageAttachmentRef } from '@deepseek-ai/dsh-attachment'
 import type { SnapshotStore } from '@deepseek-ai/dsh-client-store'
 import type { InjectFace, PropsLocale, PropsRuntime, SnapshotSelectorHook } from '@deepseek-ai/dsh-client-ui-slots'
@@ -434,27 +435,32 @@ export function QueueDock(props: QueueDockProps) {
           })}
         </ul>
       </div>
-      {advising !== null && peek && (
-        <div className={css.peek}>
-          <span className={css.peekTitle}>{t('advisor.title')}</span>
-          <span className={css.peekMeta}>{t('advisor.peek.answers', { n: peekAnswers })}{liveRunning ? ` · ${t('advisor.live.working')}` : ''}</span>
-          <button
-            type="button"
-            className={css.peekBtn}
-            aria-label={t('advisor.expand')}
-            onClick={() => { setPeek(false) }}
-          >
-            <IconChevronUpOutline14 />
-          </button>
-          <button
-            type="button"
-            className={css.peekBtn}
-            aria-label={t('advisor.close')}
-            onClick={() => { setAdvising(null) }}
-          >
-            <IconCloseOutline16 />
-          </button>
-        </div>
+      {advising !== null && peek && createPortal(
+        /* The peek pill outlives the dock column: a pending ask_user_question
+           card hides the dock, but peek must stay reachable over any card. */
+        <div className={css.peekPortal}>
+          <div className={css.peek}>
+            <span className={css.peekTitle}>{t('advisor.title')}</span>
+            <span className={css.peekMeta}>{t('advisor.peek.answers', { n: peekAnswers })}{liveRunning ? ` · ${t('advisor.live.working')}` : ''}</span>
+            <button
+              type="button"
+              className={css.peekBtn}
+              aria-label={t('advisor.expand')}
+              onClick={() => { setPeek(false) }}
+            >
+              <IconChevronUpOutline14 />
+            </button>
+            <button
+              type="button"
+              className={css.peekBtn}
+              aria-label={t('advisor.close')}
+              onClick={() => { setAdvising(null) }}
+            >
+              <IconCloseOutline16 />
+            </button>
+          </div>
+        </div>,
+        document.body,
       )}
       {advising !== null && !peek && (
         <AdvisorSheet

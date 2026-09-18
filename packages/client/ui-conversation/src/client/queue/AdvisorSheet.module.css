@@ -4,7 +4,10 @@
 .sheet {
   align-self: flex-end;
   width: min(480px, 100%);
-  max-height: min(72vh, 560px);
+  /* Explicit height: the Modal dialog is auto-height, so the scroll body's
+     flex basis of 0 only grows when the card itself has a real height. */
+  height: min(72vh, 560px);
+  height: min(72dvh, 560px);
   max-height: min(72dvh, 560px);
   border-radius: 16px 16px 0 0;
   margin-top: auto;
@@ -33,6 +36,8 @@
   flex: 1 1 0;
   min-height: 0;
   overflow-y: auto;
+  /* Keeps the in-sheet composer clear of the frame's pinned footer clip. */
+  padding-bottom: 8px;
 }
 
 /* Phone hit areas: the close affordance and the two override actions meet the
