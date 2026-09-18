@@ -125,6 +125,8 @@ export function resolveAdvisorLlmConfig(config: AdvisorLlmConfig): ResolvedAdvis
 export interface AdvisorPromptInput {
   /** The queued message the run decides about, verbatim. */
   readonly queuedMessage: string
+  /** Operator-composed follow-up; when present the follow-up, not the queued message, is the question. */
+  readonly question?: string
   /** Conversation tail, oldest first, ending at the present moment. */
   readonly tail: readonly { readonly role: 'user' | 'assistant'; readonly text: string }[]
   /** Recent distinct user requests, oldest first. */
@@ -142,7 +144,8 @@ export interface AdvisorPromptInput {
  * @returns model-visible message list for one advisory dispatch.
  */
 export function buildAdvisorMessages(input: AdvisorPromptInput): readonly Message[] {
-  const queued = JSON.stringify({ queuedMessage: input.queuedMessage })
+  const followUp = input.question === undefined ? {} : { followUp: input.question }
+  const queued = JSON.stringify({ queuedMessage: input.queuedMessage, ...followUp })
   const byteLength = (value: string): number => Buffer.byteLength(value, 'utf8')
   if (byteLength(queued) > input.maxInputBytes) {
     throw new Error('session-advisor-llm: queued message exceeds maxInputBytes')
@@ -152,6 +155,7 @@ export function buildAdvisorMessages(input: AdvisorPromptInput): readonly Messag
   for (;;) {
     framed = JSON.stringify({
       queuedMessage: input.queuedMessage,
+      ...followUp,
       tail,
       recentRequests: input.recentRequests,
     })
@@ -183,7 +187,9 @@ export function buildAdvisorSystemPrompt(): string {
     'the concrete evidence: "tail" names what the conversation tail is doing',
     'right now; "compare" states how the queued message relates to the',
     'system-level task and the recent user requests, or contradicts them;',
-    '"risk" states what breaks if the queued message interrupts now. The',
+    '"risk" states what breaks if the queued message interrupts now. When the',
+    'snapshot carries "followUp", that follow-up is the question to answer;',
+    'treat "queuedMessage" then as context only. The',
     'verdict is "send-now" only when interruption loses nothing and',
     'confidence is at least the configured gate; otherwise "hold". Write',
     'findings in English, one sentence each.',

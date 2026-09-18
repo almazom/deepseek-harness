@@ -489,4 +489,30 @@ describe('Session queue advise action', () => {
     expect(inbox.nextTurn.map(item => item.id)).toEqual([queued.id])
     await ctx.fiber.dispose()
   })
+
+  it('passes an operator follow-up question through to the dispatcher', async () => {
+    const { ctx, controller, agent, inbox } = await commandHarness()
+    const runs: Array<{ queuedItemId: MessageId; queuedMessage: string; question?: string }> = []
+    ctx.provide('queueAdvisor', {
+      run: (request: { queuedItemId: string; queuedMessage: string; question?: string }) => {
+        runs.push({
+          queuedItemId: MessageId(request.queuedItemId), queuedMessage: request.queuedMessage,
+          ...(request.question === undefined ? {} : { question: request.question }),
+        })
+        return Promise.resolve(null)
+      },
+    } as unknown as QueueAdvisorService)
+    const queued = createUserMessage({
+      content: [{ type: 'text', text: 'also run the typecheck' }],
+      source: { kind: 'user' },
+    })
+    inbox.append('next-turn', queued)
+    expect(controller.updateQueue({
+      sessionId: agent.id, itemId: queued.id, action: { kind: 'advise', question: 'а логи ты смотрел?' },
+    })).toEqual({ accepted: true })
+    expect(runs).toEqual([{
+      queuedItemId: queued.id, queuedMessage: 'also run the typecheck', question: 'а логи ты смотрел?',
+    }])
+    await ctx.fiber.dispose()
+  })
 })

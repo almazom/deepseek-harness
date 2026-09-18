@@ -494,7 +494,12 @@ export class SessionCommandController {
           .filter((block): block is Extract<typeof block, { type: 'text' }> => block.type === 'text')
           .map(block => block.text)
           .join('')
-        advisor.run({ session: agent.session, queuedItemId: request.itemId, queuedMessage }).catch(
+        advisor.run({
+          session: agent.session,
+          queuedItemId: request.itemId,
+          queuedMessage,
+          ...(request.action.question === undefined ? {} : { question: request.action.question }),
+        }).catch(
           (error: unknown): void => {
             this.ctx.logger.warn(
               `session-controller: advisory run for item "${request.itemId}" failed to start: ${String(error)}`,

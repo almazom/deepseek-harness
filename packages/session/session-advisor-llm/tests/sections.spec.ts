@@ -152,6 +152,13 @@ describe('buildAdvisorMessages', () => {
     expect(framed.queuedMessage).toBe('stop and run the tests')
   })
 
+  it('frames an operator follow-up as the question over the queued context', () => {
+    const messages = buildAdvisorMessages({ ...snapshot, question: 'а логи ты смотрел?', maxInputBytes: 8192 })
+    const framed = JSON.parse(textOf(messages[0]!)) as { followUp?: string; queuedMessage: string }
+    expect(framed.followUp).toBe('а логи ты смотрел?')
+    expect(framed.queuedMessage).toBe('stop and run the tests')
+  })
+
   it('rejects a queued message that cannot fit at all', () => {
     expect(() =>
       buildAdvisorMessages({ ...snapshot, queuedMessage: 'y'.repeat(200), maxInputBytes: 100 }),

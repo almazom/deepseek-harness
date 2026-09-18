@@ -158,7 +158,11 @@ export type QueueAction =
   }
   | { readonly kind: 'remove' }
   | { readonly kind: 'steer' }
-  | { readonly kind: 'advise' }
+  | {
+    readonly kind: 'advise'
+    /** Operator-composed follow-up side question; replaces the row-derived framing when present. */
+    readonly question?: string
+  }
 
 /** One Session list entry. */
 export interface SessionSummary {

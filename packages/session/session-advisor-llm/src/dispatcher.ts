@@ -30,6 +30,8 @@ export interface QueueAdvisorRequest {
   readonly queuedItemId: string
   /** The queued message text, verbatim. */
   readonly queuedMessage: string
+  /** Operator-composed follow-up; when present it is the question the run answers. */
+  readonly question?: string
   /** Caller-owned cancellation; the run also enforces its own deadline. */
   readonly signal?: AbortSignal
 }
@@ -94,6 +96,7 @@ export default class QueueAdvisorService extends Service {
       const window = tail.entries.slice(-this.resolved.tailEntries)
       const messages = buildAdvisorMessages({
         queuedMessage: request.queuedMessage,
+        ...(request.question === undefined ? {} : { question: request.question }),
         tail: window,
         recentRequests: tail.recentRequests.slice(-this.resolved.recentRequests),
         maxInputBytes: this.resolved.maxInputBytes,
