@@ -1,5 +1,6 @@
 import { clsx } from 'clsx'
-import { Button, Modal } from '@deepseek-ai/dsh-client-ui-primitives'
+import { useState } from 'react'
+import { Button, IconChevronDownOutline14, IconChevronUpOutline14, IconSendOutline14, Modal } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
 import type { AdvisorRunProjection, AdvisorStepId as AdvisorPhaseId } from '@deepseek-ai/dsh-session-advisor-llm'
 import {
@@ -34,6 +35,14 @@ export interface AdvisorSheetProps {
    * tier-1 reasoning rows and the verdict with the real streamed phases.
    */
   live: AdvisorRunProjection | undefined
+  /**
+   * The in-sheet follow-up composer: the sheet is a side-runtime over the same
+   * session, so each submitted follow-up starts a fresh advisory run without
+   * touching the main conversation. Disabled while a run streams in.
+   */
+  followUp?: { readonly disabled: boolean; readonly onSubmit: (question: string) => void }
+  /** Collapses the sheet into the dock's peek pill; the side run keeps streaming. */
+  onCollapse?: () => void
   t: Translator
   onSendNow: () => void
   onClose: () => void
@@ -72,23 +81,51 @@ const STATUS_LABELS: Record<AdvisorStepStatus, ConversationKey> = {
  * and the delivery.
  */
 export function AdvisorSheet({
-  open, running, queuedCount, rowPreview, lastHuman, busy, steps, outcome, minConfidence, live, t, onSendNow, onClose,
+  open, running, queuedCount, rowPreview, lastHuman, busy, steps, outcome, minConfidence, live, followUp, onCollapse, t, onSendNow, onClose,
 }: AdvisorSheetProps) {
   const gate = gateOutcome(outcome, minConfidence)
   const liveAllowed = live?.verdict !== undefined && live.verdict.confidence >= minConfidence
   const liveSettled = live !== undefined && live.status !== 'running'
+  const [full, setFull] = useState(false)
+  const [draft, setDraft] = useState('')
+  const submitFollowUp = (): void => {
+    const question = draft.trim()
+    if (question === '' || followUp === undefined || followUp.disabled) return
+    followUp.onSubmit(question)
+    setDraft('')
+  }
   return (
     <Modal
       open={open}
       onClose={onClose}
       title={t('advisor.title')}
       closeLabel={t('advisor.close')}
-      className={clsx(css.sheet)}
+      className={clsx(css.sheet, full && css.sheetFull)}
       contentClassName={clsx(css.frame)}
       footer={(
         <>
+          {onCollapse !== undefined && (
+            <button
+              type="button"
+              className={css.iconBtn}
+              aria-label={t('advisor.collapse')}
+              onClick={onCollapse}
+            >
+              <IconChevronDownOutline14 />
+            </button>
+          )}
           <Button variant="ghost" size="sm" onClick={onClose}>{t('advisor.keepQueued')}</Button>
           <Button variant="primary" size="sm" disabled={busy} onClick={onSendNow}>{t('advisor.sendNow')}</Button>
+          {!full && (
+            <button
+              type="button"
+              className={css.iconBtn}
+              aria-label={t('advisor.expand')}
+              onClick={() => { setFull(true) }}
+            >
+              <IconChevronUpOutline14 />
+            </button>
+          )}
         </>
       )}
     >
@@ -179,6 +216,32 @@ export function AdvisorSheet({
             </li>
           )}
         </ol>
+        {followUp !== undefined && (
+          <form
+            className={css.composer}
+            onSubmit={(event) => {
+              event.preventDefault()
+              submitFollowUp()
+            }}
+          >
+            <input
+              className={css.composerInput}
+              value={draft}
+              placeholder={t('advisor.followUp.placeholder')}
+              aria-label={t('advisor.followUp.label')}
+              disabled={followUp.disabled}
+              onChange={(event) => { setDraft(event.target.value) }}
+            />
+            <button
+              type="submit"
+              className={css.composerSend}
+              aria-label={t('advisor.followUp.send')}
+              disabled={followUp.disabled || draft.trim() === ''}
+            >
+              <IconSendOutline14 />
+            </button>
+          </form>
+        )}
       </div>
     </Modal>
   )

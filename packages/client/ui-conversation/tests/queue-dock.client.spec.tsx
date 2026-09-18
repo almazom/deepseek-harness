@@ -939,3 +939,60 @@ describe('QueueDock smart steer', () => {
     })
   })
 })
+
+describe('QueueDock advisor side-runtime', () => {
+  const FOLLOW_LABEL_ZH = '继续追问'
+  const FOLLOW_SEND_ZH = '发送追问'
+  const EXPAND_ZH = '展开面板'
+  const COLLAPSE_ZH = '收起为迷你条'
+  const ANSWERS_ZH = (n: number): string => `${n} 个回答`
+
+  function openAdvised(
+    injected: Partial<QueueDockInjected & Pick<QueueDockProps, 'useChat' | 'useProjection'>> = {},
+  ) {
+    const snap = snapshotWith([row('r1', 'почини тесты', 'почини тесты')])
+    const source = liveSession(snap)
+    const view = render(
+      <QueueDock {...kitFor(snap, injected)} useSession={source.useSession} />,
+    )
+    fireEvent.click(view.getByRole('button', { name: '智能插话发送' }))
+    return { view }
+  }
+
+  it('sends a follow-up question as a fresh advise action from the in-sheet composer', () => {
+    const updateQueue = vi.fn(() => Promise.resolve())
+    const { view } = openAdvised({ updateQueue })
+    const input = view.getByRole('textbox', { name: FOLLOW_LABEL_ZH }) as HTMLInputElement
+    fireEvent.change(input, { target: { value: '  а сейчас?  ' } })
+    fireEvent.click(view.getByRole('button', { name: FOLLOW_SEND_ZH }))
+    expect(updateQueue).toHaveBeenCalledTimes(2)
+    expect(updateQueue).toHaveBeenLastCalledWith(iid('r1'), { kind: 'advise', question: 'а сейчас?' })
+    expect(input.value).toBe('')
+  })
+
+  it('keeps the follow-up send disabled while the question is blank', () => {
+    const { view } = openAdvised({})
+    expect((view.getByRole('button', { name: FOLLOW_SEND_ZH }) as HTMLButtonElement).disabled).toBe(true)
+  })
+
+  it('collapses into the peek pill and expands back without closing the side runtime', () => {
+    const { view } = openAdvised({})
+    fireEvent.click(view.getByRole('button', { name: COLLAPSE_ZH }))
+    expect(view.queryByRole('dialog', { name: '智能插话顾问' })).toBeNull()
+    expect(view.getByText(ANSWERS_ZH(0))).toBeTruthy()
+    fireEvent.click(view.getByRole('button', { name: EXPAND_ZH }))
+    expect(view.getByRole('dialog', { name: '智能插话顾问' })).toBeTruthy()
+    expect(view.queryByText(ANSWERS_ZH(0))).toBeNull()
+  })
+
+  it('disables the composer while the advisory run streams and shows the pill working state', () => {
+    const running = () => ({
+      runId: '1' as never, queuedItemId: iid('r1') as never, status: 'running' as const, steps: [],
+    })
+    const { view } = openAdvised({ useProjection: running })
+    expect((view.getByRole('textbox', { name: FOLLOW_LABEL_ZH }) as HTMLInputElement).disabled).toBe(true)
+    expect((view.getByRole('button', { name: FOLLOW_SEND_ZH }) as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.click(view.getByRole('button', { name: COLLAPSE_ZH }))
+    expect(view.getByText(`${ANSWERS_ZH(0)} · 建议会话读取会话快照中…`)).toBeTruthy()
+  })
+})

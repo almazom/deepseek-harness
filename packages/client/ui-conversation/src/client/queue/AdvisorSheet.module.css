@@ -156,3 +156,88 @@
   font: var(--dsw-font-xs-13);
   line-height: 20px;
 }
+
+/* Full expansion: the sheet fills the viewport, the main conversation stays
+   interactive behind it only in the dock's peek state (mask owned by Modal). */
+.sheetFull {
+  height: 100dvh;
+  max-height: 100dvh;
+  width: 100%;
+}
+
+/* Round icon affordances in the footer (collapse, expand): same circular
+   anatomy as the main composer's round buttons. */
+.iconBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  /* A full-round radius opts out of the superellipse smoothing. */
+  corner-shape: round;
+  border: none;
+  background: var(--dsw-alias-button-floating-fill);
+  color: var(--dsw-alias-label-secondary);
+  cursor: pointer;
+}
+
+.iconBtn:hover {
+  background: var(--dsw-alias-button-floating-hover);
+}
+
+/* In-sheet follow-up composer: the side-runtime's own turn loop. */
+.composer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 0 2px;
+  border-top: 0.5px solid var(--dsw-alias-border-l1);
+}
+
+.composerInput {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 999px;
+  /* A full-round radius opts out of the superellipse smoothing. */
+  corner-shape: round;
+  border: 0.5px solid var(--dsw-alias-border-l1);
+  background: var(--dsw-alias-bg-layer-1);
+  color: var(--dsw-alias-label-primary);
+  font: var(--dsw-font-sm-14);
+}
+
+.composerInput:disabled {
+  opacity: 0.45;
+}
+
+/* Send follows the main-runtime anatomy: round, blue reserved for send. */
+.composerSend {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  /* A full-round radius opts out of the superellipse smoothing. */
+  corner-shape: round;
+  border: none;
+  background: var(--dsw-alias-button-primary-fill);
+  color: var(--dsw-alias-label-primary-foreground);
+  cursor: pointer;
+}
+
+.composerSend:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+@media (pointer: coarse) {
+  .composerSend, .iconBtn {
+    width: 44px;
+    height: 44px;
+  }
+}

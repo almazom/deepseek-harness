@@ -122,12 +122,17 @@ export function QueueDock(props: QueueDockProps) {
   const [busy, setBusy] = useState<QueueItemId | null>(null)
   const [collapsed, setCollapsed] = useState(true)
   const [advising, setAdvising] = useState<QueueRow | null>(null)
+  /** Peek state: the sheet is collapsed into the pill while its side run streams on. */
+  const [peek, setPeek] = useState(false)
+  /** Settled advisory answers for the advised row, counting the initial run. */
+  const [peekAnswers, setPeekAnswers] = useState(0)
   const listId = useId()
 
   useEffect(() => {
     if (rowCount === 0 && !collapsed) setCollapsed(true)
     if (editing !== null && (!queueMutable || !queue.some(row => row.id === editing.id))) setEditing(null)
-    if (advising !== null && !queue.some(row => row.id === advising.id)) setAdvising(null)
+    if (advising !== null && !queue.some(row => row.id === advising.id)) { setAdvising(null); setPeek(false) }
+    if (advising === null) setPeek(false)
   }, [advising, collapsed, editing, queue, queueMutable, rowCount])
 
   const advisorRun = useMemo(
@@ -143,6 +148,7 @@ export function QueueDock(props: QueueDockProps) {
       : undefined,
     [advising, liveRun],
   )
+  const liveRunning = live?.status === 'running'
 
   if (rowCount === 0) return null
 
@@ -340,6 +346,8 @@ export function QueueDock(props: QueueDockProps) {
                             disabled={busy !== null || !running}
                             onClick={() => {
                               setAdvising(row)
+                              setPeek(false)
+                              setPeekAnswers(0)
                               // Ask the host for the live advisory side run; the
                               // sheet already shows the instant tier-1 verdict,
                               // and the advisor/run projection replaces it as
@@ -426,7 +434,29 @@ export function QueueDock(props: QueueDockProps) {
           })}
         </ul>
       </div>
-      {advising !== null && (
+      {advising !== null && peek && (
+        <div className={css.peek}>
+          <span className={css.peekTitle}>{t('advisor.title')}</span>
+          <span className={css.peekMeta}>{t('advisor.peek.answers', { n: peekAnswers })}{liveRunning ? ` · ${t('advisor.live.working')}` : ''}</span>
+          <button
+            type="button"
+            className={css.peekBtn}
+            aria-label={t('advisor.expand')}
+            onClick={() => { setPeek(false) }}
+          >
+            <IconChevronUpOutline14 />
+          </button>
+          <button
+            type="button"
+            className={css.peekBtn}
+            aria-label={t('advisor.close')}
+            onClick={() => { setAdvising(null) }}
+          >
+            <IconCloseOutline16 />
+          </button>
+        </div>
+      )}
+      {advising !== null && !peek && (
         <AdvisorSheet
           open
           running={running}
@@ -437,6 +467,15 @@ export function QueueDock(props: QueueDockProps) {
           {...advisorRun}
           live={live}
           minConfidence={minConfidence}
+          followUp={{
+            disabled: liveRunning,
+            onSubmit: (question) => {
+              const itemId = advising.id
+              setPeekAnswers(current => current + 1)
+              void applyAction(itemId, { kind: 'advise', question }, t('queue.steerSmartFailed')).catch(() => undefined)
+            },
+          }}
+          onCollapse={() => { setPeek(true) }}
           t={t}
           onSendNow={() => {
             const itemId = advising.id
