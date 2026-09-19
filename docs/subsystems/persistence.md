@@ -164,10 +164,10 @@ interface SessionHeader {
    */
   readonly isSeeded: boolean
   /**
-   * Coarse product classification for a session created as a subagent child.
+   * Coarse creation classification: a subagent child or a one-shot headless run.
    * This is presentation metadata, not proof that the child is continuable.
    */
-  readonly origin?: 'subagent'
+  readonly origin?: 'subagent' | 'headless'
   /**
    * Delegation depth: absent (zero) for a top-level session, parent depth + 1
    * for a subagent child. Persisted so a recursion budget survives restart and
@@ -190,7 +190,7 @@ A backend refuses a log it cannot faithfully interpret with `SessionFormatUnsupp
 
 ## `CreateSessionOptions` — seeding and metadata
 
-Creating a `Session` through the store takes a `seed` (initial replay or fork history), an optional exact `inheritedEventCount`, and `meta` (the storage-level fields the store folds into a `SessionHeader`). The store fills in `version`/`id` and defaults `createdAt`; the caller may supply the validated absolute `cwd`, `parentSession` lineage, `isSeeded` lineage bit, optional coarse `origin`, `delegationDepth`, `agentPreset`, and an existing `createdAt`. A seeded creation requires an explicit seed equal to its inherited prefix and an exact cut; the constructor appends the child-owned tagged end-seed marker at that cut before setup adds child-owned events. `origin: 'subagent'` lets product navigation hide duplicate child rows; it does not prove that a descriptor is valid or that the child can resume.
+Creating a `Session` through the store takes a `seed` (initial replay or fork history), an optional exact `inheritedEventCount`, and `meta` (the storage-level fields the store folds into a `SessionHeader`). The store fills in `version`/`id` and defaults `createdAt`; the caller may supply the validated absolute `cwd`, `parentSession` lineage, `isSeeded` lineage bit, optional coarse `origin`, `delegationDepth`, `agentPreset`, and an existing `createdAt`. A seeded creation requires an explicit seed equal to its inherited prefix and an exact cut; the constructor appends the child-owned tagged end-seed marker at that cut before setup adds child-owned events. The admitted origins are `'subagent'` — it lets product navigation hide duplicate child rows — and `'headless'`, recorded for a session the one-shot runner created; neither value proves that a descriptor is valid or that the child can resume.
 
 ```ts type-equiv
 /**
@@ -216,7 +216,7 @@ interface CreateSessionOptions {
     readonly parentSession?: SessionId
     readonly createdAt?: number
     readonly isSeeded?: boolean
-    readonly origin?: 'subagent'
+    readonly origin?: 'subagent' | 'headless'
     readonly delegationDepth?: number
     readonly agentPreset?: string
   }

@@ -1,4 +1,4 @@
-/** Cold V2 restoration mounts the shipped PTC preset and publishes only a V3 successor. */
+/** Cold V2 restoration mounts the shipped PTC preset and publishes only a V4 successor. */
 
 import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
@@ -28,7 +28,7 @@ describe.skipIf(webSnapshotMode() === 'record')('historical preset restoration t
       const rows: Record<string, unknown>[] = events.map((event, seq) => ({ ...event, seq, time: seq + 2 }))
       const source = Buffer.concat([header, ...rows].map(row => zstdCompressSync(Buffer.from(JSON.stringify(row) + '\n'))))
       const predecessor = generationLogPath(scaffold.persistenceRoot, scaffold.workspaceCwd, id, 2, 'zstd')
-      const successor = join(dirname(predecessor), 'session.v3.jsonl.zstd')
+      const successor = join(dirname(predecessor), 'session.v4.jsonl.zstd')
       await mkdir(dirname(predecessor), { recursive: true })
       await writeFile(predecessor, source)
 
@@ -53,7 +53,7 @@ describe.skipIf(webSnapshotMode() === 'record')('historical preset restoration t
       const published = Buffer.concat(scanZstdFrames(publishedBytes).frames
         .map(({ start, end }) => zstdDecompressSync(publishedBytes.subarray(start, end)))).toString('utf8')
       const expected = [
-        { ...header, version: 3, agentPreset: 'ptc' },
+        { ...header, version: 4, agentPreset: 'ptc' },
         ...rows.map(row => row['type'] === 'agent-preset/selected'
           && (row['data'] as { agentPreset: string }).agentPreset === 'code'
           ? { ...row, data: { agentPreset: 'ptc' } }
@@ -65,7 +65,7 @@ describe.skipIf(webSnapshotMode() === 'record')('historical preset restoration t
       expect(normalizeSessionSnapshots([published], context)).toEqual(normalizeSessionSnapshots([expected], context))
       expect(await readFile(predecessor)).toEqual(source)
       expect((await readdir(dirname(predecessor))).filter(name => name.endsWith('.jsonl.zstd')).sort())
-        .toEqual(['session.v2.jsonl.zstd', 'session.v3.jsonl.zstd'])
+        .toEqual(['session.v2.jsonl.zstd', 'session.v4.jsonl.zstd'])
     } finally {
       await scaffold.close()
     }

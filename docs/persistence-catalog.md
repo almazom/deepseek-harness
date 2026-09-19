@@ -17,8 +17,8 @@ The [format references](persistence-changes/historical-formats/README.md) cover 
 
 | Root | Kind | SHA-256 | Resolved type |
 |---|---|---|---|
-| `SessionHeader` | header | `2a8b114637e66faab5fae1c6e2fba65320db6224c80f5f36c5bf32f937154d03` | [`packages/core/session/src/types.ts#SessionHeader`](#persistence-type-packagescoresessionsrctypestssessionheader) |
-| `JsonlHeaderLine` | header | `18ee62b8900a4c3d046700f05d7a4d49d6cab2a660a020c87481d1603dd8bd4f` | [`packages/session/session-persistence-jsonl/src/format.ts#HeaderLine`](#persistence-type-packagessessionsession-persistence-jsonlsrcformattsheaderline) |
+| `SessionHeader` | header | `617b4fe6312ab550656095d55478dc1f42497d54ba0c3b52968c78aed539dabe` | [`packages/core/session/src/types.ts#SessionHeader`](#persistence-type-packagescoresessionsrctypestssessionheader) |
+| `JsonlHeaderLine` | header | `ccb0bfd91bb22e2254cf90d3e3ffc5b351e0bc7f1680cb9bea1cfa47fb30dbe3` | [`packages/session/session-persistence-jsonl/src/format.ts#HeaderLine`](#persistence-type-packagessessionsession-persistence-jsonlsrcformattsheaderline) |
 | `SessionEventEnvelope` | envelope | `5776e5553ff2dfe3f5bc202dbb1e7c9f93e35a531aebb7764c23b2b6153b2ccc` | [`SessionEventEnvelope`](#persistence-type-sessioneventenvelope) |
 | `event:agent-preset/selected` | event | `a10c17474eaf2ddab7095a099e0fe3d046fc18e56c3e344fc8894c05ff9ef97b` | [`event:agent-preset/selected`](#persistence-type-eventagent-presetselected) |
 | `event:agent/inbox/spliced` | event | `646c2f1d243d3a78c5bc9305786fb340f5209c48a97e65f2a186cc5195491f3f` | [`event:agent/inbox/spliced`](#persistence-type-eventagentinboxspliced) |
@@ -1286,13 +1286,13 @@ SHA-256: `a0f906856fc06f1c6f2083eb970e5a657a82b1a84c06c095445e5d6d161cda80`
 
 `2`
 
-<a id="persistence-type-3"></a>
+<a id="persistence-type-4"></a>
 
-### `3`
+### `4`
 
-SHA-256: `137ac60e26bcb192210d9a32a704b73b0924ed34019323defa1b787be95bd45e`
+SHA-256: `af6e173f7be819bcd0a5c8d77918649c10ce761d8a184ff472f2e01ce64eb2e0`
 
-`3`
+`4`
 
 <a id="persistence-type-aborted"></a>
 
@@ -4159,6 +4159,14 @@ SHA-256: `237c004c73b6b288246816e0d7fde16e09c63a47aa3b1227383d7afe58666163`
 
 `"goal/change"`
 
+<a id="persistence-type-headless"></a>
+
+### `"headless"`
+
+SHA-256: `3f750dccfae181af98ea28ee5e10687abc0bc41f35e1717149d4a8a6328aef62`
+
+`"headless"`
+
 <a id="persistence-type-hook"></a>
 
 ### `"hook"`
@@ -4280,6 +4288,17 @@ SHA-256: `fee1caf8ab6a65c1bc981f5a1730164490f22a2a89ffa3d0b76f1f432c44c8b5`
 SHA-256: `69d238a6e9b08d67f601b1825962963d8d3523cb69ebf6208c697dc5d058c199`
 
 `"interrupted"`
+
+<a id="persistence-type-jsonlheaderlineorigin"></a>
+
+### `JsonlHeaderLine.origin`
+
+SHA-256: `dbe4366de73a26efc408a30b1d8e0b5649bc5d1402f47b491a5b93cf6387e9c0`
+
+One of:
+
+- `"headless"`
+- `"subagent"`
 
 <a id="persistence-type-legacy"></a>
 
@@ -4592,7 +4611,7 @@ One of:
 
 ### `packages/core/session/src/types.ts#SessionHeader`
 
-SHA-256: `2a8b114637e66faab5fae1c6e2fba65320db6224c80f5f36c5bf32f937154d03`
+SHA-256: `617b4fe6312ab550656095d55478dc1f42497d54ba0c3b52968c78aed539dabe`
 
 Sources: [`packages/core/session/src/types.ts:93`](../packages/core/session/src/types.ts)
 
@@ -4604,9 +4623,9 @@ Sources: [`packages/core/session/src/types.ts:93`](../packages/core/session/src/
 | `delegationDepth` | optional | `number` |
 | `id` | required | `string` |
 | `isSeeded` | required | `boolean` |
-| `origin` | optional | `"subagent"` |
+| `origin` | optional | [`JsonlHeaderLine.origin`](#persistence-type-jsonlheaderlineorigin) |
 | `parentSession` | optional | `string` |
-| `version` | required | `3` |
+| `version` | required | `4` |
 
 <a id="persistence-type-packagescoresessionsrctypestssurfaceop"></a>
 
@@ -5614,7 +5633,7 @@ One of:
 
 ### `packages/session/session-persistence-jsonl/src/format.ts#HeaderLine`
 
-SHA-256: `18ee62b8900a4c3d046700f05d7a4d49d6cab2a660a020c87481d1603dd8bd4f`
+SHA-256: `ccb0bfd91bb22e2254cf90d3e3ffc5b351e0bc7f1680cb9bea1cfa47fb30dbe3`
 
 Sources: [`packages/session/session-persistence-jsonl/src/format.ts:82`](../packages/session/session-persistence-jsonl/src/format.ts)
 
@@ -5626,7 +5645,7 @@ Sources: [`packages/session/session-persistence-jsonl/src/format.ts:82`](../pack
 | `delegationDepth` | required | `number` |
 | `id` | required | `string` |
 | `isSeeded` | required | `boolean` |
-| `origin` | optional | `"subagent"` |
+| `origin` | optional | [`JsonlHeaderLine.origin`](#persistence-type-jsonlheaderlineorigin) |
 | `parentSession` | optional | `string` |
 | `type` | required | `"session"` |
 | `version` | required | `number` |

@@ -1437,6 +1437,20 @@ describe('SessionStore', () => {
     })
   })
 
+  it('attaches headless origin and delegationDepth from meta to the header', async () => {
+    const ctx = new Context()
+    await ctx.plugin(SessionStore)
+    const session = ctx.sessions.create(SessionId('headless-child'), {
+      meta: { parentSession: SessionId('parent'), origin: 'headless', delegationDepth: 1 },
+    })
+    expect(session.header).toMatchObject({
+      id: 'headless-child',
+      parentSession: 'parent',
+      origin: 'headless',
+      delegationDepth: 1,
+    })
+  })
+
   it('rejects non-JSON and invalid scalar session metadata', async () => {
     const ctx = new Context()
     await ctx.plugin(SessionStore)
@@ -1449,7 +1463,8 @@ describe('SessionStore', () => {
       { meta: { createdAt: -1 }, error: /header createdAt must be a non-negative safe integer/ },
       { meta: { createdAt: Number.MAX_SAFE_INTEGER + 1 }, error: /header createdAt must be a non-negative safe integer/ },
       { meta: { isSeeded: 'yes' }, error: /isSeeded must be a boolean/ },
-      { meta: { origin: 'fork' }, error: /origin must be "subagent"/ },
+      { meta: { origin: 'fork' }, error: /origin must be "subagent" or "headless"/ },
+      { meta: { origin: 'user' }, error: /origin must be "subagent" or "headless"/ },
       { meta: { delegationDepth: '1' }, error: /delegationDepth must be a non-negative safe integer/ },
       { meta: { delegationDepth: 0.5 }, error: /delegationDepth must be a non-negative safe integer/ },
       { meta: { delegationDepth: -1 }, error: /delegationDepth must be a non-negative safe integer/ },
