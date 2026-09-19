@@ -298,8 +298,8 @@
     - id: command-goal
       name: '@deepseek-ai/dsh-command-goal'
 
-    - id: command-side
-      name: '@deepseek-ai/dsh-command-side'
+    - id: smart-steer
+      name: '@deepseek-ai/dsh-smart-steer'
 
     - id: plan-mode
       name: '@deepseek-ai/dsh-plan-mode'

@@ -1,0 +1,310 @@
+/* Bottom-sheet placement for the advisor Modal: pinned to the mask's bottom edge,
+   reading as a panel rising over the composer rather than a centered dialog.
+   vh stays as the fallback for browsers without dvh (iOS dynamic chrome). */
+.sheet {
+  align-self: flex-end;
+  width: min(480px, 100%);
+  /* Explicit height: the Modal dialog is auto-height, so the scroll body's
+     flex basis of 0 only grows when the card itself has a real height. */
+  height: min(72vh, 560px);
+  height: min(72dvh, 560px);
+  max-height: min(72dvh, 560px);
+  border-radius: 16px 16px 0 0;
+  margin-top: auto;
+}
+
+/* Modal's .content becomes a fixed frame: its header row and the dialog footer
+   stay pinned while only the snapshot region scrolls. The body wrapper between
+   them is Modal-internal (no class hook), so the frame constrains it
+   structurally as the content's last child. */
+.frame {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.frame > div:last-child {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-height: 0;
+  margin-top: 12px;
+}
+
+/* The snapshot scrolls inside the frame; header and footer stay pinned. */
+.scroll {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto;
+  /* Keeps the in-sheet composer clear of the frame's pinned footer clip. */
+  padding-bottom: 8px;
+}
+
+/* Phone hit areas: the close affordance and the two override actions meet the
+   44px HIG minimum on coarse pointers; desktop keeps the compact metrics. */
+@media (pointer: coarse) {
+  .sheet button {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+
+.rows {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 10px;
+  border-top: 0.5px solid var(--dsw-alias-border-l1);
+}
+
+.row {
+  display: flex;
+  gap: 12px;
+  font: var(--dsw-font-xs-13);
+}
+
+.label {
+  flex: none;
+  width: 118px;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.value {
+  min-width: 0;
+  color: var(--dsw-alias-label-primary);
+  overflow-wrap: break-word;
+  white-space: pre-wrap;
+}
+
+.verdict {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 10px;
+  border-top: 0.5px solid var(--dsw-alias-border-l1);
+}
+
+.verdictKind {
+  color: var(--dsw-alias-label-secondary);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.verdictReason {
+  color: var(--dsw-alias-label-primary);
+  font: var(--dsw-font-xs-13);
+  line-height: 20px;
+}
+
+/* Pipeline phases: one row per step, revealed top to bottom as the run advances. */
+.pipeline {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pipelineStep {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font: var(--dsw-font-xs-13);
+  color: var(--dsw-alias-label-primary);
+}
+
+.pipelineStatus {
+  flex: none;
+  width: 44px;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+/* Phase body: the label with its reasoning line underneath once the phase completes. */
+.pipelineBody {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  color: var(--dsw-alias-label-primary);
+  overflow-wrap: break-word;
+}
+
+.pipelineDetail {
+  color: var(--dsw-alias-label-secondary);
+}
+
+/* The gate block mirrors the verdict block: label above the outcome lines. */
+.gate {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 10px;
+  border-top: 0.5px solid var(--dsw-alias-border-l1);
+}
+
+/* The gate opens the sheet (decision first); drop its separator so the
+   scroll region does not start with a border line. */
+.gate:first-child {
+  padding-top: 0;
+  border-top: none;
+}
+
+.gateConfidence {
+  color: var(--dsw-alias-label-secondary);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.gateOutcome {
+  color: var(--dsw-alias-label-primary);
+  font: var(--dsw-font-xs-13);
+  line-height: 20px;
+}
+
+/* Full expansion: the sheet fills the viewport, the main conversation stays
+   interactive behind it only in the dock's peek state (mask owned by Modal). */
+.sheetFull {
+  height: 100dvh;
+  max-height: 100dvh;
+  width: 100%;
+}
+
+/* Round icon affordances in the footer (collapse, expand): same circular
+   anatomy as the main composer's round buttons. */
+.iconBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  /* A full-round radius opts out of the superellipse smoothing. */
+  corner-shape: round;
+  border: none;
+  background: var(--dsw-alias-button-floating-fill);
+  color: var(--dsw-alias-label-secondary);
+  cursor: pointer;
+}
+
+.iconBtn:hover {
+  background: var(--dsw-alias-button-floating-hover);
+}
+
+/* In-sheet follow-up composer: the side-runtime's own turn loop. */
+.composer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 0 2px;
+  border-top: 0.5px solid var(--dsw-alias-border-l1);
+}
+
+.composerInput {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 999px;
+  /* A full-round radius opts out of the superellipse smoothing. */
+  corner-shape: round;
+  border: 0.5px solid var(--dsw-alias-border-l1);
+  background: var(--dsw-alias-bg-layer-1);
+  color: var(--dsw-alias-label-primary);
+  font: var(--dsw-font-sm-14);
+}
+
+.composerInput:disabled {
+  opacity: 0.45;
+}
+
+/* Send follows the main-runtime anatomy: round, blue reserved for send. */
+.composerSend {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  /* A full-round radius opts out of the superellipse smoothing. */
+  corner-shape: round;
+  border: none;
+  background: var(--dsw-alias-button-primary-fill);
+  color: var(--dsw-alias-label-primary-foreground);
+  cursor: pointer;
+}
+
+.composerSend:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+@media (pointer: coarse) {
+  .composerSend, .iconBtn {
+    width: 44px;
+    height: 44px;
+  }
+}
+
+.peekPortal {
+  position: fixed;
+  left: 12px;
+  bottom: calc(12px + env(safe-area-inset-bottom));
+  z-index: 900;
+}
+
+.peek {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 0.5px solid var(--dsw-alias-border-l1);
+  border-radius: 999px;
+  /* A full-round radius opts out of the superellipse smoothing. */
+  corner-shape: round;
+  background: var(--dsw-alias-bg-layer-2);
+  /* The pill sits on the elevated rung; its bars must match that elevation. */
+  --dsh-scrollbar-thumb: var(--dsw-alias-scrollbar-bg-l2);
+  --dsh-scrollbar-thumb-hover: var(--dsw-alias-scrollbar-hover-l2);
+}
+
+.peekTitle {
+  flex: 0 0 auto;
+  font: var(--dsw-font-sm-14);
+  color: var(--dsw-alias-label-primary);
+  white-space: nowrap;
+}
+
+.peekMeta {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: var(--dsw-font-xs-13);
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.peekBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  /* A full-round radius opts out of the superellipse smoothing. */
+  corner-shape: round;
+  border: none;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  cursor: pointer;
+}
+
+@media (pointer: coarse) {
+  .peekBtn {
+    width: 44px;
+    height: 44px;
+  }
+}

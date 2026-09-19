@@ -17,7 +17,7 @@ v1 的 `/side` 命令在队列为空时直接给出用法错误，于是这个�
 
 队列为空时，命令处理器读取本包自有的 `command-side/latest-human` 会话投影单元，并以它持有的消息锚定顾问运行——运行仍经未改动的 `queueAdvisor.run` 缝启动，消息 id 放进既有的 `queuedItemId` 载荷字段，消息文本作为 `queuedMessage`。该单元是对 `user/message` 事件的主机侧折叠，保留来源 kind 为 `user` 且拼接文本块非空的最新一条，因此回退读取的是维护中的投影状态——同步读取历史事件对新调用已弃用，投影状态是认可的替代；注入的上下文（`user` 以外的来源 kind）与纯附件消息不会入选。调度器、`SessionEventMap`、投影与 `SESSION_FORMAT_VERSION` 均未触碰。错误只对完全没有已送达人类消息的会话保留，措辞改为 "No message to advise about yet: send a message first, then ask again."。成功文案标明目标：排队路径为 "for queued message"，回退路径为 "for the latest message"。
 
-在客户端，`QueueDock` 的顾问状态从队列行变为 `AdvisingAnchor { id, preview, rowless }`：排队路径由待处理行填充，自动打开效果新增一个以 `rowCount === 0` 为门槛的 rowless 分支——锚不到任何待处理行的运行只在队列为空时被采纳，锚定行的运行保持原有的清空行清理语义。曾被待处理行支撑过的运行 id（无论经采纳还是经智能按钮）会被记住，因此它后续的清行会关闭面板，而不是把同一运行重新按 rowless 采纳。顾问表面——迷你条 portal 与面板——提升到 dock 的空队列门之上，因此面板在空队列时照常渲染，而不是 dock 返回 null。`AdvisorSheet` 接收必填的 `rowless` 属性，rowless 运行下隐藏保留在队列/立即发送的页脚动作、置信度门槛行与追问输入框，并把被顾问消息的标签显示为"顾问对象"（Advising about）；收起/展开与关闭控件保留。
+在客户端，`QueueDock` 的顾问状态从队列行变为 `AdvisingAnchor { id, preview, rowless }`：排队路径由待处理行填充，自动打开效果新增一个以 `rowCount === 0` 为门槛的 rowless 分支——锚不到任何待处理行的运行只在队列为空时被采纳，锚定行的运行保持原有的清空行清理语义。曾被待处理行支撑过的运行 id（无论经采纳还是经智能按钮）会被记住，因此它后续的清行会关闭面板，而不是把同一运行重新按 rowless 采纳。顾问表面——迷你条 portal 与面板——提升到 dock 的空队列门之上，因此面板在空队列时照常渲染，而不是 dock 返回 null。`AdvisorSurface` (smart_steer client half; formerly ui-conversation `AdvisorSurface`) 接收必填的 `rowless` 属性，rowless 运行下隐藏保留在队列/立即发送的页脚动作、置信度门槛行与追问输入框，并把被顾问消息的标签显示为"顾问对象"（Advising about）；收起/展开与关闭控件保留。
 
 ## 被否决的替代方案
 

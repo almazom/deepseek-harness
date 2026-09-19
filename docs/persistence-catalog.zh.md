@@ -100,7 +100,7 @@ export type SessionEvent<T extends SessionEventType = SessionEventType> = {
 'advisor/run-requested': import('./types.ts').AdvisorRunRequestedEventData
 ```
 
-来源：[`packages/session/session-advisor-llm/src/index.ts:34`](../packages/session/session-advisor-llm/src/index.ts)
+来源：[`packages/plugins/smart_steer/src/config.ts:39`](../packages/plugins/smart_steer/src/config.ts)
 
 <a id="advisorstep--log-only"></a>
 
@@ -111,7 +111,7 @@ export type SessionEvent<T extends SessionEventType = SessionEventType> = {
 'advisor/step': import('./types.ts').AdvisorStepEventData
 ```
 
-来源：[`packages/session/session-advisor-llm/src/index.ts:36`](../packages/session/session-advisor-llm/src/index.ts)
+来源：[`packages/plugins/smart_steer/src/config.ts:41`](../packages/plugins/smart_steer/src/config.ts)
 
 <a id="advisorverdict--log-only"></a>
 
@@ -122,7 +122,7 @@ export type SessionEvent<T extends SessionEventType = SessionEventType> = {
 'advisor/verdict': import('./types.ts').AdvisorVerdictEventData
 ```
 
-来源：[`packages/session/session-advisor-llm/src/index.ts:38`](../packages/session/session-advisor-llm/src/index.ts)
+来源：[`packages/plugins/smart_steer/src/config.ts:43`](../packages/plugins/smart_steer/src/config.ts)
 
 ### `agent/*`
 

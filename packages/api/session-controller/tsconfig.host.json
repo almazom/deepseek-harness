@@ -110,7 +110,7 @@
       "path": "../../workspace/workspace"
     },
     {
-      "path": "../../session/session-advisor-llm"
+      "path": "../../plugins/smart_steer/tsconfig.host.json"
     }
   ]
 }

@@ -4,7 +4,7 @@ import type { Agent, Inbox, ModelSelectionRef } from '@deepseek-ai/dsh-agent'
 import { AttachmentError, AttachmentId } from '@deepseek-ai/dsh-attachment'
 import type { ImageAttachmentRef } from '@deepseek-ai/dsh-attachment'
 import { createAssistantMessage, createUserMessage, MessageId } from '@deepseek-ai/dsh-llm'
-import type QueueAdvisorService from '@deepseek-ai/dsh-session-advisor-llm/dispatcher'
+import type QueueAdvisorService from '@deepseek-ai/dsh-smart-steer/dispatcher'
 import SessionStore, {
   SESSION_FORMAT_VERSION, Session, SessionId, SessionLogOffset, SessionSeq,
 } from '@deepseek-ai/dsh-session'

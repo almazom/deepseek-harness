@@ -155,6 +155,7 @@ root
 │     │  └─ conversation.input.model
 │     ├─ conversation.input.overlay
 │     ├─ conversation.input.dock
+│     │  └─ conversation.input.dock.advisor
 │     ├─ conversation.composer.dock
 │     ├─ conversation.input.left
 │     ├─ conversation.input.right

@@ -48,7 +48,7 @@
     # agent route; the run logs advisor/* events and never mutates agent
     # history.
     - id: queue-advisor
-      name: '@deepseek-ai/dsh-session-advisor-llm/dispatcher'
+      name: '@deepseek-ai/dsh-smart-steer/dispatcher'
       config:
         maxInputBytes: 8192
         maxOutputTokens: 256
@@ -268,6 +268,12 @@
     - id: ui-approval
       name: '@deepseek-ai/dsh-client-ui-approval'
 
+    # Smart-steer advisor surface: registers into the queue dock's
+    # conversation.input.dock.advisor slot; the host dispatcher row above
+    # (queue-advisor) owns the side run it displays.
+    - id: smart-steer-client
+      name: '@deepseek-ai/dsh-smart-steer'
+
     - id: ui-chat
       name: '@deepseek-ai/dsh-client-ui-chat'
 
@@ -427,7 +433,7 @@
 - id: command-goal
   disabled: true
 
-- id: command-side
+- id: smart-steer
   disabled: true
 
 - id: tool-goal

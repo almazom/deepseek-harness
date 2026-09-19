@@ -1,0 +1,6 @@
+# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-09-19-smart-steer-client-half-isolation.md
+2026-09-19-smart-steer-client-half-isolation.md: 98ae650442fd57ad55ccad5891d8d3b890263f70
+2026-09-19-smart-steer-client-half-isolation.zh.md: 0b367076bf1fed1e1be002c12c1665a8c1842c58

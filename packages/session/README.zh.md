@@ -59,8 +59,6 @@ session 组让对话持久保存，恢复已发布的日志格式，并使已提
 
 | 包 | 作用 | ctx key |
 |---|---|---|
-| [`session-advisor-llm/`](session-advisor-llm/README.zh.md) | Smart-steer 队列顾问的建议运行策略、分段流观察器与宿主派发器 | `ctx.queueAdvisor`（可选，Web profile） |
-| [`command-side/`](command-side/README.zh.md) | `/side`（`/btw`）斜杠命令：对最新排队消息发起一次顾问旁路运行 | `ctx.queueAdvisor`（可选，消费者） |
 
 ### 遥测
 

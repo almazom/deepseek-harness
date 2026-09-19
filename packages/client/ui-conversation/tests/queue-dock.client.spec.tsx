@@ -5,7 +5,8 @@
  */
 import type { GlobalStandardProps } from '@deepseek-ai/dsh-client-ui-slots'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, waitFor } from '@testing-library/react'
+import type { ReactNode } from 'react'
 import { useSyncExternalStore } from 'react'
 import type {
   QueuedMessage, SessionListState, SessionSnapshot,
@@ -20,9 +21,11 @@ import {
 import type { SessionPendingInteractionSnapshot } from '@deepseek-ai/dsh-client-ui-session/client'
 import { zh as commonZh } from '@deepseek-ai/dsh-client-locale/src/locales/zh.ts'
 import type { QueueItemId } from '../src/client/contract/queue.ts'
-import type { AdvisorRunProjection } from '@deepseek-ai/dsh-session-advisor-llm'
+import type { AdvisorRunProjection } from '@deepseek-ai/dsh-smart-steer/client'
+import type { AdvisorOwnerProps } from '@deepseek-ai/dsh-smart-steer/client'
 import type { ConversationNode } from '../src/client/contract/records.ts'
 import type { InputState } from '../src/client/contract/input.ts'
+import type { Mock } from 'vitest'
 import { zh } from '../src/client/locales.ts'
 import { QueueDock, createQueueDockEntry, type QueueDockInjected, type QueueDockProps } from '../src/client/queue/QueueDock.tsx'
 
@@ -110,8 +113,18 @@ function kitFor(snapshot: SessionSnapshot, injected: Partial<QueueDockInjected &
     updateQueue: vi.fn(() => Promise.resolve()),
     notify: vi.fn(),
     loadImage: vi.fn(() => Promise.resolve('blob:unused')),
+    SessionProvider: ({ children }: { children: ReactNode }) => children,
+    renderSlot: vi.fn((_key: string, _owner: AdvisorOwnerProps) => null) as unknown as QueueDockProps['renderSlot'],
     ...injected,
   }
+}
+
+/** Latest owner share the dock handed to the advisor slot (no plugin is registered in this spec). */
+function advisorOwnerOf(props: Pick<QueueDockProps, 'renderSlot'>): AdvisorOwnerProps {
+  const calls = (props.renderSlot as unknown as Mock).mock.calls as Array<[string, AdvisorOwnerProps]>
+  const last = calls.at(-1)
+  if (last === undefined) throw new Error('advisor slot was never rendered')
+  return last[1]
 }
 
 /** One queued row carrying a durable image reference (plus optional leading text). */
@@ -684,8 +697,6 @@ describe('QueueDock', () => {
 describe('QueueDock smart steer', () => {
   const STEER_ZH = '插话发送'
   const SMART_ZH = '智能插话发送'
-  const DEFER_ZH = '建议稍后送达：将在下一个步骤边界投递，当前运行不受干扰。'
-  const STATUS_ZH = '这看起来是状态询问：上方快照已回答，无需打断运行。'
   const FAILED_ZH = '智能插话失败，请重试。'
 
   const humanNodes: readonly ConversationNode[] = [
@@ -715,19 +726,24 @@ describe('QueueDock smart steer', () => {
     return { snap, source, props, view }
   }
 
-  it('renders the smart steer button right of steer and opens the sheet with snapshot and verdict', () => {
-    const { view } = openSheet({})
+  it('renders the smart steer button right of steer and opens the advisor slot with snapshot facts', () => {
+    const { props, view } = openSheet({})
     const steer = view.getByRole('button', { name: STEER_ZH })
     const smart = smartButton(view)
     expect(steer.compareDocumentPosition(smart) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(advisorOwnerOf(props).open).toBe(false)
     fireEvent.click(smart)
-    const dialog = view.getByRole('dialog', { name: '智能插话顾问' })
-    expect(dialog.textContent).toContain('运行中')
-    expect(dialog.textContent).toContain('1 条')
-    expect(dialog.textContent).toContain('почини тесты')
-    expect(dialog.textContent).toContain('（暂无）')
-    expect(dialog.textContent).toContain('顾问判定')
-    expect(dialog.textContent).toContain(DEFER_ZH)
+    const owner = advisorOwnerOf(props)
+    expect(owner.open).toBe(true)
+    expect(owner.rowPreview).toBe('почини тесты')
+    expect(owner.rowless).toBe(false)
+    expect(owner.anchorId).toBe(iid('r1'))
+    expect(owner.running).toBe(true)
+    expect(owner.queuedCount).toBe(1)
+    expect(owner.lastHuman).toBeUndefined()
+    expect(owner.minConfidence).toBe(0.95)
+    expect(owner.followUp).toBeDefined()
+    expect(owner.onSendNow).toBeDefined()
   })
 
   it('fires the advise queue action when the row smart button is pressed', () => {
@@ -750,88 +766,47 @@ describe('QueueDock smart steer', () => {
     expect(smart.getAttribute('title')).toBe('仅运行中可使用智能插话')
   })
 
-  it('classifies a status probe row into the status verdict', () => {
-    const { view } = openSheet({ text: 'что происходит?', preview: 'что происходит?' })
+  it('hands the newest human transcript preview through the chat seat to the advisor slot', () => {
+    const { props, view } = openSheet({}, { useChat: makeUseChat(humanNodes) })
     fireEvent.click(smartButton(view))
-    const dialog = view.getByRole('dialog', { name: '智能插话顾问' })
-    expect(dialog.textContent).toContain(STATUS_ZH)
-    expect(dialog.textContent).not.toContain(DEFER_ZH)
+    expect(advisorOwnerOf(props).lastHuman).toBe('поправка')
   })
 
-  it('reveals every pipeline row to done with its reasoning line and marks a probe deliverable', async () => {
-    const { view } = openSheet({ text: 'что происходит?', preview: 'что происходит?' })
-    fireEvent.click(smartButton(view))
-    const dialog = view.getByRole('dialog', { name: '智能插话顾问' })
-    await waitFor(() => {
-      const rows = dialog.querySelector('ol[aria-label="插话流水线"]')?.textContent ?? ''
-      expect(rows).toContain('会话状态探测')
-      expect(rows).toContain('输入分析')
-      expect(rows).toContain('风险评估')
-      expect(rows).toContain('判定')
-      expect(rows).toContain('代理运行中，队列中有 1 条消息')
-      expect(rows).toContain('短问句且命中状态探测词')
-      expect(rows).toContain('置信度 97% 达到门槛：允许发送')
-      expect([...rows.matchAll(/完成/g)]).toHaveLength(4)
-    })
-    expect(dialog.textContent).toContain('置信度 97%')
-    expect(dialog.textContent).toContain('达到门槛：可以发送。')
-  })
-
-  it('holds an instruction row below the gate with the defer reasoning', async () => {
-    const { view } = openSheet({})
-    fireEvent.click(smartButton(view))
-    const dialog = view.getByRole('dialog', { name: '智能插话顾问' })
-    await waitFor(() => {
-      const rows = dialog.querySelector('ol[aria-label="插话流水线"]')?.textContent ?? ''
-      expect(rows).toContain('读作真实指令，而非状态询问')
-      expect(rows).toContain('置信度 70% 低于门槛：保留在队列')
-    })
-    expect(dialog.textContent).toContain('置信度 70%')
-    expect(dialog.textContent).toContain('低于门槛：默认保留在队列。')
-    expect(dialog.textContent).toContain(DEFER_ZH)
-  })
-
-  it('feeds the newest human transcript preview through the chat seat', () => {
-    const { view } = openSheet({}, { useChat: makeUseChat(humanNodes) })
-    fireEvent.click(smartButton(view))
-    expect(view.getByRole('dialog', { name: '智能插话顾问' }).textContent).toContain('поправка')
-  })
-
-  it('sends the row through the ordinary steer action and closes the sheet', async () => {
+  it('sends the row through the ordinary steer action and closes the advisor slot', async () => {
     const updateQueue = vi.fn(() => Promise.resolve())
-    const { view } = openSheet({}, { updateQueue })
+    const { props, view } = openSheet({}, { updateQueue })
     fireEvent.click(smartButton(view))
-    fireEvent.click(view.getByRole('button', { name: '仍然立即发送' }))
+    advisorOwnerOf(props).onSendNow?.()
     await waitFor(() => { expect(updateQueue).toHaveBeenCalledWith(iid('r1'), { kind: 'steer' }) })
-    await waitFor(() => { expect(view.queryByRole('dialog', { name: '智能插话顾问' })).toBeNull() })
+    await waitFor(() => { expect(advisorOwnerOf(props).open).toBe(false) })
   })
 
-  it('keeps the sheet open on steering failure and notifies', async () => {
+  it('keeps the advisor open on steering failure and notifies', async () => {
     const notify = vi.fn()
-    const { view } = openSheet({}, { updateQueue: vi.fn(() => Promise.reject(new Error('steer-unavailable'))), notify })
+    const { props, view } = openSheet({}, { updateQueue: vi.fn(() => Promise.reject(new Error('steer-unavailable'))), notify })
     fireEvent.click(smartButton(view))
-    fireEvent.click(view.getByRole('button', { name: '仍然立即发送' }))
+    advisorOwnerOf(props).onSendNow?.()
     await waitFor(() => { expect(notify).toHaveBeenCalledWith('error', FAILED_ZH) })
-    expect(view.getByRole('dialog', { name: '智能插话顾问' }).textContent).toContain(DEFER_ZH)
+    expect(advisorOwnerOf(props).open).toBe(true)
   })
 
-  it('keeps the row queued without any delivery on keep-queued', () => {
-    // Opening the sheet itself fires the read-only `advise` side run; the
-    // keep-queued decision must still deliver nothing else (no edit/remove/steer).
+  it('keeps the row queued without any delivery when the advisor closes', () => {
+    // Opening the sheet itself fires the read-only `advise` side run; closing
+    // must still deliver nothing else (no edit/remove/steer).
     const updateQueue = vi.fn(() => Promise.resolve())
-    const { view } = openSheet({}, { updateQueue })
+    const { props, view } = openSheet({}, { updateQueue })
     fireEvent.click(smartButton(view))
-    fireEvent.click(view.getByRole('button', { name: '保留在队列' }))
-    expect(view.queryByRole('dialog', { name: '智能插话顾问' })).toBeNull()
+    act(() => { advisorOwnerOf(props).onClose() })
+    expect(advisorOwnerOf(props).open).toBe(false)
     expect(updateQueue).toHaveBeenCalledExactlyOnceWith(iid('r1'), { kind: 'advise' })
   })
 
-  it('closes the sheet when the advised row leaves the queue', () => {
-    const { source, view } = openSheet({})
+  it('closes the advisor when the advised row leaves the queue', () => {
+    const { props, source, view } = openSheet({})
     fireEvent.click(smartButton(view))
-    expect(view.getByRole('dialog', { name: '智能插话顾问' }).textContent).toContain(DEFER_ZH)
+    expect(advisorOwnerOf(props).open).toBe(true)
     act(() => { source.push(snapshotWith([])) })
-    expect(view.queryByRole('dialog', { name: '智能插话顾问' })).toBeNull()
+    expect(advisorOwnerOf(props).open).toBe(false)
   })
 
   it('renders a disabled smart placeholder in the pending submission echo', () => {
@@ -851,102 +826,34 @@ describe('QueueDock smart steer', () => {
   })
 
   describe('live advisory projection', () => {
-    const TAIL_ZH = '最近的话题是修复登录测试'
-
-    it('streams live phases with raw findings and a gate-consistent verdict', () => {
+    it('gates the follow-up composer while the advised row streams live', () => {
       const { useProjection, push } = projectionKit()
       const snap = snapshotWith([row('r1', 'почини тесты', 'почини тесты')])
       const source = liveSession(snap)
-      const view = render(<QueueDock {...kitFor(snap, { useProjection })} useSession={source.useSession} />)
+      const props = kitFor(snap, { useProjection })
+      const view = render(<QueueDock {...props} useSession={source.useSession} />)
       fireEvent.click(smartButton(view))
-      const dialogText = () => view.getByRole('dialog', { name: '智能插话顾问' }).textContent
-
-      act(() => { push(liveValue({ steps: [{ step: 'tail', finding: TAIL_ZH }] })) })
-      expect(dialogText()).toContain('消息尾读')
-      expect(dialogText()).toContain(TAIL_ZH)
-      expect(dialogText()).toContain('进行中')
-      expect(dialogText()).toContain('等待建议判定…')
-
-      act(() => {
-        push(liveValue({
-          status: 'done',
-          steps: [
-            { step: 'tail', finding: TAIL_ZH },
-            { step: 'compare', finding: '队列消息延续同一任务' },
-            { step: 'risk', finding: '代理处于步骤边界，打断成本低' },
-            { step: 'verdict', finding: '倾向立即发送' },
-          ],
-          verdict: {
-            kind: 'send-now', confidence: 0.97,
-            reason: '消息与当前任务一致，发送不会破坏运行',
-          },
-        }))
-      })
-      expect(dialogText()).toContain('队列对照')
-      expect(dialogText()).toContain('边界风险')
-      expect(dialogText()).toContain('消息与当前任务一致，发送不会破坏运行')
-      expect(dialogText()).toContain('置信度 97%')
-      expect(dialogText()).toContain('达到门槛：可以发送。')
-      expect(dialogText()).not.toContain('进行中')
+      expect(advisorOwnerOf(props).followUp?.disabled).toBe(false)
+      act(() => { push(liveValue({ queuedItemId: iid('r1'), status: 'running' })) })
+      expect(advisorOwnerOf(props).followUp?.disabled).toBe(true)
+      act(() => { push(liveValue({ queuedItemId: iid('r1'), status: 'done', verdict: { kind: 'send-now', confidence: 0.97, reason: '一致' } })) })
+      expect(advisorOwnerOf(props).followUp?.disabled).toBe(false)
     })
 
-    it('holds a live verdict below the gate exactly like the tier-1 pre-verdict', () => {
+    it('keeps the composer enabled for a run belonging to another row', () => {
       const { useProjection, push } = projectionKit()
+      push(liveValue({ queuedItemId: iid('other'), status: 'running' }))
       const snap = snapshotWith([row('r1', 'почини тесты', 'почини тесты')])
       const source = liveSession(snap)
-      const view = render(<QueueDock {...kitFor(snap, { useProjection })} useSession={source.useSession} />)
+      const props = kitFor(snap, { useProjection })
+      const view = render(<QueueDock {...props} useSession={source.useSession} />)
       fireEvent.click(smartButton(view))
-      act(() => {
-        push(liveValue({
-          status: 'done',
-          steps: [{ step: 'risk', finding: '发送会打断运行中的回合' }],
-          verdict: {
-            kind: 'hold', confidence: 0.6,
-            reason: '消息与当前任务无关',
-          },
-        }))
-      })
-      const dialog = view.getByRole('dialog', { name: '智能插话顾问' })
-      expect(dialog.textContent).toContain('发送会打断运行中的回合')
-      expect(dialog.textContent).toContain('置信度 60%')
-      expect(dialog.textContent).toContain('低于门槛：默认保留在队列。')
-      expect(dialog.textContent).toContain('消息与当前任务无关')
-    })
-
-    it('falls back to the tier-1 pre-verdict when the run belongs to another row', () => {
-      const { useProjection, push } = projectionKit()
-      push(liveValue({ queuedItemId: iid('other') }))
-      const snap = snapshotWith([row('r1', 'почини тесты', 'почини тесты')])
-      const source = liveSession(snap)
-      const view = render(<QueueDock {...kitFor(snap, { useProjection })} useSession={source.useSession} />)
-      fireEvent.click(smartButton(view))
-      const dialog = view.getByRole('dialog', { name: '智能插话顾问' })
-      expect(dialog.textContent).toContain(DEFER_ZH)
-      expect(dialog.textContent).not.toContain('消息尾读')
-    })
-
-    it('marks a failed run and keeps the instant pre-verdict gate line', () => {
-      const { useProjection, push } = projectionKit()
-      const snap = snapshotWith([row('r1', 'почини тесты', 'почини тесты')])
-      const source = liveSession(snap)
-      const view = render(<QueueDock {...kitFor(snap, { useProjection })} useSession={source.useSession} />)
-      fireEvent.click(smartButton(view))
-      act(() => { push(liveValue({ status: 'failed' })) })
-      const dialog = view.getByRole('dialog', { name: '智能插话顾问' })
-      expect(dialog.textContent).toContain('建议运行未完成')
-      expect(dialog.textContent).toContain('失败')
-      expect(dialog.textContent).toContain(DEFER_ZH)
+      expect(advisorOwnerOf(props).followUp?.disabled).toBe(false)
     })
   })
 })
 
 describe('QueueDock advisor side-runtime', () => {
-  const FOLLOW_LABEL_ZH = '继续追问'
-  const FOLLOW_SEND_ZH = '发送追问'
-  const EXPAND_ZH = '展开面板'
-  const COLLAPSE_ZH = '收起为迷你条'
-  const CLOSE_ZH = '关闭'
-  const ANSWERS_ZH = (n: number): string => `${n} 个回答`
   const RUN_FINDING_ZH = '最近的话题是修复登录测试'
 
   function openAdvised(
@@ -954,97 +861,99 @@ describe('QueueDock advisor side-runtime', () => {
   ) {
     const snap = snapshotWith([row('r1', 'почини тесты', 'почини тесты')])
     const source = liveSession(snap)
+    const props = kitFor(snap, injected)
     const view = render(
-      <QueueDock {...kitFor(snap, injected)} useSession={source.useSession} />,
+      <QueueDock {...props} useSession={source.useSession} />,
     )
     fireEvent.click(view.getByRole('button', { name: '智能插话发送' }))
-    return { view }
+    return { props, view }
   }
 
-  it('sends a follow-up question as a fresh advise action from the in-sheet composer', () => {
+  it('sends a follow-up question as a fresh advise action from the in-sheet composer callback', () => {
     const updateQueue = vi.fn(() => Promise.resolve())
-    const { view } = openAdvised({ updateQueue })
-    const input = view.getByRole('textbox', { name: FOLLOW_LABEL_ZH }) as HTMLInputElement
-    fireEvent.change(input, { target: { value: '  а сейчас?  ' } })
-    fireEvent.click(view.getByRole('button', { name: FOLLOW_SEND_ZH }))
+    const { props } = openAdvised({ updateQueue })
+    const owner = advisorOwnerOf(props)
+    expect(owner.followUp).toBeDefined()
+    act(() => { owner.followUp?.onSubmit('  а сейчас?  ') })
+    // The dock forwards the composer's question verbatim; trimming is the
+    // advisor surface's own concern.
     expect(updateQueue).toHaveBeenCalledTimes(2)
-    expect(updateQueue).toHaveBeenLastCalledWith(iid('r1'), { kind: 'advise', question: 'а сейчас?' })
-    expect(input.value).toBe('')
-  })
-
-  it('keeps the follow-up send disabled while the question is blank', () => {
-    const { view } = openAdvised({})
-    expect((view.getByRole('button', { name: FOLLOW_SEND_ZH }) as HTMLButtonElement).disabled).toBe(true)
+    expect(updateQueue).toHaveBeenLastCalledWith(iid('r1'), { kind: 'advise', question: '  а сейчас?  ' })
   })
 
   it('collapses into the peek pill and expands back without closing the side runtime', () => {
-    const { view } = openAdvised({})
-    fireEvent.click(view.getByRole('button', { name: COLLAPSE_ZH }))
-    expect(view.queryByRole('dialog', { name: '智能插话顾问' })).toBeNull()
-    // The pill portals to document.body so it stays above any page card.
-    expect(screen.getByText(ANSWERS_ZH(0))).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: EXPAND_ZH }))
-    expect(view.getByRole('dialog', { name: '智能插话顾问' })).toBeTruthy()
-    expect(view.queryByText(ANSWERS_ZH(0))).toBeNull()
+    const { props } = openAdvised({})
+    const owner = advisorOwnerOf(props)
+    expect(owner.open).toBe(true)
+    expect(owner.peek).toBe(false)
+    act(() => { owner.onCollapse() })
+    expect(advisorOwnerOf(props).peek).toBe(true)
+    expect(advisorOwnerOf(props).open).toBe(true)
+    act(() => { advisorOwnerOf(props).onExpand() })
+    expect(advisorOwnerOf(props).peek).toBe(false)
+    expect(advisorOwnerOf(props).open).toBe(true)
   })
 
-  it('disables the composer while the advisory run streams and shows the pill working state', () => {
+  it('disables the follow-up composer callback gate while the advisory run streams', () => {
     const running = () => ({
       runId: '1' as never, queuedItemId: iid('r1') as never, status: 'running' as const, steps: [],
     })
-    const { view } = openAdvised({ useProjection: running })
-    expect((view.getByRole('textbox', { name: FOLLOW_LABEL_ZH }) as HTMLInputElement).disabled).toBe(true)
-    expect((view.getByRole('button', { name: FOLLOW_SEND_ZH }) as HTMLButtonElement).disabled).toBe(true)
-    fireEvent.click(view.getByRole('button', { name: COLLAPSE_ZH }))
-    expect(screen.getByText(`${ANSWERS_ZH(0)} · 建议会话读取会话快照中…`)).toBeTruthy()
+    const { props } = openAdvised({ useProjection: running })
+    expect(advisorOwnerOf(props).followUp?.disabled).toBe(true)
   })
 
-  it('auto-opens the sheet when a projected run starts without the smart button', () => {
+  it('auto-opens the advisor when a projected run starts without the smart button', () => {
     // A /side command starts the run host-side; no dock button is clicked.
     const { useProjection, push } = projectionKit()
     const snap = snapshotWith([row('r1', 'почини тесты', 'почини тесты')])
     const source = liveSession(snap)
-    const view = render(<QueueDock {...kitFor(snap, { useProjection })} useSession={source.useSession} />)
-    expect(view.queryByRole('dialog', { name: '智能插话顾问' })).toBeNull()
+    const props = kitFor(snap, { useProjection })
+    render(<QueueDock {...props} useSession={source.useSession} />)
+    expect(advisorOwnerOf(props).open).toBe(false)
 
     act(() => { push(liveValue({ status: 'running', steps: [{ step: 'tail', finding: RUN_FINDING_ZH }] })) })
-    const dialog = view.getByRole('dialog', { name: '智能插话顾问' })
-    expect(dialog.textContent).toContain(RUN_FINDING_ZH)
+    const owner = advisorOwnerOf(props)
+    expect(owner.open).toBe(true)
+    expect(owner.anchorId).toBe(iid('r1'))
+    expect(owner.rowless).toBe(false)
   })
 
   it('keeps an explicitly closed run closed and reopens for a new run', () => {
     const { useProjection, push } = projectionKit()
     const snap = snapshotWith([row('r1', 'почини тесты', 'почини тесты')])
     const source = liveSession(snap)
-    const view = render(<QueueDock {...kitFor(snap, { useProjection })} useSession={source.useSession} />)
+    const props = kitFor(snap, { useProjection })
+    render(<QueueDock {...props} useSession={source.useSession} />)
     act(() => { push(liveValue({ status: 'running' })) })
-    expect(view.getByRole('dialog', { name: '智能插话顾问' })).toBeTruthy()
+    expect(advisorOwnerOf(props).open).toBe(true)
 
     // Closing during the run must not be undone by the auto-open effect.
-    fireEvent.click(view.getByRole('button', { name: CLOSE_ZH }))
-    expect(view.queryByRole('dialog', { name: '智能插话顾问' })).toBeNull()
+    act(() => { advisorOwnerOf(props).onClose() })
+    expect(advisorOwnerOf(props).open).toBe(false)
     act(() => { push(liveValue({ status: 'done', verdict: { kind: 'send-now', confidence: 0.97, reason: '一致' } })) })
-    expect(view.queryByRole('dialog', { name: '智能插话顾问' })).toBeNull()
+    expect(advisorOwnerOf(props).open).toBe(false)
 
     act(() => { push(liveValue({ runId: 'run-2' as never, status: 'running' })) })
-    expect(view.getByRole('dialog', { name: '智能插话顾问' })).toBeTruthy()
+    expect(advisorOwnerOf(props).open).toBe(true)
   })
 
   it('auto-opens a new run over another queued row while a dismissed run stays dismissed', () => {
     const { useProjection, push } = projectionKit()
     const snap = snapshotWith([row('r1', 'почини тесты', 'почини тесты'), row('r2', 'второй вопрос', 'второй вопрос')])
     const source = liveSession(snap)
-    const view = render(<QueueDock {...kitFor(snap, { useProjection })} useSession={source.useSession} />)
+    const props = kitFor(snap, { useProjection })
+    render(<QueueDock {...props} useSession={source.useSession} />)
     act(() => { push(liveValue({ status: 'running' })) })
-    fireEvent.click(view.getByRole('button', { name: CLOSE_ZH }))
-    expect(view.queryByRole('dialog', { name: '智能插话顾问' })).toBeNull()
+    act(() => { advisorOwnerOf(props).onClose() })
+    expect(advisorOwnerOf(props).open).toBe(false)
     // The dismissed id settling later never resurrects its sheet.
     act(() => { push(liveValue({ status: 'done', verdict: { kind: 'send-now', confidence: 0.97, reason: '一致' } })) })
-    expect(view.queryByRole('dialog', { name: '智能插话顾问' })).toBeNull()
+    expect(advisorOwnerOf(props).open).toBe(false)
 
     // A run over another pending row carries a new run id: it auto-opens.
     act(() => { push(liveValue({ runId: 'run-2' as never, queuedItemId: iid('r2'), status: 'running' })) })
-    expect(view.getByRole('dialog', { name: '智能插话顾问' })).toBeTruthy()
+    expect(advisorOwnerOf(props).open).toBe(true)
+    expect(advisorOwnerOf(props).anchorId).toBe(iid('r2'))
   })
 
   it('auto-opens a rowless /side run over the latest human message on an empty queue', () => {
@@ -1054,73 +963,71 @@ describe('QueueDock advisor side-runtime', () => {
     ]
     const snap = snapshotWith([])
     const source = liveSession(snap)
-    const view = render(
-      <QueueDock {...kitFor(snap, { useProjection, useChat: makeUseChat(nodes) })} useSession={source.useSession} />,
-    )
-    expect(view.queryByRole('dialog', { name: '智能插话顾问' })).toBeNull()
+    const props = kitFor(snap, { useProjection, useChat: makeUseChat(nodes) })
+    render(<QueueDock {...props} useSession={source.useSession} />)
+    expect(advisorOwnerOf(props).open).toBe(false)
 
     act(() => {
       push(liveValue({ queuedItemId: iid('m-side'), status: 'running', steps: [{ step: 'tail', finding: RUN_FINDING_ZH }] }))
     })
-    const dialog = view.getByRole('dialog', { name: '智能插话顾问' })
-    expect(dialog.textContent).toContain('顾问对象')
-    expect(dialog.textContent).toContain('последний вопрос')
-    expect(dialog.textContent).toContain(RUN_FINDING_ZH)
-    // No queue row backs the anchor: delivery actions, the follow-up composer,
-    // and the steering gate stay out of the sheet.
-    expect(view.queryByRole('button', { name: '仍然立即发送' })).toBeNull()
-    expect(view.queryByRole('button', { name: '保留在队列' })).toBeNull()
-    expect(view.queryByRole('textbox', { name: FOLLOW_LABEL_ZH })).toBeNull()
-    expect(dialog.textContent).not.toContain('置信度门槛')
-    expect(dialog.textContent).not.toContain('排队消息')
+    const owner = advisorOwnerOf(props)
+    expect(owner.open).toBe(true)
+    expect(owner.rowless).toBe(true)
+    expect(owner.lastHuman).toBe('последний вопрос')
+    // No queue row backs the anchor: delivery actions and the follow-up
+    // composer stay out of the owner share.
+    expect(owner.followUp).toBeUndefined()
+    expect(owner.onSendNow).toBeUndefined()
   })
 
   it('keeps a drained row-anchored run closed instead of reopening it as rowless', () => {
     const { useProjection, push } = projectionKit()
     const snap = snapshotWith([row('r1', 'почини тесты', 'почини тесты'), row('r2', 'второй вопрос', 'второй вопрос')])
     const source = liveSession(snap)
-    const view = render(<QueueDock {...kitFor(snap, { useProjection })} useSession={source.useSession} />)
+    const props = kitFor(snap, { useProjection })
+    render(<QueueDock {...props} useSession={source.useSession} />)
     act(() => { push(liveValue({ status: 'running' })) })
-    expect(view.getByRole('dialog', { name: '智能插话顾问' })).toBeTruthy()
+    expect(advisorOwnerOf(props).open).toBe(true)
 
     // The override delivers the advised row while another row stays queued:
-    // the sheet closes, and no rowless adoption may resurrect the same run.
+    // the advisor closes, and no rowless adoption may resurrect the same run.
     act(() => { source.push(snapshotWith([row('r2', 'второй вопрос', 'второй вопрос')])) })
-    expect(view.queryByRole('dialog', { name: '智能插话顾问' })).toBeNull()
+    expect(advisorOwnerOf(props).open).toBe(false)
 
     // After the queue drains too, the same run id still stays closed; only a
     // new run id adopts the rowless /side form.
     act(() => { source.push(snapshotWith([])) })
     act(() => { push(liveValue({ status: 'done', verdict: { kind: 'send-now', confidence: 0.97, reason: '一致' } })) })
-    expect(view.queryByRole('dialog', { name: '智能插话顾问' })).toBeNull()
-    act(() => { push(liveValue({ runId: 'run-2' as never, queuedItemId: iid('msg-9') as never, status: 'running' })) })
-    const dialog = view.getByRole('dialog', { name: '智能插话顾问' })
-    expect(dialog.textContent).toContain('顾问对象')
+    expect(advisorOwnerOf(props).open).toBe(false)
+    act(() => { push(liveValue({ runId: 'run-2' as never, queuedItemId: iid('msg-9'), status: 'running' })) })
+    expect(advisorOwnerOf(props).open).toBe(true)
+    expect(advisorOwnerOf(props).rowless).toBe(true)
   })
 
   it('keeps an explicitly dismissed rowless run closed', () => {
     const { useProjection, push } = projectionKit()
     const snap = snapshotWith([])
     const source = liveSession(snap)
-    const view = render(<QueueDock {...kitFor(snap, { useProjection })} useSession={source.useSession} />)
+    const props = kitFor(snap, { useProjection })
+    render(<QueueDock {...props} useSession={source.useSession} />)
     act(() => { push(liveValue({ queuedItemId: iid('m-side'), status: 'running' })) })
-    expect(view.getByRole('dialog', { name: '智能插话顾问' })).toBeTruthy()
+    expect(advisorOwnerOf(props).open).toBe(true)
 
-    fireEvent.click(view.getByRole('button', { name: CLOSE_ZH }))
-    expect(view.queryByRole('dialog', { name: '智能插话顾问' })).toBeNull()
+    act(() => { advisorOwnerOf(props).onClose() })
+    expect(advisorOwnerOf(props).open).toBe(false)
     act(() => {
       push(liveValue({ queuedItemId: iid('m-side'), status: 'done', verdict: { kind: 'send-now', confidence: 0.97, reason: '一致' } }))
     })
-    expect(view.queryByRole('dialog', { name: '智能插话顾问' })).toBeNull()
+    expect(advisorOwnerOf(props).open).toBe(false)
   })
 
   it('does not adopt a run anchored to no pending row while rows are queued', () => {
     const { useProjection, push } = projectionKit()
     const snap = snapshotWith([row('r1', 'почини тесты')])
     const source = liveSession(snap)
-    const view = render(<QueueDock {...kitFor(snap, { useProjection })} useSession={source.useSession} />)
+    const props = kitFor(snap, { useProjection })
+    render(<QueueDock {...props} useSession={source.useSession} />)
     act(() => { push(liveValue({ queuedItemId: iid('m-side'), status: 'running' })) })
-    expect(view.queryByRole('dialog', { name: '智能插话顾问' })).toBeNull()
-    expect(view.queryByText(RUN_FINDING_ZH)).toBeNull()
+    expect(advisorOwnerOf(props).open).toBe(false)
   })
 })

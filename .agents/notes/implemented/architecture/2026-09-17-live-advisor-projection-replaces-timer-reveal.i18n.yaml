@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-09-17-live-advisor-projection-replaces-timer-reveal.md
-2026-09-17-live-advisor-projection-replaces-timer-reveal.md: 5f33f9d5e92fc6be197c081f1b106d76358b851e
-2026-09-17-live-advisor-projection-replaces-timer-reveal.zh.md: c107308d2b86aaeed90e3021316cb0c7cd1b6796
+2026-09-17-live-advisor-projection-replaces-timer-reveal.md: e396494c024a8167b9898e3dae6765a7dfe79543
+2026-09-17-live-advisor-projection-replaces-timer-reveal.zh.md: 24535f3831b014b87028716f5a37c0c4978b56c1

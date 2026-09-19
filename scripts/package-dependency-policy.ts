@@ -7,6 +7,10 @@ const CLIENT_FACE_INCLUDE: readonly string[] = []
 const CLIENT_FACE_EXCLUDE: readonly string[] = [
   '@deepseek-ai/dsh-api-session-controller',
   '@deepseek-ai/dsh-api-workspace-controller',
+  // Dual-face plugin: its host half is a function plugin whose host imports
+  // follow the plugin rules; its client half enforces its own bundle purity
+  // gate at build time instead.
+  '@deepseek-ai/dsh-smart-steer',
 ]
 
 /** Host-only packages whose peer relays are deliberately flattened. */

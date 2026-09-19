@@ -166,6 +166,10 @@ const packageFileExtras: Readonly<Record<string, readonly string[]>> = {
   // The Web Host mounts the default-off settings owner independently of each
   // Agent-scoped delegation-tool instance.
   '@deepseek-ai/dsh-tool-subagent': ['lib/model-selection-settings.js'],
+  // The dual-face plugin publishes the tsc-emitted client half beside its node
+  // subroutes, and that emitted tree imports its sheets by relative path: the
+  // sheets are published artifacts like the statically linked libraries' above.
+  '@deepseek-ai/dsh-smart-steer': ['lib/**/*.css'],
   // The JSONL backend resolves its private verification Worker relative to
   // import.meta.url; it is shipped without a public package subpath.
   '@deepseek-ai/dsh-session-persistence-jsonl': ['lib/worker.cjs'],

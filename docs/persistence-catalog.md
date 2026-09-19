@@ -98,7 +98,7 @@ Sources: [`packages/core/session/src/types.ts:404`](../packages/core/session/src
 'advisor/run-requested': import('./types.ts').AdvisorRunRequestedEventData
 ```
 
-Source: [`packages/session/session-advisor-llm/src/index.ts:34`](../packages/session/session-advisor-llm/src/index.ts)
+Source: [`packages/plugins/smart_steer/src/config.ts:39`](../packages/plugins/smart_steer/src/config.ts)
 
 <a id="advisorstep--log-only"></a>
 
@@ -109,7 +109,7 @@ Source: [`packages/session/session-advisor-llm/src/index.ts:34`](../packages/ses
 'advisor/step': import('./types.ts').AdvisorStepEventData
 ```
 
-Source: [`packages/session/session-advisor-llm/src/index.ts:36`](../packages/session/session-advisor-llm/src/index.ts)
+Source: [`packages/plugins/smart_steer/src/config.ts:41`](../packages/plugins/smart_steer/src/config.ts)
 
 <a id="advisorverdict--log-only"></a>
 
@@ -120,7 +120,7 @@ Source: [`packages/session/session-advisor-llm/src/index.ts:36`](../packages/ses
 'advisor/verdict': import('./types.ts').AdvisorVerdictEventData
 ```
 
-Source: [`packages/session/session-advisor-llm/src/index.ts:38`](../packages/session/session-advisor-llm/src/index.ts)
+Source: [`packages/plugins/smart_steer/src/config.ts:43`](../packages/plugins/smart_steer/src/config.ts)
 
 ### `agent/*`
 

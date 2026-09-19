@@ -159,6 +159,6 @@
     "@deepseek-ai/dsh-util-workspace-path": "workspace:^",
     "@deepseek-ai/dsh-workspace": "workspace:^",
     "@types/mime-types": "^3.0.1",
-    "@deepseek-ai/dsh-session-advisor-llm": "workspace:^"
+    "@deepseek-ai/dsh-smart-steer": "workspace:^"
   }
 }

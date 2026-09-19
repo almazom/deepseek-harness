@@ -1,9 +1,11 @@
 import type { Context } from '@deepseek-ai/cordis'
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
-import { createPortal } from 'react-dom'
 import type { FileAttachmentRef, ImageAttachmentRef } from '@deepseek-ai/dsh-attachment'
 import type { SnapshotStore } from '@deepseek-ai/dsh-client-store'
-import type { InjectFace, PropsLocale, PropsRuntime, SnapshotSelectorHook } from '@deepseek-ai/dsh-client-ui-slots'
+import type {
+  InjectFace, PropsLocale, PropsRenderSlots, PropsRuntime, SnapshotSelectorHook,
+} from '@deepseek-ai/dsh-client-ui-slots'
+import type { AdvisorOwnerProps } from '@deepseek-ai/dsh-smart-steer/client'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import {
   IconCheckOutline16, IconChevronDownOutline14, IconChevronUpOutline14, IconCloseOutline16,
@@ -13,8 +15,7 @@ import {
 import type { ConversationNode } from '../contract/records.ts'
 import type { QueueAction, QueueItemId, QueueRow } from '../contract/queue.ts'
 import { NS } from '../locales.ts'
-import { lastHumanPreview, runAdvisorPipeline } from './advisor.ts'
-import { AdvisorSheet } from './AdvisorSheet.tsx'
+import { lastHumanPreview } from './preview.ts'
 import css from './QueueDock.module.css'
 
 /**
@@ -99,8 +100,12 @@ function QueueThumb({ attachment, loadImage, label }: {
     : <img className={css.thumb} src={url} alt={label} />
 }
 
-/** Full props of a dock entry: InputZone owner share + session standard kit + global seat + the locale seat. */
-export type QueueDockProps = PropsRuntime<'conversation.input.dock'> & InjectFace<QueueDockInjected> & PropsLocale<'conversation'>
+/** Full props of a dock entry: InputZone owner share + session standard kit + global seat + the advisor child + the locale seat. */
+export type QueueDockProps =
+  & PropsRuntime<'conversation.input.dock'>
+  & PropsRenderSlots<'conversation.input.dock.advisor'>
+  & InjectFace<QueueDockInjected>
+  & PropsLocale<'conversation'>
 
 /**
  * Queue strip: one item renders directly; multiple items default to a
@@ -108,7 +113,7 @@ export type QueueDockProps = PropsRuntime<'conversation.input.dock'> & InjectFac
  * show sending status and disabled actions until their Host queue rows arrive.
  */
 export function QueueDock(props: QueueDockProps) {
-  const { useSession, useProjection, updateQueue, notify, loadImage, useSmartSteerMinConfidence, t } = props
+  const { useSession, useProjection, renderSlot, updateQueue, notify, loadImage, useSmartSteerMinConfidence, t } = props
   // The renderer binds the chat seat for every session-scoped entry, but the
   // seat's owner (ui-chat) types it through an augmentation this package's
   // program cannot see: a project reference back to ui-chat would close a
@@ -152,20 +157,9 @@ export function QueueDock(props: QueueDockProps) {
     if (advising === null) setPeek(false)
   }, [advising, collapsed, editing, queue, queueMutable, rowCount])
 
-  const advisorRun = useMemo(
-    () => runAdvisorPipeline({
-      running, queuedCount: queue.length, rowText: advising?.preview ?? '',
-    }, minConfidence),
-    [advising, minConfidence, queue.length, running],
-  )
   const liveRun = useProjection('advisor/run')
-  const live = useMemo(
-    () => liveRun != null && advising !== null && liveRun.queuedItemId === advising.id
-      ? liveRun
-      : undefined,
-    [advising, liveRun],
-  )
-  const liveRunning = live?.status === 'running'
+  const liveRunning = liveRun != null && advising !== null
+    && liveRun.queuedItemId === advising.id && liveRun.status === 'running'
 
   // Remember runs seen while a row-anchored sheet is open — including sheets
   // opened by the smart button, which bypass adoption. After that row drains,
@@ -256,56 +250,28 @@ export function QueueDock(props: QueueDockProps) {
     }
     : {}
 
-  /** Peek pill portal plus the advisor sheet, rendered over the dock or alone. */
-  const advisorSurface = (
-    <>
-      {advising !== null && peek && createPortal(
-        /* The peek pill outlives the dock column: a pending ask_user_question
-           card hides the dock, but peek must stay reachable over any card. */
-        <div className={css.peekPortal}>
-          <div className={css.peek}>
-            <span className={css.peekTitle}>{t('advisor.title')}</span>
-            <span className={css.peekMeta}>{t('advisor.peek.answers', { n: peekAnswers })}{liveRunning ? ` · ${t('advisor.live.working')}` : ''}</span>
-            <button
-              type="button"
-              className={css.peekBtn}
-              aria-label={t('advisor.expand')}
-              onClick={() => { setPeek(false) }}
-            >
-              <IconChevronUpOutline14 />
-            </button>
-            <button
-              type="button"
-              className={css.peekBtn}
-              aria-label={t('advisor.close')}
-              onClick={dismissAdvising}
-            >
-              <IconCloseOutline16 />
-            </button>
-          </div>
-        </div>,
-        document.body,
-      )}
-      {advising !== null && !peek && (
-        <AdvisorSheet
-          open
-          running={running}
-          queuedCount={queue.length}
-          rowPreview={advising.preview}
-          rowless={advising.rowless}
-          lastHuman={lastHuman}
-          busy={busy !== null}
-          {...advisorRun}
-          live={live}
-          minConfidence={minConfidence}
-          {...rowActions}
-          onCollapse={() => { setPeek(true) }}
-          t={t}
-          onClose={dismissAdvising}
-        />
-      )}
-    </>
-  )
+  /** Advisor owner share handed to the slot's occupant, present or not. */
+  const advisorOwner: AdvisorOwnerProps = {
+    open: advising !== null,
+    peek,
+    peekAnswers,
+    running,
+    queuedCount: queue.length,
+    busy: busy !== null,
+    rowPreview: advising?.preview ?? '',
+    rowless: advising?.rowless ?? false,
+    anchorId: advising?.id,
+    lastHuman,
+    minConfidence,
+    followUp: rowActions.followUp,
+    onSendNow: rowActions.onSendNow,
+    onCollapse: () => { setPeek(true) },
+    onExpand: () => { setPeek(false) },
+    onClose: dismissAdvising,
+  }
+
+  /** Peek pill portal plus the advisor sheet, contributed by the smart_steer plugin's registration; nothing renders without it. */
+  const advisorSurface = renderSlot('conversation.input.dock.advisor', advisorOwner)
 
   // The dock column is queue-owned, but a /side fallback run advises over a
   // delivered message with nothing queued: the sheet must render anyway.
@@ -592,6 +558,9 @@ export function createQueueDockEntry(gate: SnapshotStore<number>) {
         id: 'queue',
         order: 20,
         locale: NS,
+        children: {
+          'conversation.input.dock.advisor': { kind: 'single', scope: 'session' },
+        },
         inject: (sessionId: SessionId): QueueDockInjected => {
           const actx = ctx.sessions.scope(sessionId)
           if (actx === undefined) throw new Error(`queue dock: session "${sessionId}" resolved no scope`)

@@ -14,7 +14,7 @@ Smart-steer 顾问面板用 `useStepReveal` 安排推理行的出现节奏——
 
 ## 决策
 
-`session-advisor-llm` 向 `SessionProjectionMap` 合并一个键：`advisor/run` → `AdvisorRunProjection`（整体运行值：`status`、带逐字模型发现的已完成 `steps`、以及结算后的 `verdict`）。宿主是唯一计算点，随每个阶段闭合与结算整体重发布该值；客户端不做折叠。`QueueDock` 通过标准 `useProjection` 座位读取该键，并以 `queuedItemId` 与被建议行匹配；属于其他行的运行（或键缺失）回退到 tier-1 瞬时预判。`AdvisorSheet` 用原始发现文本渲染实时阶段行——模型输出是数据而非本地化文案——并用投影置信度对照配置的 `smartSteerMinConfidence` 计算实时门槛行。失败的运行保留其部分发现、标记失败，并回退到作为现行指引的 tier-1 门槛与判定行。`useStepReveal`、`STEP_REVEAL_MS` 与 `stepStatus` 一并删除：tier-1 行是同步计算的，立即以 `done` 渲染；实时行则随投影落地而出现。
+`session-advisor-llm` 向 `SessionProjectionMap` 合并一个键：`advisor/run` → `AdvisorRunProjection`（整体运行值：`status`、带逐字模型发现的已完成 `steps`、以及结算后的 `verdict`）。宿主是唯一计算点，随每个阶段闭合与结算整体重发布该值；客户端不做折叠。`QueueDock` 通过标准 `useProjection` 座位读取该键，并以 `queuedItemId` 与被建议行匹配；属于其他行的运行（或键缺失）回退到 tier-1 瞬时预判。`AdvisorSurface` (smart_steer client half; formerly ui-conversation `AdvisorSurface`) 用原始发现文本渲染实时阶段行——模型输出是数据而非本地化文案——并用投影置信度对照配置的 `smartSteerMinConfidence` 计算实时门槛行。失败的运行保留其部分发现、标记失败，并回退到作为现行指引的 tier-1 门槛与判定行。`useStepReveal`、`STEP_REVEAL_MS` 与 `stepStatus` 一并删除：tier-1 行是同步计算的，立即以 `done` 渲染；实时行则随投影落地而出现。
 
 ## 已考虑的替代方案
 
