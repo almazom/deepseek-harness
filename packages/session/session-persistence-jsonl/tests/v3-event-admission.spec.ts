@@ -22,7 +22,13 @@ function obsoleteEvent(type: string, ignorable?: true) {
   }
 }
 
-describe('native V3 event admission at EOF', () => {
+/** A direct scan refuses the stored v3 header before validating or decoding any event row. */
+function expectScanRefusal(bytes: Buffer): void {
+  expect(() => scanLog(bytes)).toThrow(SessionFormatUnsupportedError)
+  expect(() => scanLog(bytes)).toThrow(/uses log format v3, older than the supported v4/)
+}
+
+describe('historical V3 event admission through v3-to-v4 publication', () => {
   let root: string
   let ctx: Context
 
@@ -50,80 +56,106 @@ describe('native V3 event admission at EOF', () => {
   it.each([{ surfaceOp: 'append' }, { sourceEventSeqs: [] }])('refuses unknown required metadata %j without truncating a provider append', async (metadata) => {
     const event = { type: 'future/required', seq: 0, time: 1, data: {}, ...metadata }
     const bytes = Buffer.from([header, event].map(row => JSON.stringify(row)).join('\n') + '\n')
-    expect(scanLog(bytes)).toMatchObject({ events: [event], committedBytes: bytes.length })
-    const path = await store(bytes)
-    const sourceStat = await stat(path)
-    for (const access of ['read', 'write'] as const) {
-      const operation = async () => {
-        const handle = await ctx.sessionPersistence.open(id, access)
-        try {
-          if (access === 'read') await handle.read()
-          else await handle.append([{ type: 'turn/start', seq: SessionSeq(1), time: 2, data: { turn: 1 } }])
-        } finally {
-          await handle.close()
-        }
-      }
-      await expect(operation()).rejects.toThrow('unknown to this harness and not marked ignorable')
-      expect(await readFile(path)).toEqual(bytes)
-      expect(await stat(path)).toMatchObject({ dev: sourceStat.dev, ino: sourceStat.ino })
-    }
-  })
-
-  it.each(obsoleteTypes)('scanLog refuses a complete required %s EOF row', (type) => {
-    const bytes = Buffer.from(prefix + JSON.stringify(obsoleteEvent(type)) + '\n')
-    expect(() => scanLog(bytes)).toThrow(SessionFormatUnsupportedError)
-    expect(() => scanLog(bytes)).toThrow('format v3 contains unknown event type')
-  })
-
-  it.each(obsoleteTypes.flatMap(type => ['', '{not json\n', 'null\n'].map(corruption => ({ type, corruption }))))(
-    'scan, read and write refuse required $type after "$corruption" without changing bytes or inode', async ({ type, corruption }) => {
-      const bytes = Buffer.from(prefix + corruption + JSON.stringify(obsoleteEvent(type)) + '\n')
-      expect(() => scanLog(bytes)).toThrow(SessionFormatUnsupportedError)
-      expect(() => scanLog(bytes)).toThrow('format v3 contains unknown event type')
-      const path = await store(bytes)
-      const sourceStat = await stat(path)
-      for (const access of ['read', 'write'] as const) {
-        const opened = ctx.sessionPersistence.open(id, access).then(async (handle) => {
-          await handle.close()
-        })
-        await expect(opened).rejects.toThrow(SessionFormatUnsupportedError)
-        expect(await readFile(path)).toEqual(bytes)
-        expect(await stat(path)).toMatchObject({ dev: sourceStat.dev, ino: sourceStat.ino })
-      }
-    },
-  )
-
-  it.each(['', '{not json\n', 'null\n'])('refuses malformed system payloads after %j without modifying storage', async (corruption) => {
-    const malformed = { type: 'system/message', seq: 1, time: 2, data: null, surfaceOp: 'append' }
-    const bytes = Buffer.from(prefix + corruption + JSON.stringify(malformed) + '\n')
-    expect(() => scanLog(bytes)).toThrow('system/message data must be an object')
+    expectScanRefusal(bytes)
     const path = await store(bytes)
     const sourceStat = await stat(path)
     for (const access of ['read', 'write'] as const) {
       const opened = ctx.sessionPersistence.open(id, access).then(async (handle) => {
+        if (access === 'read') await handle.read()
+        else await handle.append([{ type: 'turn/start', seq: SessionSeq(1), time: 2, data: { turn: 1 } }])
         await handle.close()
       })
-      await expect(opened).rejects.toThrow('system/message data must be an object')
+      await expect(opened).rejects.toThrow(SessionFormatUnsupportedError)
+      await expect(opened).rejects.toThrow('format v2 contains unknown event type "future/required" at seq 0')
+      await expect(opened).rejects.toThrow('; source v3 artifact remains unchanged (raw log: ')
       expect(await readFile(path)).toEqual(bytes)
       expect(await stat(path)).toMatchObject({ dev: sourceStat.dev, ino: sourceStat.ino })
     }
   })
 
-  it.each(obsoleteTypes)('retains ignorable %s through scanning and a provider append', async (type) => {
+  it.each(obsoleteTypes)('scanLog refuses a stored v3 log with a complete required %s EOF row before decoding it', (type) => {
+    const bytes = Buffer.from(prefix + JSON.stringify(obsoleteEvent(type)) + '\n')
+    expectScanRefusal(bytes)
+  })
+
+  it.each(obsoleteTypes.flatMap(type => ['', '{not json\n', 'null\n'].map(corruption => ({ type, corruption }))))(
+    'admits required $type after "$corruption" per publication tail policy without changing v3 bytes', async ({ type, corruption }) => {
+      const bytes = Buffer.from(prefix + corruption + JSON.stringify(obsoleteEvent(type)) + '\n')
+      expectScanRefusal(bytes)
+      const path = await store(bytes)
+      const sourceStat = await stat(path)
+      if (corruption === '{not json\n') {
+        // The unparsable record starts a recoverable tail; the required row behind it is dropped with it.
+        const reader = await ctx.sessionPersistence.open(id, 'read')
+        try {
+          expect((await reader.read()).events).toEqual([start])
+        } finally {
+          await reader.close()
+        }
+      } else {
+        for (const access of ['read', 'write'] as const) {
+          const opened = ctx.sessionPersistence.open(id, access).then(async (handle) => {
+            await handle.close()
+          })
+          await expect(opened).rejects.toThrow(SessionFormatUnsupportedError)
+          await expect(opened).rejects.toThrow('format v3 contains unknown event type "' + type + '" at seq 1')
+          await expect(opened).rejects.toThrow('; source v3 artifact remains unchanged (raw log: ')
+        }
+      }
+      expect(await readFile(path)).toEqual(bytes)
+      expect(await stat(path)).toMatchObject({ dev: sourceStat.dev, ino: sourceStat.ino })
+    },
+  )
+
+  it.each(['', '{not json\n', 'null\n'])('handles malformed system payloads after %j per publication tail policy without modifying storage', async (corruption) => {
+    const malformed = { type: 'system/message', seq: 1, time: 2, data: null, surfaceOp: 'append' }
+    const bytes = Buffer.from(prefix + corruption + JSON.stringify(malformed) + '\n')
+    expectScanRefusal(bytes)
+    const path = await store(bytes)
+    const sourceStat = await stat(path)
+    if (corruption === '{not json\n') {
+      // The unparsable record starts a recoverable tail; the malformed row behind it is dropped with it.
+      const reader = await ctx.sessionPersistence.open(id, 'read')
+      try {
+        expect((await reader.read()).events).toEqual([start])
+      } finally {
+        await reader.close()
+      }
+    } else {
+      for (const access of ['read', 'write'] as const) {
+        const opened = ctx.sessionPersistence.open(id, access).then(async (handle) => {
+          await handle.close()
+        })
+        await expect(opened).rejects.toThrow('system/message data must be an object')
+      }
+    }
+    expect(await readFile(path)).toEqual(bytes)
+    expect(await stat(path)).toMatchObject({ dev: sourceStat.dev, ino: sourceStat.ino })
+  })
+
+  it.each(obsoleteTypes)('retains ignorable %s through publication and a provider append', async (type) => {
     const event = obsoleteEvent(type, true)
     const bytes = Buffer.from(prefix + JSON.stringify(event) + '\n')
-    expect(scanLog(bytes)).toMatchObject({ events: [start, event], committedBytes: bytes.length })
+    expectScanRefusal(bytes)
     const path = await store(bytes)
     const writer = await ctx.sessionPersistence.open(id, 'write')
+    const end = {
+      type: 'turn/end' as const, seq: SessionSeq(2), time: 3, data: { turn: 1, reason: { kind: 'completed' as const } },
+    }
     try {
       expect((await writer.read()).events).toEqual([start, event])
-      await writer.append([{
-        type: 'turn/end', seq: SessionSeq(2), time: 3, data: { turn: 1, reason: { kind: 'completed' } },
-      }])
+      await writer.append([end])
     } finally {
       await writer.close()
     }
-    expect((await readFile(path)).subarray(0, bytes.length)).toEqual(bytes)
+    // Publication writes the v4 successor; the v3 source keeps its exact bytes.
+    expect(await readFile(path)).toEqual(bytes)
+    const reopened = await ctx.sessionPersistence.open(id, 'read')
+    try {
+      expect((await reopened.read()).events).toEqual([start, event, end])
+    } finally {
+      await reopened.close()
+    }
   })
 
   it.each([
@@ -134,7 +166,7 @@ describe('native V3 event admission at EOF', () => {
     } }),
   ])('still recovers an ordinary malformed EOF row: %s', async (tail) => {
     const bytes = Buffer.from(prefix + tail + '\n')
-    expect(scanLog(bytes)).toMatchObject({ events: [start], committedBytes: Buffer.byteLength(prefix) })
+    expectScanRefusal(bytes)
     const path = await store(bytes)
     const writer = await ctx.sessionPersistence.open(id, 'write')
     const end = {
@@ -146,6 +178,13 @@ describe('native V3 event admission at EOF', () => {
     } finally {
       await writer.close()
     }
-    expect(await readFile(path, 'utf8')).toBe(prefix + JSON.stringify(end) + '\n')
+    // The append lands in the published v4 successor; the v3 source stays byte-identical, torn tail included.
+    expect(await readFile(path, 'utf8')).toBe(prefix + tail + '\n')
+    const reopened = await ctx.sessionPersistence.open(id, 'read')
+    try {
+      expect((await reopened.read()).events).toEqual([start, end])
+    } finally {
+      await reopened.close()
+    }
   })
 })

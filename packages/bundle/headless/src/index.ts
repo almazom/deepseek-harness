@@ -166,7 +166,7 @@ function streamReasoning(
 /** The Session facts that decide whether the runner may drive it directly. */
 interface AdoptableHeader {
   cwd?: string | undefined
-  origin?: 'subagent' | undefined
+  origin?: 'subagent' | 'headless' | undefined
   parentSession?: SessionId | undefined
   agentPreset?: string | undefined
 }
