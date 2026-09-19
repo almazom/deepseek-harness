@@ -5,7 +5,7 @@ import type { SessionId } from '@deepseek-ai/dsh-session/types'
 interface LineageEntry {
   readonly id: SessionId
   readonly parentId?: SessionId
-  readonly origin?: 'subagent'
+  readonly origin?: 'subagent' | 'headless'
   readonly running: boolean
 }
 

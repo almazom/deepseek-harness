@@ -224,6 +224,18 @@
   color: var(--dsw-alias-label-tertiary);
 }
 
+/* Origin marker (headless runs): a quiet pill that survives hover, because it
+   identifies the row instead of describing its state. */
+.originBadge {
+  flex: none;
+  padding: 0 6px;
+  border-radius: 8px;
+  background: var(--dsw-alias-interactive-bg-hover);
+  font-size: 11px;
+  line-height: 18px;
+  color: var(--dsw-alias-label-secondary);
+}
+
 .scheduleIndicator {
   display: inline-flex;
   flex: none;

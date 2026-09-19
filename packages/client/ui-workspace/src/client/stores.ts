@@ -15,10 +15,15 @@ export type SessionGroupBy = 'workspace' | 'workspace-tree' | 'flat'
 /** Session order: saved manual positions or current recency. */
 export type SessionOrderBy = 'manual' | 'updated'
 
+/** Sidebar display filter over who created a Session: human-created, headless-created, or both. */
+export type SessionOriginShow = 'all' | 'human' | 'headless'
+
 /** Workspace browser viewing state persisted across surface remounts and reloads. */
 type WorkspaceViewState = {
   groupBy: SessionGroupBy
   orderBy: SessionOrderBy
+  /** Sidebar display filter over Session origin; headless rows stay marked wherever they show. */
+  show: SessionOriginShow
   /** Explicit group expansion keyed by Workspace identity, including descendants in tree mode. */
   groupExpansion: Record<string, boolean>
   /** Saved manual order per Workspace group plus the browser-local flat-list account. */
@@ -31,6 +36,7 @@ type WorkspaceViewState = {
  */
 type WorkspaceViewActions = {
   setGroupBy: (draft: WorkspaceViewState, mode: SessionGroupBy) => void
+  setShow: (draft: WorkspaceViewState, show: SessionOriginShow) => void
   setOrderBy: (
     draft: WorkspaceViewState,
     mode: SessionOrderBy,
@@ -66,12 +72,14 @@ export function createWorkspaceViewStore(): EngineStoreHandle<WorkspaceViewState
     init: (): WorkspaceViewState => ({
       groupBy: 'workspace',
       orderBy: 'updated',
+      show: 'all',
       groupExpansion: {},
       sessionOrderByAccount: {},
     }),
-    persist: 'dsh.workspace.view.v5',
+    persist: 'dsh.workspace.view.v6',
     actions: {
       setGroupBy: (d, mode: SessionGroupBy) => { d.groupBy = mode },
+      setShow: (d, show: SessionOriginShow) => { d.show = show },
       setOrderBy: (d, mode: SessionOrderBy, initialOrders) => {
         if (mode === d.orderBy) return
         d.sessionOrderByAccount = mode === 'manual' ? copySessionOrders(initialOrders) : {}

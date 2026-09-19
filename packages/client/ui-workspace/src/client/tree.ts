@@ -12,7 +12,9 @@ import type {
 } from '@deepseek-ai/dsh-client-ui-session/client'
 import type {} from '@deepseek-ai/dsh-schedule/client'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
+import { assertNever } from '@deepseek-ai/dsh-util-values'
 import { workspaceTitleOf } from '@deepseek-ai/dsh-util-workspace-path'
+import type { SessionOriginShow } from './stores.ts'
 import {
   indexSubagentDescendants, type SubagentDescendantSummary,
 } from './subagent-lineage.ts'
@@ -60,6 +62,8 @@ export interface SessionNode {
   /** The current list projection contains at least one active Schedule record. */
   hasActiveSchedule: boolean
   updatedAt: number
+  /** Present only on headless-created rows, which carry the localized origin badge. */
+  origin?: 'headless'
 }
 
 /** Session order selected by the Workspace browser. */
@@ -98,6 +102,8 @@ export interface SearchResultNode {
   completed: boolean
   /** The current list projection contains at least one active Schedule record. */
   hasActiveSchedule: boolean
+  /** Present only on headless-created rows, which carry the localized origin badge. */
+  origin?: 'headless'
   snippet?: string
 }
 
@@ -112,6 +118,8 @@ export interface TreeView {
   expandedGroups: readonly string[]
   /** Browser-local order for Sessions without a backing Workspace account. */
   ungroupedOrder?: readonly string[]
+  /** Sidebar display filter; absent means all origins show. */
+  show?: SessionOriginShow
 }
 
 interface Group {
@@ -200,13 +208,33 @@ export function pinCurrentBlank(
 }
 
 /**
+ * Resolve the sidebar display filter for one Session origin.
+ * Subagent children stay hidden under every filter; the others match by
+ * creation origin, where an absent origin means a human created the Session.
+ */
+function originShown(origin: SessionSummary['origin'], show: SessionOriginShow): boolean {
+  switch (origin) {
+    case undefined: return show !== 'headless'
+    case 'headless': return show !== 'human'
+    case 'subagent': return false
+    default: return assertNever(origin, 'session origin')
+  }
+}
+
+/**
  * Ordinary sessions are visible; among blank sessions, only the current one
  * is visible. Subagent children use their parent header catalog; archived
  * sessions are visible nowhere, while their accounting slots remain so
- * unarchiving restores position.
+ * unarchiving restores position. The display filter hides the origin that the
+ * user excluded, consistently across groups, the flat list, and search.
  */
-function sessionVisible(session: SessionSummary, current: SessionId | undefined, archived: ReadonlySet<SessionId>): boolean {
-  return session.origin !== 'subagent'
+function sessionVisible(
+  session: SessionSummary,
+  current: SessionId | undefined,
+  archived: ReadonlySet<SessionId>,
+  show: SessionOriginShow,
+): boolean {
+  return originShown(session.origin, show)
     && !archived.has(session.id)
     && (!session.blank || session.id === current)
 }
@@ -265,6 +293,7 @@ function groupByWorkspace(
   workspaces: readonly WorkspaceView[],
   archived: ReadonlySet<SessionId>,
   ungroupedOrder: readonly string[] | undefined,
+  show: SessionOriginShow,
 ): Group[] {
   const current = mainSessionId(list)
   const groups: Group[] = []
@@ -275,7 +304,7 @@ function groupByWorkspace(
       const summary = list.byId[id]
       if (summary === undefined) continue // account may lead the list pull; the row appears when the summary lands
       accounted.add(id)
-      if (!sessionVisible(summary, current, archived)) continue
+      if (!sessionVisible(summary, current, archived, show)) continue
       members.push(summary)
     }
     groups.push(buildGroup(
@@ -286,7 +315,7 @@ function groupByWorkspace(
   const stray = list.ids
     .map(id => list.byId[id])
     .filter((s): s is SessionSummary =>
-      s !== undefined && !accounted.has(s.id) && sessionVisible(s, current, archived))
+      s !== undefined && !accounted.has(s.id) && sessionVisible(s, current, archived, show))
   if (stray.length > 0) {
     groups.push(buildGroup(
       UNGROUPED_KEY,
@@ -329,6 +358,7 @@ function sessionNode(
     hasActiveSchedule: hasActiveSchedule(s),
     updatedAt: s.updatedAt,
     ...(pendingInteraction === undefined ? {} : { pendingInteraction }),
+    ...(s.origin === 'headless' ? { origin: 'headless' as const } : {}),
   }
 }
 
@@ -361,8 +391,9 @@ export function deriveGroups(
   const currentGroup = current === undefined
     ? undefined
     : owningGroupKey(workspaces, current)
+  const show = view.show ?? 'all'
   const groups: GroupNode[] = []
-  for (const g of groupByWorkspace(list, workspaces, archived, view.ungroupedOrder)) {
+  for (const g of groupByWorkspace(list, workspaces, archived, view.ungroupedOrder, show)) {
     const expanded = expandedGroups.has(g.key)
     groups.push({
       key: g.key,
@@ -390,12 +421,13 @@ export function deriveGroups(
 export function visibleSessionIds(
   list: SessionListState,
   archivedSessionIds: readonly SessionId[],
+  show: SessionOriginShow,
 ): SessionId[] {
   const archived = new Set(archivedSessionIds)
   const current = mainSessionId(list)
   return list.ids.filter((id) => {
     const s = list.byId[id]
-    return s !== undefined && sessionVisible(s, current, archived)
+    return s !== undefined && sessionVisible(s, current, archived, show)
   })
 }
 
@@ -425,6 +457,7 @@ export function deriveFlat(
  * @param query - caller text; surrounding whitespace is ignored.
  * @param archivedSessionIds - registry-global archive set (members never match).
  * @param statuses - unified UI status by Session.
+ * @param show - sidebar display filter over Session origin.
  * @param content - ranked Host content-search page.
  * @param limit - protocol-owned maximum merged row count.
  * @returns bounded deduplicated flat rows and a refine-query hint bit.
@@ -435,6 +468,7 @@ export function deriveSearchResults(
   query: string,
   archivedSessionIds: readonly SessionId[],
   statuses: SessionStatuses,
+  show: SessionOriginShow,
   content: { items: readonly SessionSearchResultItem[]; hasMore: boolean },
   limit: number,
 ): SearchResultSet {
@@ -462,7 +496,7 @@ export function deriveSearchResults(
     const summary = list.byId[id]
     // Blank placeholders never match a query (their canonical title displays
     // localized, so matching it would tie search to one language).
-    if (summary === undefined || summary.blank || !sessionVisible(summary, current, archived)) continue
+    if (summary === undefined || summary.blank || !sessionVisible(summary, current, archived, show)) continue
     if (
       sessionTitle(summary).toLowerCase().includes(q)
       || labelOf(summary).toLowerCase().includes(q)
@@ -484,7 +518,7 @@ export function deriveSearchResults(
   for (const summary of orderedLocal) include(summary)
   for (const item of content.items) {
     const summary = list.byId[item.sessionId]
-    if (summary !== undefined && !summary.blank && sessionVisible(summary, current, archived)) include(summary)
+    if (summary !== undefined && !summary.blank && sessionVisible(summary, current, archived, show)) include(summary)
   }
 
   return {
@@ -503,6 +537,7 @@ export function deriveSearchResults(
           : { pendingInteraction }),
         completed: status?.completionUnread === true,
         hasActiveSchedule: hasActiveSchedule(summary),
+        ...(summary.origin === 'headless' ? { origin: 'headless' as const } : {}),
         ...match === undefined ? {} : { snippet: match.snippet },
       }
     }),
