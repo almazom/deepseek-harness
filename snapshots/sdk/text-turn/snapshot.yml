@@ -3,6 +3,9 @@ scenario: text-turn
 profile: sdk
 composition: sdk-upload
 recording: live
+sessionFormat:
+  version: 3
+  coverage: [adjacent-migration]
 environment:
   DSH_SNAPSHOT_FEEDBACK: '1'
 header:
