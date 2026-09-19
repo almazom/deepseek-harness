@@ -234,6 +234,16 @@ describe('headless runner', () => {
     finally { await test.ctx.fiber.dispose() }
   })
 
+  it('stamps the headless origin on the fresh Session header', async () => {
+    const origins: (string | undefined)[] = []
+    const test = await bench({
+      before(session) { origins.push(session.header.origin) },
+      afterPrompt(session, message) { appendTurn(session, 1, message, 'remote answer', true) },
+    })
+    try { expect(await test.run()).toMatchObject({ code: 0 }) } finally { await test.ctx.fiber.dispose() }
+    expect(origins).toEqual(['headless'])
+  })
+
   it('reports the provider cwd in its opening JSON event', async () => {
     const cwd = '/remote/workspace'
     const test = await bench({

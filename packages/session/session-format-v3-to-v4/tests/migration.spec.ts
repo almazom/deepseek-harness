@@ -88,7 +88,7 @@ describe('V3-to-V4 identity migration', () => {
       .toThrow(/claims target format v4/)
     const foreign = stage(v3Header(), 0)
     foreign.value.transformEvent({ ...event('session-log-deepseek/delivery-accepted', { sessionFormatVersion: 3, sessionId: 'other' }), seq: 0 }, foreign.collector)
-    expect(() => foreign.value.finish(foreign.collector)).toThrow(/delivery marker names the wrong Session/)
+    expect(() => { foreign.value.finish(foreign.collector) }).toThrow(/delivery marker names the wrong Session/)
   })
 
   it('refuses inherited markers on unseeded sources and disagrees with the provided cut', () => {
@@ -96,11 +96,11 @@ describe('V3-to-V4 identity migration', () => {
     expect(() => { unseeded.value.transformEvent(event('session/end-seed', { inherited: true }), unseeded.collector) })
       .toThrow(/unseeded Session contains an inherited end-seed marker/)
     const mismatch = stage(v3Header(), 5)
-    expect(() => mismatch.value.finish(mismatch.collector)).toThrow(/disagrees with its source cut/)
+    expect(() => { mismatch.value.finish(mismatch.collector) }).toThrow(/disagrees with its source cut/)
   })
 
   it('refuses a v3 header with the headless origin as migration source', () => {
-    expect(() => sessionFormatV3ToV4.migrateHeader(v3Header('headless'))).toThrow(/origin must be "subagent"/)
+    expect(() => { sessionFormatV3ToV4.migrateHeader(v3Header('headless')) }).toThrow(/origin must be "subagent"/)
   })
 })
 
@@ -115,9 +115,9 @@ describe('released V4 codec', () => {
   })
 
   it('refuses v4 headers with an unknown origin and rejects v3 physical headers', () => {
-    expect(() => releasedV4SessionFormatCodec.decodeHeader({ type: 'session', version: 4, id: 'i', createdAt: 1, isSeeded: false, delegationDepth: 0, origin: 'worker' }))
+    expect(() => { releasedV4SessionFormatCodec.decodeHeader({ type: 'session', version: 4, id: 'i', createdAt: 1, isSeeded: false, delegationDepth: 0, origin: 'worker' }) })
       .toThrow(/origin must be "subagent" or "headless"/)
-    expect(() => releasedV4SessionFormatCodec.decodeHeader({ type: 'session', version: 3, id: 'i', createdAt: 1, isSeeded: false, delegationDepth: 0 }))
+    expect(() => { releasedV4SessionFormatCodec.decodeHeader({ type: 'session', version: 3, id: 'i', createdAt: 1, isSeeded: false, delegationDepth: 0 }) })
       .toThrow(/expected released v4 physical Session header/)
     expect(() => { assertReleasedV4Header({ ...v3Header(), version: 4, extra: true }) })
       .toThrow(/unexpected field/)
@@ -128,7 +128,7 @@ describe('released V4 codec', () => {
   })
 
   it('refuses an inherited cut on an unseeded encode', () => {
-    expect(() => releasedV4SessionFormatCodec.encodeHeader({ ...v3Header(), version: 4 }, 3))
+    expect(() => { releasedV4SessionFormatCodec.encodeHeader({ ...v3Header(), version: 4 }, 3) })
       .toThrow(/unseeded format v4 Session has inherited events/)
   })
 
@@ -155,6 +155,6 @@ describe('catalog assembly with the V4 edge', () => {
       inheritedEventCount: 0,
       events: [],
     }
-    expect(() => restoreReleasedV4Artifact(artifact, new Set())).toThrow(/cwd must be absolute/)
+    expect(() => { restoreReleasedV4Artifact(artifact, new Set()) }).toThrow(/cwd must be absolute/)
   })
 })

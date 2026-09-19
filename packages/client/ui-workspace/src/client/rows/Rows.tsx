@@ -375,6 +375,7 @@ export function SearchResultItem({ result, currentId, onOpen, t }: {
           )}
         </span>
         <span className={css.searchResultTitle}>{result.title}</span>
+        {result.origin === 'headless' && <span className={css.originBadge}>{t('origin.headless')}</span>}
         {result.hasActiveSchedule && <ActiveScheduleIndicator t={t} search />}
       </span>
       <span className={css.searchResultMeta}>
@@ -496,6 +497,7 @@ export function SessionNodeItem({
         </span>
       )}
       <span ref={titleRef} className={css.title}>{title}</span>
+      {node.origin === 'headless' && <span className={css.originBadge}>{t('origin.headless')}</span>}
       {row.hasActiveSchedule && <ActiveScheduleIndicator t={t} />}
       {/* A blank New Session row is a provisional placeholder: nothing has
           happened in it yet, so a "now" timestamp and the row verbs

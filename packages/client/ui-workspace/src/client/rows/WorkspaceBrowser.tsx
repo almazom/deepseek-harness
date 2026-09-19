@@ -27,7 +27,7 @@ import {
   pinCurrentBlank, reconcileManualOrder, UNGROUPED_KEY, visibleSessionIds,
 } from '../tree.ts'
 import { ProjectRowItem, SearchResultItem, SessionNodeItem } from './Rows.tsx'
-import { FLAT_SESSION_ORDER_KEY, type SessionGroupBy } from '../stores.ts'
+import { FLAT_SESSION_ORDER_KEY, type SessionGroupBy, type SessionOriginShow } from '../stores.ts'
 import { WorkspacePickFlow } from '../WorkspacePicker.tsx'
 import css from './WorkspaceBrowser.module.css'
 
@@ -96,12 +96,23 @@ function useNativeDragAcceptance(active: boolean): void {
   }, [active])
 }
 
+/** Resolve the menu id of a display-filter entry back to its store value. */
+function showPickOf(id: 'show-all' | 'show-human' | 'show-headless'): SessionOriginShow {
+  switch (id) {
+    case 'show-all': return 'all'
+    case 'show-human': return 'human'
+    case 'show-headless': return 'headless'
+  }
+}
+
 /** Grouping and ordering menu; own open state so it resets with the wide chrome. */
-function ViewOptionsMenu({ groupBy, orderBy, onGroupPick, onOrderPick, t }: {
+function ViewOptionsMenu({ groupBy, orderBy, show, onGroupPick, onOrderPick, onShowPick, t }: {
   groupBy: SessionGroupBy
   orderBy: SessionOrderBy
+  show: SessionOriginShow
   onGroupPick: (mode: SessionGroupBy) => void
   onOrderPick: (mode: SessionOrderBy) => void
+  onShowPick: (show: SessionOriginShow) => void
   t: WorkspaceBrowserProps['t']
 }) {
   const [open, setOpen] = useState(false)
@@ -118,11 +129,17 @@ function ViewOptionsMenu({ groupBy, orderBy, onGroupPick, onOrderPick, t }: {
         { type: 'label' as const, id: 'order-by', text: t('orderBy.label') },
         { id: 'manual', label: t('orderBy.manual') },
         { id: 'updated', label: t('orderBy.updated') },
+        { type: 'separator' as const, id: 'show-separator' },
+        { type: 'label' as const, id: 'show', text: t('show.label') },
+        { id: 'show-all', label: t('show.all') },
+        { id: 'show-human', label: t('show.human') },
+        { id: 'show-headless', label: t('show.headless') },
       ]}
-      selectedIds={[groupBy, orderBy]}
+      selectedIds={[groupBy, orderBy, `show-${show}`]}
       onSelect={(id) => {
         if (id === 'workspace' || id === 'workspace-tree' || id === 'flat') onGroupPick(id)
         else if (id === 'manual' || id === 'updated') onOrderPick(id)
+        else if (id === 'show-all' || id === 'show-human' || id === 'show-headless') onShowPick(showPickOf(id))
         setOpen(false)
       }}
       align="end"
@@ -180,6 +197,8 @@ type SessionTreeProps = Pick<
   workspaces: readonly WorkspaceView[]
   /** Browser-projected order for Sessions outside every Workspace. */
   ungroupedSessionIds: readonly SessionId[]
+  /** Sidebar display filter over Session origin. */
+  show: SessionOriginShow
   /** Whether the current Workspace stream has a complete Host baseline. */
   workspaceReady: boolean
   /** Nest Workspaces under their nearest registered ancestors. */
@@ -209,7 +228,7 @@ type SessionTreeProps = Pick<
 /** The scrolling session tree; unmounting drops the sessions subscription and expand-all state. */
 function SessionTree({
   list, useSessionStatus, startSession, open, forkSession, workspaces, ungroupedSessionIds,
-  archivedSessionIds,
+  archivedSessionIds, show,
   workspaceReady, usePanelInfo,
   onRenameRequest, onDeleteRequest, onSessionRename, onSessionArchive,
   insertWorkspaceBefore,
@@ -265,8 +284,9 @@ function SessionTree({
     () => deriveGroups(list, workspaces, archivedSessionIds, statuses, {
       expandedGroups,
       ungroupedOrder: ungroupedSessionIds,
+      show,
     }),
-    [list, workspaces, archivedSessionIds, statuses, expandedGroups, ungroupedSessionIds],
+    [list, workspaces, archivedSessionIds, statuses, expandedGroups, ungroupedSessionIds, show],
   )
   useEffect(() => {
     for (let key = revealGroup; key !== undefined; key = parents.get(key)) {
@@ -685,6 +705,7 @@ function SearchResults({
   workspaces,
   archivedSessionIds,
   query,
+  show,
   remote,
   resultLimit,
   usePanelInfo,
@@ -693,6 +714,7 @@ function SearchResults({
   workspaces: readonly WorkspaceView[]
   archivedSessionIds: readonly SessionNode['id'][]
   query: string
+  show: SessionOriginShow
   remote: RemoteSearchState
   resultLimit: number
 }) {
@@ -709,10 +731,11 @@ function SearchResults({
       query,
       archivedSessionIds,
       statuses,
+      show,
       currentRemote,
       resultLimit,
     ),
-    [list, workspaces, query, archivedSessionIds, statuses, currentRemote, resultLimit],
+    [list, workspaces, query, archivedSessionIds, statuses, show, currentRemote, resultLimit],
   )
   const pending = currentRemote.status === 'loading'
   const failed = currentRemote.status === 'error'
@@ -798,6 +821,7 @@ export function WorkspaceBrowser({
   const directoryFlowAvailable = useDirectoryFlow(occupied => occupied)
   const groupBy = useStore(s => s.groupBy)
   const orderBy = useStore(s => s.orderBy)
+  const show = useStore(s => s.show)
   const groupExpansion = useStore(s => s.groupExpansion)
   const sessionOrderByAccount = useStore(s => s.sessionOrderByAccount)
   const workspaceReady = workspacePhase === 'ready' && workspaceStreamState !== 'loading'
@@ -811,8 +835,8 @@ export function WorkspaceBrowser({
     return list.ids.filter(id => list.byId[id] !== undefined && !accounted.has(id))
   }, [list, workspaces])
   const flatMemberIds = useMemo(
-    () => visibleSessionIds(list, archivedSessionIds),
-    [archivedSessionIds, list],
+    () => visibleSessionIds(list, archivedSessionIds, show),
+    [archivedSessionIds, list, show],
   )
   const orderedWorkspaces = useMemo(() => workspaces.map((workspace) => {
     const memberIds = workspace.sessionIds
@@ -1179,8 +1203,10 @@ export function WorkspaceBrowser({
             <ViewOptionsMenu
               groupBy={groupBy}
               orderBy={orderBy}
+              show={show}
               onGroupPick={(mode) => { actions.setGroupBy(mode) }}
               onOrderPick={(mode) => { actions.setOrderBy(mode, activeSessionOrders) }}
+              onShowPick={(mode) => { actions.setShow(mode) }}
               t={t}
             />
           )}
@@ -1246,6 +1272,7 @@ export function WorkspaceBrowser({
         {wide && (normalizedQuery !== ''
           ? (
             <SearchResults
+              show={show}
               usePanelInfo={usePanelInfo}
               useSessions={useSessions}
               useSessionStatus={useSessionStatus}
@@ -1275,6 +1302,7 @@ export function WorkspaceBrowser({
             )
             : (
               <SessionTree
+                show={show}
                 usePanelInfo={usePanelInfo}
                 list={list}
                 useSessionStatus={useSessionStatus}
