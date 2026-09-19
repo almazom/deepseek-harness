@@ -1,0 +1,195 @@
+{
+  "formatVersion": 1,
+  "roots": [
+    {
+      "key": "SessionHeader",
+      "kind": "header",
+      "digest": "617b4fe6312ab550656095d55478dc1f42497d54ba0c3b52968c78aed539dabe",
+      "schema": {
+        "root": 0,
+        "nodes": [
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "agentPreset",
+                "type": 1,
+                "optional": true
+              },
+              {
+                "name": "createdAt",
+                "type": 2,
+                "optional": false
+              },
+              {
+                "name": "cwd",
+                "type": 1,
+                "optional": true
+              },
+              {
+                "name": "delegationDepth",
+                "type": 2,
+                "optional": true
+              },
+              {
+                "name": "id",
+                "type": 1,
+                "optional": false
+              },
+              {
+                "name": "isSeeded",
+                "type": 3,
+                "optional": false
+              },
+              {
+                "name": "origin",
+                "type": 4,
+                "optional": true
+              },
+              {
+                "name": "parentSession",
+                "type": 1,
+                "optional": true
+              },
+              {
+                "name": "version",
+                "type": 7,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "primitive",
+            "type": "string"
+          },
+          {
+            "kind": "primitive",
+            "type": "number"
+          },
+          {
+            "kind": "primitive",
+            "type": "boolean"
+          },
+          {
+            "kind": "union",
+            "types": [
+              5,
+              6
+            ]
+          },
+          {
+            "kind": "literal",
+            "value": "headless"
+          },
+          {
+            "kind": "literal",
+            "value": "subagent"
+          },
+          {
+            "kind": "literal",
+            "value": 4
+          }
+        ]
+      }
+    },
+    {
+      "key": "JsonlHeaderLine",
+      "kind": "header",
+      "digest": "ccb0bfd91bb22e2254cf90d3e3ffc5b351e0bc7f1680cb9bea1cfa47fb30dbe3",
+      "schema": {
+        "root": 0,
+        "nodes": [
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "agentPreset",
+                "type": 1,
+                "optional": true
+              },
+              {
+                "name": "createdAt",
+                "type": 2,
+                "optional": false
+              },
+              {
+                "name": "cwd",
+                "type": 1,
+                "optional": true
+              },
+              {
+                "name": "delegationDepth",
+                "type": 2,
+                "optional": false
+              },
+              {
+                "name": "id",
+                "type": 1,
+                "optional": false
+              },
+              {
+                "name": "isSeeded",
+                "type": 3,
+                "optional": false
+              },
+              {
+                "name": "origin",
+                "type": 4,
+                "optional": true
+              },
+              {
+                "name": "parentSession",
+                "type": 1,
+                "optional": true
+              },
+              {
+                "name": "type",
+                "type": 7,
+                "optional": false
+              },
+              {
+                "name": "version",
+                "type": 2,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "primitive",
+            "type": "string"
+          },
+          {
+            "kind": "primitive",
+            "type": "number"
+          },
+          {
+            "kind": "primitive",
+            "type": "boolean"
+          },
+          {
+            "kind": "union",
+            "types": [
+              5,
+              6
+            ]
+          },
+          {
+            "kind": "literal",
+            "value": "headless"
+          },
+          {
+            "kind": "literal",
+            "value": "subagent"
+          },
+          {
+            "kind": "literal",
+            "value": "session"
+          }
+        ]
+      }
+    }
+  ],
+  "types": []
+}
