@@ -318,7 +318,7 @@ function updatedAt(header: SessionHeader, metadata: SessionListMetadata | undefi
 
 function listFields(header: SessionHeader): {
   readonly parentSessionId?: SessionId
-  readonly origin?: 'subagent'
+  readonly origin?: 'subagent' | 'headless'
   readonly cwd?: string
 } {
   return {

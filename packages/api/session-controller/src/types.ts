@@ -166,7 +166,7 @@ export interface SessionSummary {
   readonly running: boolean
   readonly blank: boolean
   readonly parentSessionId?: SessionId
-  readonly origin?: 'subagent'
+  readonly origin?: 'subagent' | 'headless'
   readonly cwd?: string
   readonly projections?: SessionProjectionHints
 }
@@ -407,7 +407,7 @@ export interface SessionWireHeader {
   readonly parentSession?: SessionId
   /** Whether the Session contains a fork-inherited prefix. */
   readonly isSeeded: boolean
-  readonly origin?: 'subagent'
+  readonly origin?: 'subagent' | 'headless'
   readonly delegationDepth?: number
   readonly agentPreset?: string
 }

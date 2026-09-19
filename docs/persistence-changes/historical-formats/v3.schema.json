@@ -4,7 +4,7 @@
     {
       "key": "SessionHeader",
       "kind": "header",
-      "digest": "617b4fe6312ab550656095d55478dc1f42497d54ba0c3b52968c78aed539dabe",
+      "digest": "2a8b114637e66faab5fae1c6e2fba65320db6224c80f5f36c5bf32f937154d03",
       "schema": {
         "root": 0,
         "nodes": [
@@ -53,7 +53,7 @@
               },
               {
                 "name": "version",
-                "type": 7,
+                "type": 5,
                 "optional": false
               }
             ],
@@ -72,23 +72,12 @@
             "type": "boolean"
           },
           {
-            "kind": "union",
-            "types": [
-              5,
-              6
-            ]
-          },
-          {
-            "kind": "literal",
-            "value": "headless"
-          },
-          {
             "kind": "literal",
             "value": "subagent"
           },
           {
             "kind": "literal",
-            "value": 4
+            "value": 3
           }
         ]
       }
@@ -96,7 +85,7 @@
     {
       "key": "JsonlHeaderLine",
       "kind": "header",
-      "digest": "ccb0bfd91bb22e2254cf90d3e3ffc5b351e0bc7f1680cb9bea1cfa47fb30dbe3",
+      "digest": "18ee62b8900a4c3d046700f05d7a4d49d6cab2a660a020c87481d1603dd8bd4f",
       "schema": {
         "root": 0,
         "nodes": [
@@ -145,7 +134,7 @@
               },
               {
                 "name": "type",
-                "type": 7,
+                "type": 5,
                 "optional": false
               },
               {
@@ -167,17 +156,6 @@
           {
             "kind": "primitive",
             "type": "boolean"
-          },
-          {
-            "kind": "union",
-            "types": [
-              5,
-              6
-            ]
-          },
-          {
-            "kind": "literal",
-            "value": "headless"
           },
           {
             "kind": "literal",
@@ -13873,7 +13851,7 @@
         "event:turn/end.data.reason[2]"
       ],
       "sources": [
-        "packages/core/session/src/types.ts:205"
+        "packages/core/session/src/types.ts"
       ]
     },
     {
@@ -13916,7 +13894,7 @@
         "packages/interaction/user-approval/src/index.ts#ApprovalPolicy"
       ],
       "sources": [
-        "packages/interaction/user-approval/src/index.ts:60"
+        "packages/interaction/user-approval/src/index.ts"
       ]
     },
     {
@@ -13934,7 +13912,7 @@
         "packages/core/session/src/types.ts#SessionSeq"
       ],
       "sources": [
-        "packages/core/session/src/types.ts:31"
+        "packages/core/session/src/types.ts"
       ]
     },
     {
@@ -14621,7 +14599,7 @@
         "packages/llm/llm/src/types.ts#StreamChunk"
       ],
       "sources": [
-        "packages/llm/llm/src/types.ts:426"
+        "packages/llm/llm/src/types.ts"
       ]
     },
     {
@@ -14656,8 +14634,8 @@
         "packages/subagent/tool-subagent/src/model-selection.ts#AllowedModelRoute"
       ],
       "sources": [
-        "packages/session/session-title/src/types.ts:20",
-        "packages/subagent/tool-subagent/src/model-selection.ts:9"
+        "packages/session/session-title/src/types.ts",
+        "packages/subagent/tool-subagent/src/model-selection.ts"
       ]
     },
     {
@@ -14799,7 +14777,7 @@
         "event:turn/end.data.reason[1]"
       ],
       "sources": [
-        "packages/core/session/src/types.ts:203"
+        "packages/core/session/src/types.ts"
       ]
     },
     {
@@ -14881,7 +14859,7 @@
         "packages/llm/llm/src/types.ts#ReplayEnvelope"
       ],
       "sources": [
-        "packages/llm/llm/src/types.ts:404"
+        "packages/llm/llm/src/types.ts"
       ]
     },
     {
@@ -14933,7 +14911,7 @@
         "packages/goal/goal/src/types.ts#GoalRef"
       ],
       "sources": [
-        "packages/goal/goal/src/types.ts:20"
+        "packages/goal/goal/src/types.ts"
       ]
     },
     {
@@ -14981,7 +14959,7 @@
         "event:team/message/delivered.data"
       ],
       "sources": [
-        "packages/experimental/agent-team/src/types.ts:227"
+        "packages/experimental/agent-team/src/types.ts"
       ]
     },
     {
@@ -15344,22 +15322,8 @@
         "event:team/message/queued.data"
       ],
       "sources": [
-        "packages/experimental/agent-team/src/types.ts:225"
+        "packages/experimental/agent-team/src/types.ts"
       ]
-    },
-    {
-      "digest": "0c4205180f75b9ee1e0d878bd9a9851628b5dc18448486389d9c5fdc3f1ccda3",
-      "schema": {
-        "root": 0,
-        "nodes": [
-          {
-            "kind": "literal",
-            "value": false
-          }
-        ]
-      },
-      "names": [],
-      "sources": []
     },
     {
       "digest": "0c6412d3ba5e41adfaa6929c7d4093f2d52d8598c03f35844fc0d55e3070a3b1",
@@ -16227,7 +16191,7 @@
         "event:assistant/attempt.data"
       ],
       "sources": [
-        "packages/core/session/src/types.ts:335"
+        "packages/core/session/src/types.ts"
       ]
     },
     {
@@ -16276,7 +16240,7 @@
         "event:subagent/model-selection-policy.data"
       ],
       "sources": [
-        "packages/subagent/tool-subagent/src/model-selection-state.ts:17"
+        "packages/subagent/tool-subagent/src/model-selection-state.ts"
       ]
     },
     {
@@ -16420,7 +16384,7 @@
         "event:agent/inbox/spliced.data.inserted[0].content[0][2].attachment.originalDimensions"
       ],
       "sources": [
-        "packages/attachment/attachment/src/types.ts:28"
+        "packages/attachment/attachment/src/types.ts"
       ]
     },
     {
@@ -17520,7 +17484,7 @@
         "event:hook/invoked.data"
       ],
       "sources": [
-        "packages/hooks/hook-protocol/src/types.ts:19"
+        "packages/hooks/hook-protocol/src/types.ts"
       ]
     },
     {
@@ -17569,7 +17533,7 @@
         "event:approval/policy.data"
       ],
       "sources": [
-        "packages/interaction/user-approval/src/index.ts:33"
+        "packages/interaction/user-approval/src/index.ts"
       ]
     },
     {
@@ -17716,8 +17680,22 @@
         "packages/llm/llm/src/types.ts#ImageBlock"
       ],
       "sources": [
-        "packages/llm/llm/src/types.ts:78"
+        "packages/llm/llm/src/types.ts"
       ]
+    },
+    {
+      "digest": "137ac60e26bcb192210d9a32a704b73b0924ed34019323defa1b787be95bd45e",
+      "schema": {
+        "root": 0,
+        "nodes": [
+          {
+            "kind": "literal",
+            "value": 3
+          }
+        ]
+      },
+      "names": [],
+      "sources": []
     },
     {
       "digest": "13d3d180f977bf78081d487ffa0ecb75857349bcab29a5a3fb48189fca2a6176",
@@ -18007,7 +17985,7 @@
         "event:deliverables/presented.data"
       ],
       "sources": [
-        "packages/deliverables/tool-present/src/types.ts:15"
+        "packages/deliverables/tool-present/src/types.ts"
       ]
     },
     {
@@ -18092,7 +18070,7 @@
         "event:session/end-seed.data"
       ],
       "sources": [
-        "packages/core/session/src/types.ts:405"
+        "packages/core/session/src/types.ts"
       ]
     },
     {
@@ -18139,7 +18117,97 @@
         "packages/schedule/schedule/src/types.ts#ScheduleDeleteChange"
       ],
       "sources": [
-        "packages/schedule/schedule/src/types.ts:79"
+        "packages/schedule/schedule/src/types.ts"
+      ]
+    },
+    {
+      "digest": "18ee62b8900a4c3d046700f05d7a4d49d6cab2a660a020c87481d1603dd8bd4f",
+      "schema": {
+        "root": 0,
+        "nodes": [
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "agentPreset",
+                "type": 1,
+                "optional": true
+              },
+              {
+                "name": "createdAt",
+                "type": 2,
+                "optional": false
+              },
+              {
+                "name": "cwd",
+                "type": 1,
+                "optional": true
+              },
+              {
+                "name": "delegationDepth",
+                "type": 2,
+                "optional": false
+              },
+              {
+                "name": "id",
+                "type": 1,
+                "optional": false
+              },
+              {
+                "name": "isSeeded",
+                "type": 3,
+                "optional": false
+              },
+              {
+                "name": "origin",
+                "type": 4,
+                "optional": true
+              },
+              {
+                "name": "parentSession",
+                "type": 1,
+                "optional": true
+              },
+              {
+                "name": "type",
+                "type": 5,
+                "optional": false
+              },
+              {
+                "name": "version",
+                "type": 2,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "primitive",
+            "type": "string"
+          },
+          {
+            "kind": "primitive",
+            "type": "number"
+          },
+          {
+            "kind": "primitive",
+            "type": "boolean"
+          },
+          {
+            "kind": "literal",
+            "value": "subagent"
+          },
+          {
+            "kind": "literal",
+            "value": "session"
+          }
+        ]
+      },
+      "names": [
+        "packages/session/session-persistence-jsonl/src/format.ts#HeaderLine"
+      ],
+      "sources": [
+        "packages/session/session-persistence-jsonl/src/format.ts"
       ]
     },
     {
@@ -18265,7 +18333,7 @@
         "event:session/title.data.source[0]"
       ],
       "sources": [
-        "packages/session/session-title/src/types.ts:29"
+        "packages/session/session-title/src/types.ts"
       ]
     },
     {
@@ -18618,7 +18686,7 @@
         "packages/llm/llm/src/message.ts#ToolResultMessage"
       ],
       "sources": [
-        "packages/llm/llm/src/message.ts:164"
+        "packages/llm/llm/src/message.ts"
       ]
     },
     {
@@ -18847,7 +18915,7 @@
         "packages/compaction/compaction-image-offload/src/projection.ts#ImageOffloadTarget"
       ],
       "sources": [
-        "packages/compaction/compaction-image-offload/src/projection.ts:9"
+        "packages/compaction/compaction-image-offload/src/projection.ts"
       ]
     },
     {
@@ -18890,7 +18958,7 @@
         "event:assistant/attempt.data.stream[0][3].chunk[6].reason[3]"
       ],
       "sources": [
-        "packages/llm/llm/src/types.ts:144"
+        "packages/llm/llm/src/types.ts"
       ]
     },
     {
@@ -19119,7 +19187,7 @@
         "packages/goal/goal/src/domain.ts#GoalSnapshotChangeMeta"
       ],
       "sources": [
-        "packages/goal/goal/src/domain.ts:24"
+        "packages/goal/goal/src/domain.ts"
       ]
     },
     {
@@ -19283,7 +19351,7 @@
         "packages/core/session/src/types.ts#TurnEndCancelCause"
       ],
       "sources": [
-        "packages/core/session/src/types.ts:195"
+        "packages/core/session/src/types.ts"
       ]
     },
     {
@@ -19839,7 +19907,7 @@
         "event:system/message.data"
       ],
       "sources": [
-        "packages/core/session/src/types.ts:310"
+        "packages/core/session/src/types.ts"
       ]
     },
     {
@@ -19868,7 +19936,7 @@
         "event:plan/mode.data"
       ],
       "sources": [
-        "packages/plan/plan-mode/src/index.ts:47"
+        "packages/plan/plan-mode/src/index.ts"
       ]
     },
     {
@@ -19935,7 +20003,7 @@
         "packages/experimental/agent-team/src/types.ts#TeamMessageSource"
       ],
       "sources": [
-        "packages/experimental/agent-team/src/types.ts:115"
+        "packages/experimental/agent-team/src/types.ts"
       ]
     },
     {
@@ -21048,7 +21116,7 @@
         "packages/llm/llm/src/message.ts#Message"
       ],
       "sources": [
-        "packages/llm/llm/src/message.ts:131"
+        "packages/llm/llm/src/message.ts"
       ]
     },
     {
@@ -21444,7 +21512,7 @@
         "packages/web/web-search-deepseek/src/provider.ts#DeepSeekSearchLlmRequest"
       ],
       "sources": [
-        "packages/web/web-search-deepseek/src/provider.ts:55"
+        "packages/web/web-search-deepseek/src/provider.ts"
       ]
     },
     {
@@ -22494,7 +22562,7 @@
         "packages/schedule/schedule/src/types.ts#AfterScheduleRecord"
       ],
       "sources": [
-        "packages/schedule/schedule/src/types.ts:13"
+        "packages/schedule/schedule/src/types.ts"
       ]
     },
     {
@@ -22523,7 +22591,7 @@
         "event:assistant/attempt.data.stream[0][3].chunk[6].reason[4]"
       ],
       "sources": [
-        "packages/llm/llm/src/types.ts:145"
+        "packages/llm/llm/src/types.ts"
       ]
     },
     {
@@ -23325,6 +23393,91 @@
       "sources": []
     },
     {
+      "digest": "2a8b114637e66faab5fae1c6e2fba65320db6224c80f5f36c5bf32f937154d03",
+      "schema": {
+        "root": 0,
+        "nodes": [
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "agentPreset",
+                "type": 1,
+                "optional": true
+              },
+              {
+                "name": "createdAt",
+                "type": 2,
+                "optional": false
+              },
+              {
+                "name": "cwd",
+                "type": 1,
+                "optional": true
+              },
+              {
+                "name": "delegationDepth",
+                "type": 2,
+                "optional": true
+              },
+              {
+                "name": "id",
+                "type": 1,
+                "optional": false
+              },
+              {
+                "name": "isSeeded",
+                "type": 3,
+                "optional": false
+              },
+              {
+                "name": "origin",
+                "type": 4,
+                "optional": true
+              },
+              {
+                "name": "parentSession",
+                "type": 1,
+                "optional": true
+              },
+              {
+                "name": "version",
+                "type": 5,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "primitive",
+            "type": "string"
+          },
+          {
+            "kind": "primitive",
+            "type": "number"
+          },
+          {
+            "kind": "primitive",
+            "type": "boolean"
+          },
+          {
+            "kind": "literal",
+            "value": "subagent"
+          },
+          {
+            "kind": "literal",
+            "value": 3
+          }
+        ]
+      },
+      "names": [
+        "packages/core/session/src/types.ts#SessionHeader"
+      ],
+      "sources": [
+        "packages/core/session/src/types.ts"
+      ]
+    },
+    {
       "digest": "2ab12a0e345658f9342816d773fe610f049982bcad82631f43b9205abe43e5ee",
       "schema": {
         "root": 0,
@@ -23434,7 +23587,7 @@
         "event:assistant/attempt.data.stream[0][3].chunk[2]"
       ],
       "sources": [
-        "packages/llm/llm/src/types.ts:429"
+        "packages/llm/llm/src/types.ts"
       ]
     },
     {
@@ -23569,7 +23722,7 @@
         "event:web/deepseek-search-llm-request.data.body.tools[0]"
       ],
       "sources": [
-        "packages/web/web-search-deepseek/src/provider.ts:71"
+        "packages/web/web-search-deepseek/src/provider.ts"
       ]
     },
     {
@@ -23785,7 +23938,7 @@
         "event:request/header.data"
       ],
       "sources": [
-        "packages/core/session/src/types.ts:370"
+        "packages/core/session/src/types.ts"
       ]
     },
     {
@@ -23824,7 +23977,7 @@
         "packages/attachment/attachment/src/types.ts#ImageMediaType"
       ],
       "sources": [
-        "packages/attachment/attachment/src/types.ts:8"
+        "packages/attachment/attachment/src/types.ts"
       ]
     },
     {
@@ -23923,7 +24076,7 @@
         "packages/core/tools/src/types.ts#PtcDispatchStartEventData"
       ],
       "sources": [
-        "packages/core/tools/src/types.ts:11"
+        "packages/core/tools/src/types.ts"
       ]
     },
     {
@@ -25529,7 +25682,7 @@
         "packages/llm/llm/src/message.ts#SystemMessage"
       ],
       "sources": [
-        "packages/llm/llm/src/message.ts:158"
+        "packages/llm/llm/src/message.ts"
       ]
     },
     {
@@ -25626,7 +25779,7 @@
         "packages/session/session-title/src/types.ts#SessionTitleSource"
       ],
       "sources": [
-        "packages/session/session-title/src/types.ts:28"
+        "packages/session/session-title/src/types.ts"
       ]
     },
     {
@@ -26808,7 +26961,7 @@
         "packages/llm/llm/src/call-config.ts#LlmCallConfigAdapterDefaults"
       ],
       "sources": [
-        "packages/llm/llm/src/call-config.ts:36"
+        "packages/llm/llm/src/call-config.ts"
       ]
     },
     {
@@ -26915,7 +27068,7 @@
         "packages/core/session/src/types.ts#SurfaceOp"
       ],
       "sources": [
-        "packages/core/session/src/types.ts:439"
+        "packages/core/session/src/types.ts"
       ]
     },
     {
@@ -27443,7 +27596,7 @@
         "event:tool/result.data"
       ],
       "sources": [
-        "packages/core/session/src/types.ts:355"
+        "packages/core/session/src/types.ts"
       ]
     },
     {
@@ -27670,7 +27823,7 @@
         "event:llm/retry.data[1]"
       ],
       "sources": [
-        "packages/llm/llm-retry/src/types.ts:30"
+        "packages/llm/llm-retry/src/types.ts"
       ]
     },
     {
@@ -27862,7 +28015,7 @@
         "event:assistant/attempt.data.stream[0][2]"
       ],
       "sources": [
-        "packages/llm/llm/src/assistant-stream.ts:35"
+        "packages/llm/llm/src/assistant-stream.ts"
       ]
     },
     {
@@ -27891,7 +28044,7 @@
         "packages/feedback/message-feedback/src/types.ts#MessageFeedbackRating"
       ],
       "sources": [
-        "packages/feedback/message-feedback/src/types.ts:17"
+        "packages/feedback/message-feedback/src/types.ts"
       ]
     },
     {
@@ -28402,7 +28555,7 @@
         "packages/subagent/subagent/src/catalog.ts#SubagentCatalogEvent"
       ],
       "sources": [
-        "packages/subagent/subagent/src/catalog.ts:24"
+        "packages/subagent/subagent/src/catalog.ts"
       ]
     },
     {
@@ -28537,7 +28690,7 @@
         "packages/core/session/src/types.ts#OptionalSessionSeq"
       ],
       "sources": [
-        "packages/core/session/src/types.ts:64"
+        "packages/core/session/src/types.ts"
       ]
     },
     {
@@ -28674,7 +28827,7 @@
         "packages/core/tools/src/index.ts#ToolRestriction"
       ],
       "sources": [
-        "packages/core/tools/src/index.ts:682"
+        "packages/core/tools/src/index.ts"
       ]
     },
     {
@@ -28792,7 +28945,7 @@
         "packages/feedback/message-feedback/src/types.ts#MessageFeedbackItem"
       ],
       "sources": [
-        "packages/feedback/message-feedback/src/types.ts:20"
+        "packages/feedback/message-feedback/src/types.ts"
       ]
     },
     {
@@ -28874,7 +29027,7 @@
         "event:compaction/start.data"
       ],
       "sources": [
-        "packages/compaction/compaction/src/types.ts:24"
+        "packages/compaction/compaction/src/types.ts"
       ]
     },
     {
@@ -28960,20 +29113,6 @@
           {
             "kind": "literal",
             "value": "image/jpeg"
-          }
-        ]
-      },
-      "names": [],
-      "sources": []
-    },
-    {
-      "digest": "3f750dccfae181af98ea28ee5e10687abc0bc41f35e1717149d4a8a6328aef62",
-      "schema": {
-        "root": 0,
-        "nodes": [
-          {
-            "kind": "literal",
-            "value": "headless"
           }
         ]
       },
@@ -29611,7 +29750,7 @@
         "event:approval/asked.data"
       ],
       "sources": [
-        "packages/interaction/user-approval/src/types.ts:44"
+        "packages/interaction/user-approval/src/types.ts"
       ]
     },
     {
@@ -29664,7 +29803,7 @@
         "event:image/offload.data"
       ],
       "sources": [
-        "packages/compaction/compaction-image-offload/src/projection.ts:25"
+        "packages/compaction/compaction-image-offload/src/projection.ts"
       ]
     },
     {
@@ -30986,7 +31125,7 @@
         "packages/subagent/subagent/src/continuation-messages.ts#AgentMessageSource"
       ],
       "sources": [
-        "packages/subagent/subagent/src/continuation-messages.ts:15"
+        "packages/subagent/subagent/src/continuation-messages.ts"
       ]
     },
     {
@@ -31140,7 +31279,7 @@
         "event:turn/end.data.reason[1].reason[3]"
       ],
       "sources": [
-        "packages/core/session/src/types.ts:192"
+        "packages/core/session/src/types.ts"
       ]
     },
     {
@@ -31920,7 +32059,7 @@
         "packages/llm/llm/src/message.ts#MessageSource"
       ],
       "sources": [
-        "packages/llm/llm/src/message.ts:128"
+        "packages/llm/llm/src/message.ts"
       ]
     },
     {
@@ -31960,29 +32099,22 @@
         "packages/workflow/workflow/src/types.ts#WorkflowRunId"
       ],
       "sources": [
-        "packages/api/session-controller/src/types.ts:376",
-        "packages/attachment/attachment/src/brand.ts:6",
-        "packages/compaction/compaction/src/brand.ts:4",
-        "packages/core/session/src/types.ts:19",
-        "packages/experimental/agent-team/src/types.ts:20",
-        "packages/experimental/agent-team/src/types.ts:32",
-        "packages/experimental/agent-team/src/types.ts:8",
-        "packages/feedback/message-feedback/src/types.ts:14",
-        "packages/goal/goal/src/types.ts:17",
-        "packages/interaction/commands/src/brand.ts:31",
-        "packages/interaction/user-approval/src/types.ts:17",
-        "packages/llm/llm-retry/src/brand.ts:4",
-        "packages/llm/llm/src/brand.ts:16",
-        "packages/llm/llm/src/brand.ts:31",
-        "packages/llm/llm/src/brand.ts:43",
-        "packages/llm/llm/src/brand.ts:67",
-        "packages/schedule/schedule/src/types.ts:10",
-        "packages/session/session-title/src/index.ts:42",
-        "packages/session/session-title/src/types.ts:17",
-        "packages/webhook/webhook/src/brand.ts:12",
-        "packages/webhook/webhook/src/brand.ts:6",
-        "packages/webhook/webhook/src/brand.ts:9",
-        "packages/workflow/workflow/src/types.ts:13"
+        "packages/api/session-controller/src/types.ts",
+        "packages/attachment/attachment/src/brand.ts",
+        "packages/compaction/compaction/src/brand.ts",
+        "packages/core/session/src/types.ts",
+        "packages/experimental/agent-team/src/types.ts",
+        "packages/feedback/message-feedback/src/types.ts",
+        "packages/goal/goal/src/types.ts",
+        "packages/interaction/commands/src/brand.ts",
+        "packages/interaction/user-approval/src/types.ts",
+        "packages/llm/llm-retry/src/brand.ts",
+        "packages/llm/llm/src/brand.ts",
+        "packages/schedule/schedule/src/types.ts",
+        "packages/session/session-title/src/index.ts",
+        "packages/session/session-title/src/types.ts",
+        "packages/webhook/webhook/src/brand.ts",
+        "packages/workflow/workflow/src/types.ts"
       ]
     },
     {
@@ -33051,7 +33183,7 @@
         "packages/llm/llm/src/message.ts#UserMessage"
       ],
       "sources": [
-        "packages/llm/llm/src/message.ts:143"
+        "packages/llm/llm/src/message.ts"
       ]
     },
     {
@@ -33118,8 +33250,8 @@
         "packages/llm/llm/src/types.ts#TextBlock"
       ],
       "sources": [
-        "packages/llm/llm/src/types.ts:61",
-        "packages/web/web-search-deepseek/src/provider.ts:66"
+        "packages/llm/llm/src/types.ts",
+        "packages/web/web-search-deepseek/src/provider.ts"
       ]
     },
     {
@@ -33171,7 +33303,7 @@
         "packages/subagent/subagent/src/continuation-messages.ts#SubagentSettledMessageSource"
       ],
       "sources": [
-        "packages/subagent/subagent/src/continuation-messages.ts:30"
+        "packages/subagent/subagent/src/continuation-messages.ts"
       ]
     },
     {
@@ -33283,7 +33415,7 @@
         "event:agent/inbox/spliced.data.inserted[0].source[15].references[0]"
       ],
       "sources": [
-        "packages/context/session-reference/src/types.ts:18"
+        "packages/context/session-reference/src/types.ts"
       ]
     },
     {
@@ -33676,7 +33808,7 @@
         "packages/experimental/agent-team/src/types.ts#TeamTaskSnapshot"
       ],
       "sources": [
-        "packages/experimental/agent-team/src/types.ts:74"
+        "packages/experimental/agent-team/src/types.ts"
       ]
     },
     {
@@ -33949,7 +34081,7 @@
         "event:tool/result.data.meta[6]"
       ],
       "sources": [
-        "packages/util/values/src/index.ts:4"
+        "packages/util/values/src/index.ts"
       ]
     },
     {
@@ -33988,7 +34120,7 @@
         "packages/core/session/src/types.ts#RequestHeaderReason"
       ],
       "sources": [
-        "packages/core/session/src/types.ts:261"
+        "packages/core/session/src/types.ts"
       ]
     },
     {
@@ -34031,7 +34163,7 @@
         "event:turn/end.data.reason[5]"
       ],
       "sources": [
-        "packages/core/session/src/types.ts:220"
+        "packages/core/session/src/types.ts"
       ]
     },
     {
@@ -34377,7 +34509,7 @@
         "packages/llm/llm/src/types.ts#FinishReason"
       ],
       "sources": [
-        "packages/llm/llm/src/types.ts:152"
+        "packages/llm/llm/src/types.ts"
       ]
     },
     {
@@ -34757,7 +34889,7 @@
         "packages/experimental/agent-team/src/types.ts#TeamMessageSnapshot"
       ],
       "sources": [
-        "packages/experimental/agent-team/src/types.ts:106"
+        "packages/experimental/agent-team/src/types.ts"
       ]
     },
     {
@@ -34820,7 +34952,7 @@
         "event:command/done.data"
       ],
       "sources": [
-        "packages/interaction/commands/src/types.ts:112"
+        "packages/interaction/commands/src/types.ts"
       ]
     },
     {
@@ -35070,7 +35202,7 @@
         "event:compaction/prune.data"
       ],
       "sources": [
-        "packages/compaction/compaction/src/types.ts:82"
+        "packages/compaction/compaction/src/types.ts"
       ]
     },
     {
@@ -35208,7 +35340,7 @@
         "packages/llm/llm/src/types.ts#LlmFailure"
       ],
       "sources": [
-        "packages/llm/llm/src/types.ts:40"
+        "packages/llm/llm/src/types.ts"
       ]
     },
     {
@@ -35350,7 +35482,7 @@
         "packages/subagent/subagent/src/descriptor.ts#OneShotSubagentDescriptorData"
       ],
       "sources": [
-        "packages/subagent/subagent/src/descriptor.ts:61"
+        "packages/subagent/subagent/src/descriptor.ts"
       ]
     },
     {
@@ -35380,102 +35512,6 @@
       },
       "names": [],
       "sources": []
-    },
-    {
-      "digest": "617b4fe6312ab550656095d55478dc1f42497d54ba0c3b52968c78aed539dabe",
-      "schema": {
-        "root": 0,
-        "nodes": [
-          {
-            "kind": "object",
-            "properties": [
-              {
-                "name": "agentPreset",
-                "type": 1,
-                "optional": true
-              },
-              {
-                "name": "createdAt",
-                "type": 2,
-                "optional": false
-              },
-              {
-                "name": "cwd",
-                "type": 1,
-                "optional": true
-              },
-              {
-                "name": "delegationDepth",
-                "type": 2,
-                "optional": true
-              },
-              {
-                "name": "id",
-                "type": 1,
-                "optional": false
-              },
-              {
-                "name": "isSeeded",
-                "type": 3,
-                "optional": false
-              },
-              {
-                "name": "origin",
-                "type": 4,
-                "optional": true
-              },
-              {
-                "name": "parentSession",
-                "type": 1,
-                "optional": true
-              },
-              {
-                "name": "version",
-                "type": 7,
-                "optional": false
-              }
-            ],
-            "indices": []
-          },
-          {
-            "kind": "primitive",
-            "type": "string"
-          },
-          {
-            "kind": "primitive",
-            "type": "number"
-          },
-          {
-            "kind": "primitive",
-            "type": "boolean"
-          },
-          {
-            "kind": "union",
-            "types": [
-              5,
-              6
-            ]
-          },
-          {
-            "kind": "literal",
-            "value": "headless"
-          },
-          {
-            "kind": "literal",
-            "value": "subagent"
-          },
-          {
-            "kind": "literal",
-            "value": 4
-          }
-        ]
-      },
-      "names": [
-        "packages/core/session/src/types.ts#SessionHeader"
-      ],
-      "sources": [
-        "packages/core/session/src/types.ts:93"
-      ]
     },
     {
       "digest": "62e6a429ff3f390a46ac39fb468692032f42936ca0db19b53454184189401379",
@@ -36769,7 +36805,7 @@
         "event:assistant/attempt.data.stream[0][3].chunk[0]"
       ],
       "sources": [
-        "packages/llm/llm/src/types.ts:427"
+        "packages/llm/llm/src/types.ts"
       ]
     },
     {
@@ -36866,7 +36902,7 @@
         "packages/subagent/subagent/src/descriptor.ts#ContinuableSubagentDescriptorData"
       ],
       "sources": [
-        "packages/subagent/subagent/src/descriptor.ts:72"
+        "packages/subagent/subagent/src/descriptor.ts"
       ]
     },
     {
@@ -36914,7 +36950,7 @@
         "packages/schedule/schedule/src/types.ts#AtScheduleRecord"
       ],
       "sources": [
-        "packages/schedule/schedule/src/types.ts:27"
+        "packages/schedule/schedule/src/types.ts"
       ]
     },
     {
@@ -37008,7 +37044,7 @@
         "packages/experimental/agent-team/src/types.ts#TeamMemberSnapshot"
       ],
       "sources": [
-        "packages/experimental/agent-team/src/types.ts:47"
+        "packages/experimental/agent-team/src/types.ts"
       ]
     },
     {
@@ -37065,7 +37101,7 @@
         "packages/schedule/schedule/src/types.ts#EveryScheduleRecord"
       ],
       "sources": [
-        "packages/schedule/schedule/src/types.ts:39"
+        "packages/schedule/schedule/src/types.ts"
       ]
     },
     {
@@ -37112,7 +37148,7 @@
         "packages/skill/skill/src/index.ts#SkillInvocationSource"
       ],
       "sources": [
-        "packages/skill/skill/src/index.ts:146"
+        "packages/skill/skill/src/index.ts"
       ]
     },
     {
@@ -37174,7 +37210,7 @@
         "packages/llm/llm/src/call-config.ts#LlmCallConfig"
       ],
       "sources": [
-        "packages/llm/llm/src/call-config.ts:23"
+        "packages/llm/llm/src/call-config.ts"
       ]
     },
     {
@@ -37294,7 +37330,7 @@
         "event:assistant/attempt.data.stream[0][3].chunk[6].reason[1]"
       ],
       "sources": [
-        "packages/llm/llm/src/types.ts:148"
+        "packages/llm/llm/src/types.ts"
       ]
     },
     {
@@ -37990,7 +38026,7 @@
         "event:agent/inbox/spliced.data.inserted[0].source[11]"
       ],
       "sources": [
-        "packages/api/session-controller/src/types.ts:381"
+        "packages/api/session-controller/src/types.ts"
       ]
     },
     {
@@ -38103,7 +38139,7 @@
         "packages/goal/goal/src/types.ts#GoalSnapshot"
       ],
       "sources": [
-        "packages/goal/goal/src/types.ts:60"
+        "packages/goal/goal/src/types.ts"
       ]
     },
     {
@@ -38132,7 +38168,7 @@
         "event:turn/end.data.reason[1].reason[1]"
       ],
       "sources": [
-        "packages/core/session/src/types.ts:190"
+        "packages/core/session/src/types.ts"
       ]
     },
     {
@@ -38184,7 +38220,7 @@
         "event:turn/end.data.reason[1].reason[2]"
       ],
       "sources": [
-        "packages/core/session/src/types.ts:191"
+        "packages/core/session/src/types.ts"
       ]
     },
     {
@@ -38282,7 +38318,7 @@
         "event:agent-preset/selected.data"
       ],
       "sources": [
-        "packages/preset/agent-presets/src/session.ts:28"
+        "packages/preset/agent-presets/src/session.ts"
       ]
     },
     {
@@ -38421,7 +38457,7 @@
         "packages/context/agent-instructions/src/state.ts#AgentInstructionSource"
       ],
       "sources": [
-        "packages/context/agent-instructions/src/state.ts:37"
+        "packages/context/agent-instructions/src/state.ts"
       ]
     },
     {
@@ -38483,7 +38519,7 @@
         "packages/llm/llm-retry/src/types.ts#LlmRetryStartedEventData"
       ],
       "sources": [
-        "packages/llm/llm-retry/src/types.ts:43"
+        "packages/llm/llm-retry/src/types.ts"
       ]
     },
     {
@@ -38577,7 +38613,7 @@
         "packages/llm/llm/src/message.ts#ModelMessageSource"
       ],
       "sources": [
-        "packages/llm/llm/src/message.ts:24"
+        "packages/llm/llm/src/message.ts"
       ]
     },
     {
@@ -38642,7 +38678,7 @@
         "event:assistant/attempt.data.stream[0][1]"
       ],
       "sources": [
-        "packages/llm/llm/src/assistant-stream.ts:28"
+        "packages/llm/llm/src/assistant-stream.ts"
       ]
     },
     {
@@ -38759,7 +38795,7 @@
         "packages/llm/llm/src/types.ts#ContentBlockType"
       ],
       "sources": [
-        "packages/llm/llm/src/types.ts:135"
+        "packages/llm/llm/src/types.ts"
       ]
     },
     {
@@ -40001,7 +40037,7 @@
         "event:assistant/message.data"
       ],
       "sources": [
-        "packages/core/session/src/types.ts:321"
+        "packages/core/session/src/types.ts"
       ]
     },
     {
@@ -40079,7 +40115,7 @@
         "event:turn/end.data.reason[3]"
       ],
       "sources": [
-        "packages/core/session/src/types.ts:211"
+        "packages/core/session/src/types.ts"
       ]
     },
     {
@@ -40148,7 +40184,7 @@
         "event:todo/write.data"
       ],
       "sources": [
-        "packages/todo/tool-todo/src/types.ts:31"
+        "packages/todo/tool-todo/src/types.ts"
       ]
     },
     {
@@ -40287,7 +40323,7 @@
         "packages/feedback/message-feedback/src/types.ts#MessageFeedbackDelete"
       ],
       "sources": [
-        "packages/feedback/message-feedback/src/types.ts:46"
+        "packages/feedback/message-feedback/src/types.ts"
       ]
     },
     {
@@ -40524,7 +40560,7 @@
         "packages/goal/goal/src/domain.ts#GoalChangeMeta"
       ],
       "sources": [
-        "packages/goal/goal/src/domain.ts:44"
+        "packages/goal/goal/src/domain.ts"
       ]
     },
     {
@@ -40598,7 +40634,7 @@
         "packages/feedback/command-feedback/src/types.ts#FeedbackRecord"
       ],
       "sources": [
-        "packages/feedback/command-feedback/src/types.ts:27"
+        "packages/feedback/command-feedback/src/types.ts"
       ]
     },
     {
@@ -40665,7 +40701,7 @@
         "packages/llm/llm/src/types.ts#ToolSchema"
       ],
       "sources": [
-        "packages/llm/llm/src/types.ts:447"
+        "packages/llm/llm/src/types.ts"
       ]
     },
     {
@@ -40815,7 +40851,7 @@
         "packages/workflow/tool-workflow/src/types.ts#ToolWorkflowRunEndData"
       ],
       "sources": [
-        "packages/workflow/tool-workflow/src/types.ts:36"
+        "packages/workflow/tool-workflow/src/types.ts"
       ]
     },
     {
@@ -40867,7 +40903,7 @@
         "packages/goal/goal/src/domain.ts#GoalMessageSource"
       ],
       "sources": [
-        "packages/goal/goal/src/domain.ts:47"
+        "packages/goal/goal/src/domain.ts"
       ]
     },
     {
@@ -40919,7 +40955,7 @@
         "packages/llm/llm/src/types.ts#ReasoningBlock"
       ],
       "sources": [
-        "packages/llm/llm/src/types.ts:67"
+        "packages/llm/llm/src/types.ts"
       ]
     },
     {
@@ -40981,7 +41017,7 @@
         "event:agent/inbox/spliced.data.inserted[0].source[17].entries[0]"
       ],
       "sources": [
-        "packages/skill/tool-skill/src/index.ts:40"
+        "packages/skill/tool-skill/src/index.ts"
       ]
     },
     {
@@ -41045,7 +41081,7 @@
         "packages/context/agent-instructions/src/render.ts#AgentInstructionChange"
       ],
       "sources": [
-        "packages/context/agent-instructions/src/render.ts:47"
+        "packages/context/agent-instructions/src/render.ts"
       ]
     },
     {
@@ -41079,7 +41115,7 @@
         "packages/workflow/workflow/src/types.ts#WorkflowStopReason"
       ],
       "sources": [
-        "packages/workflow/workflow/src/types.ts:63"
+        "packages/workflow/workflow/src/types.ts"
       ]
     },
     {
@@ -41113,7 +41149,7 @@
         "packages/goal/goal/src/types.ts#GoalBlockReason"
       ],
       "sources": [
-        "packages/goal/goal/src/types.ts:52"
+        "packages/goal/goal/src/types.ts"
       ]
     },
     {
@@ -42003,7 +42039,7 @@
         "packages/llm/llm/src/assistant-stream.ts#AssistantStreamRecord"
       ],
       "sources": [
-        "packages/llm/llm/src/assistant-stream.ts:20"
+        "packages/llm/llm/src/assistant-stream.ts"
       ]
     },
     {
@@ -42137,7 +42173,7 @@
         "packages/subagent/subagent/src/descriptor.ts#SubagentDescriptorData"
       ],
       "sources": [
-        "packages/subagent/subagent/src/descriptor.ts:89"
+        "packages/subagent/subagent/src/descriptor.ts"
       ]
     },
     {
@@ -42171,7 +42207,7 @@
         "packages/llm/llm/src/message.ts#ContextSnapshotSection"
       ],
       "sources": [
-        "packages/llm/llm/src/message.ts:65"
+        "packages/llm/llm/src/message.ts"
       ]
     },
     {
@@ -42242,7 +42278,7 @@
         "event:assistant/attempt.data.stream[0][3].chunk[3]"
       ],
       "sources": [
-        "packages/llm/llm/src/types.ts:430"
+        "packages/llm/llm/src/types.ts"
       ]
     },
     {
@@ -42376,7 +42412,7 @@
         "event:permission/preset.data"
       ],
       "sources": [
-        "packages/interaction/permission-presets/src/index.ts:57"
+        "packages/interaction/permission-presets/src/index.ts"
       ]
     },
     {
@@ -42439,7 +42475,7 @@
         "event:hook/result.data"
       ],
       "sources": [
-        "packages/hooks/hook-protocol/src/types.ts:31"
+        "packages/hooks/hook-protocol/src/types.ts"
       ]
     },
     {
@@ -42496,7 +42532,7 @@
         "event:session-log-deepseek/delivery-accepted.data"
       ],
       "sources": [
-        "packages/session/session-log-deepseek/src/types.ts:81"
+        "packages/session/session-log-deepseek/src/types.ts"
       ]
     },
     {
@@ -42874,7 +42910,7 @@
         "packages/core/tools/src/types.ts#PtcDispatchEventData"
       ],
       "sources": [
-        "packages/core/tools/src/types.ts:20"
+        "packages/core/tools/src/types.ts"
       ]
     },
     {
@@ -43253,7 +43289,7 @@
         "event:assistant/attempt.data.stream[0][3].chunk[6].reason[0]"
       ],
       "sources": [
-        "packages/llm/llm/src/types.ts:147"
+        "packages/llm/llm/src/types.ts"
       ]
     },
     {
@@ -43314,7 +43350,7 @@
         "packages/schedule/schedule/src/types.ts#OneShotScheduleDispatchChange"
       ],
       "sources": [
-        "packages/schedule/schedule/src/types.ts:86"
+        "packages/schedule/schedule/src/types.ts"
       ]
     },
     {
@@ -43931,7 +43967,7 @@
         "event:assistant/attempt.data.stream[0][3].chunk[4]"
       ],
       "sources": [
-        "packages/llm/llm/src/types.ts:431"
+        "packages/llm/llm/src/types.ts"
       ]
     },
     {
@@ -44078,7 +44114,7 @@
         "event:web/deepseek-search-llm-request.data.body"
       ],
       "sources": [
-        "packages/web/web-search-deepseek/src/provider.ts:61"
+        "packages/web/web-search-deepseek/src/provider.ts"
       ]
     },
     {
@@ -44117,7 +44153,7 @@
         "packages/interaction/user-approval/src/types.ts#ApprovalOutcome"
       ],
       "sources": [
-        "packages/interaction/user-approval/src/types.ts:32"
+        "packages/interaction/user-approval/src/types.ts"
       ]
     },
     {
@@ -44231,7 +44267,7 @@
         "event:approval/decided.data"
       ],
       "sources": [
-        "packages/interaction/user-approval/src/types.ts:55"
+        "packages/interaction/user-approval/src/types.ts"
       ]
     },
     {
@@ -44306,7 +44342,7 @@
         "event:assistant/attempt.data.stream[0][3].chunk[1]"
       ],
       "sources": [
-        "packages/llm/llm/src/types.ts:428"
+        "packages/llm/llm/src/types.ts"
       ]
     },
     {
@@ -44349,7 +44385,7 @@
         "packages/core/agent/src/types.ts#InboxTarget"
       ],
       "sources": [
-        "packages/core/agent/src/types.ts:30"
+        "packages/core/agent/src/types.ts"
       ]
     },
     {
@@ -44403,7 +44439,7 @@
         "event:sandbox/mode.data"
       ],
       "sources": [
-        "packages/sandbox/sandbox-policy/src/session-mode.ts:33"
+        "packages/sandbox/sandbox-policy/src/session-mode.ts"
       ]
     },
     {
@@ -44573,7 +44609,7 @@
         "event:web/deepseek-search-llm-request.data.body.messages[0]"
       ],
       "sources": [
-        "packages/web/web-search-deepseek/src/provider.ts:64"
+        "packages/web/web-search-deepseek/src/provider.ts"
       ]
     },
     {
@@ -44626,7 +44662,7 @@
         "packages/workflow/tool-workflow/src/types.ts#ToolWorkflowAgentStartData"
       ],
       "sources": [
-        "packages/workflow/tool-workflow/src/types.ts:20"
+        "packages/workflow/tool-workflow/src/types.ts"
       ]
     },
     {
@@ -44758,8 +44794,7 @@
         "event:compaction/summary.data[1].shadowedRange"
       ],
       "sources": [
-        "packages/compaction/compaction/src/types.ts:38",
-        "packages/compaction/compaction/src/types.ts:84"
+        "packages/compaction/compaction/src/types.ts"
       ]
     },
     {
@@ -44826,7 +44861,7 @@
         "event:agent/inbox/spliced.data.inserted[0].source[19]"
       ],
       "sources": [
-        "packages/webhook/webhook/src/types.ts:74"
+        "packages/webhook/webhook/src/types.ts"
       ]
     },
     {
@@ -45971,7 +46006,7 @@
         "packages/session/session-title-llm/src/index.ts#SessionTitleLlmRequestEventData"
       ],
       "sources": [
-        "packages/session/session-title-llm/src/index.ts:27"
+        "packages/session/session-title-llm/src/index.ts"
       ]
     },
     {
@@ -46684,7 +46719,7 @@
         "event:assistant/attempt.data.stream[0][3].chunk[6]"
       ],
       "sources": [
-        "packages/llm/llm/src/types.ts:433"
+        "packages/llm/llm/src/types.ts"
       ]
     },
     {
@@ -46848,7 +46883,7 @@
         "event:team/task.data"
       ],
       "sources": [
-        "packages/experimental/agent-team/src/types.ts:223"
+        "packages/experimental/agent-team/src/types.ts"
       ]
     },
     {
@@ -47107,7 +47142,7 @@
         "packages/core/session/src/types.ts#TurnEndReason"
       ],
       "sources": [
-        "packages/core/session/src/types.ts:224"
+        "packages/core/session/src/types.ts"
       ]
     },
     {
@@ -48320,7 +48355,7 @@
         "event:agent/inbox/spliced.data"
       ],
       "sources": [
-        "packages/core/agent/src/types.ts:87"
+        "packages/core/agent/src/types.ts"
       ]
     },
     {
@@ -48349,7 +48384,7 @@
         "packages/hooks/hook-protocol/src/types.ts#HookDialect"
       ],
       "sources": [
-        "packages/hooks/hook-protocol/src/types.ts:48"
+        "packages/hooks/hook-protocol/src/types.ts"
       ]
     },
     {
@@ -48383,7 +48418,7 @@
         "packages/workflow/tool-workflow/src/types.ts#ToolWorkflowRunStartData"
       ],
       "sources": [
-        "packages/workflow/tool-workflow/src/types.ts:14"
+        "packages/workflow/tool-workflow/src/types.ts"
       ]
     },
     {
@@ -48493,8 +48528,8 @@
         "event:tool/result.data.error"
       ],
       "sources": [
-        "packages/core/session/src/types.ts:363",
-        "packages/core/tools/src/types.ts:24"
+        "packages/core/session/src/types.ts",
+        "packages/core/tools/src/types.ts"
       ]
     },
     {
@@ -48553,7 +48588,7 @@
         "event:command/run.data"
       ],
       "sources": [
-        "packages/interaction/commands/src/types.ts:105"
+        "packages/interaction/commands/src/types.ts"
       ]
     },
     {
@@ -48621,7 +48656,7 @@
         "packages/todo/tool-todo/src/types.ts#TodoItem"
       ],
       "sources": [
-        "packages/todo/tool-todo/src/types.ts:21"
+        "packages/todo/tool-todo/src/types.ts"
       ]
     },
     {
@@ -48821,7 +48856,7 @@
         "packages/feedback/message-feedback/src/types.ts#MessageFeedbackPut"
       ],
       "sources": [
-        "packages/feedback/message-feedback/src/types.ts:38"
+        "packages/feedback/message-feedback/src/types.ts"
       ]
     },
     {
@@ -48879,8 +48914,8 @@
         "event:turn/end.data.reason[4]"
       ],
       "sources": [
-        "packages/core/session/src/types.ts:213",
-        "packages/llm/llm/src/types.ts:146"
+        "packages/core/session/src/types.ts",
+        "packages/llm/llm/src/types.ts"
       ]
     },
     {
@@ -49022,11 +49057,10 @@
         "packages/interaction/commands/src/types.ts#CommandSource"
       ],
       "sources": [
-        "packages/core/session/src/types.ts:189",
-        "packages/interaction/commands/src/types.ts:75",
-        "packages/interaction/commands/src/types.ts:79",
-        "packages/llm/llm/src/message.ts:103",
-        "packages/session/session-title/src/types.ts:35"
+        "packages/core/session/src/types.ts",
+        "packages/interaction/commands/src/types.ts",
+        "packages/llm/llm/src/message.ts",
+        "packages/session/session-title/src/types.ts"
       ]
     },
     {
@@ -49205,20 +49239,6 @@
           {
             "kind": "literal",
             "value": "todo/write"
-          }
-        ]
-      },
-      "names": [],
-      "sources": []
-    },
-    {
-      "digest": "af6e173f7be819bcd0a5c8d77918649c10ce761d8a184ff472f2e01ce64eb2e0",
-      "schema": {
-        "root": 0,
-        "nodes": [
-          {
-            "kind": "literal",
-            "value": 4
           }
         ]
       },
@@ -49436,7 +49456,7 @@
         "packages/attachment/attachment/src/types.ts#ImageAttachmentRef"
       ],
       "sources": [
-        "packages/attachment/attachment/src/types.ts:11"
+        "packages/attachment/attachment/src/types.ts"
       ]
     },
     {
@@ -49488,7 +49508,7 @@
         "packages/core/session/src/types.ts#RequestContext"
       ],
       "sources": [
-        "packages/core/session/src/types.ts:242"
+        "packages/core/session/src/types.ts"
       ]
     },
     {
@@ -49627,7 +49647,7 @@
         "event:team/member.data"
       ],
       "sources": [
-        "packages/experimental/agent-team/src/types.ts:221"
+        "packages/experimental/agent-team/src/types.ts"
       ]
     },
     {
@@ -49770,7 +49790,7 @@
         "packages/experimental/agent-team/src/types.ts#TeamTaskStatus"
       ],
       "sources": [
-        "packages/experimental/agent-team/src/types.ts:71"
+        "packages/experimental/agent-team/src/types.ts"
       ]
     },
     {
@@ -50644,7 +50664,7 @@
         "packages/session/session-title/src/types.ts#SessionTitleEventData"
       ],
       "sources": [
-        "packages/session/session-title/src/types.ts:41"
+        "packages/session/session-title/src/types.ts"
       ]
     },
     {
@@ -50701,7 +50721,7 @@
         "event:turn/end.data.reason[0]"
       ],
       "sources": [
-        "packages/core/session/src/types.ts:201"
+        "packages/core/session/src/types.ts"
       ]
     },
     {
@@ -50959,7 +50979,7 @@
         "event:session/title.data.source[1]"
       ],
       "sources": [
-        "packages/session/session-title/src/types.ts:30"
+        "packages/session/session-title/src/types.ts"
       ]
     },
     {
@@ -50998,7 +51018,7 @@
         "packages/goal/goal/src/types.ts#GoalPhase"
       ],
       "sources": [
-        "packages/goal/goal/src/types.ts:45"
+        "packages/goal/goal/src/types.ts"
       ]
     },
     {
@@ -51032,7 +51052,7 @@
         "packages/deliverables/tool-present/src/types.ts#PresentedFile"
       ],
       "sources": [
-        "packages/deliverables/tool-present/src/types.ts:5"
+        "packages/deliverables/tool-present/src/types.ts"
       ]
     },
     {
@@ -52145,7 +52165,7 @@
         "SessionEventEnvelope[6].surfaceOp[1]"
       ],
       "sources": [
-        "packages/core/session/src/types.ts:441"
+        "packages/core/session/src/types.ts"
       ]
     },
     {
@@ -52236,7 +52256,7 @@
         "packages/workflow/tool-workflow/src/types.ts#ToolWorkflowAgentEndData"
       ],
       "sources": [
-        "packages/workflow/tool-workflow/src/types.ts:29"
+        "packages/workflow/tool-workflow/src/types.ts"
       ]
     },
     {
@@ -52416,7 +52436,7 @@
         "packages/llm/llm-retry/src/types.ts#LlmRetryEventData"
       ],
       "sources": [
-        "packages/llm/llm-retry/src/types.ts:16"
+        "packages/llm/llm-retry/src/types.ts"
       ]
     },
     {
@@ -52464,7 +52484,7 @@
         "packages/llm/llm/src/types.ts#ToolCallBlock"
       ],
       "sources": [
-        "packages/llm/llm/src/types.ts:104"
+        "packages/llm/llm/src/types.ts"
       ]
     },
     {
@@ -52587,7 +52607,7 @@
         "packages/workflow/workflow/src/types.ts#WorkflowAgentOutcome"
       ],
       "sources": [
-        "packages/workflow/workflow/src/types.ts:110"
+        "packages/workflow/workflow/src/types.ts"
       ]
     },
     {
@@ -52743,7 +52763,7 @@
         "packages/core/session/src/types.ts#EpochHeader"
       ],
       "sources": [
-        "packages/core/session/src/types.ts:232"
+        "packages/core/session/src/types.ts"
       ]
     },
     {
@@ -52813,7 +52833,7 @@
         "packages/util/values/src/index.ts#JsonValue"
       ],
       "sources": [
-        "packages/util/values/src/index.ts:4"
+        "packages/util/values/src/index.ts"
       ]
     },
     {
@@ -53142,7 +53162,7 @@
         "packages/llm/llm/src/types.ts#ContentBlock"
       ],
       "sources": [
-        "packages/llm/llm/src/types.ts:137"
+        "packages/llm/llm/src/types.ts"
       ]
     },
     {
@@ -54770,7 +54790,7 @@
         "event:assistant/attempt.data.stream[0][3]"
       ],
       "sources": [
-        "packages/llm/llm/src/assistant-stream.ts:44"
+        "packages/llm/llm/src/assistant-stream.ts"
       ]
     },
     {
@@ -54857,7 +54877,7 @@
         "event:compaction/end.data"
       ],
       "sources": [
-        "packages/compaction/compaction/src/types.ts:72"
+        "packages/compaction/compaction/src/types.ts"
       ]
     },
     {
@@ -55016,7 +55036,7 @@
         "packages/schedule/schedule/src/types.ts#ScheduleCreateChange"
       ],
       "sources": [
-        "packages/schedule/schedule/src/types.ts:72"
+        "packages/schedule/schedule/src/types.ts"
       ]
     },
     {
@@ -55032,107 +55052,6 @@
       },
       "names": [],
       "sources": []
-    },
-    {
-      "digest": "ccb0bfd91bb22e2254cf90d3e3ffc5b351e0bc7f1680cb9bea1cfa47fb30dbe3",
-      "schema": {
-        "root": 0,
-        "nodes": [
-          {
-            "kind": "object",
-            "properties": [
-              {
-                "name": "agentPreset",
-                "type": 1,
-                "optional": true
-              },
-              {
-                "name": "createdAt",
-                "type": 2,
-                "optional": false
-              },
-              {
-                "name": "cwd",
-                "type": 1,
-                "optional": true
-              },
-              {
-                "name": "delegationDepth",
-                "type": 2,
-                "optional": false
-              },
-              {
-                "name": "id",
-                "type": 1,
-                "optional": false
-              },
-              {
-                "name": "isSeeded",
-                "type": 3,
-                "optional": false
-              },
-              {
-                "name": "origin",
-                "type": 4,
-                "optional": true
-              },
-              {
-                "name": "parentSession",
-                "type": 1,
-                "optional": true
-              },
-              {
-                "name": "type",
-                "type": 7,
-                "optional": false
-              },
-              {
-                "name": "version",
-                "type": 2,
-                "optional": false
-              }
-            ],
-            "indices": []
-          },
-          {
-            "kind": "primitive",
-            "type": "string"
-          },
-          {
-            "kind": "primitive",
-            "type": "number"
-          },
-          {
-            "kind": "primitive",
-            "type": "boolean"
-          },
-          {
-            "kind": "union",
-            "types": [
-              5,
-              6
-            ]
-          },
-          {
-            "kind": "literal",
-            "value": "headless"
-          },
-          {
-            "kind": "literal",
-            "value": "subagent"
-          },
-          {
-            "kind": "literal",
-            "value": "session"
-          }
-        ]
-      },
-      "names": [
-        "packages/session/session-persistence-jsonl/src/format.ts#HeaderLine"
-      ],
-      "sources": [
-        "packages/session/session-persistence-jsonl/src/format.ts:82"
-      ]
     },
     {
       "digest": "cd186c309e2bef305705e1d324139240f5e681f4f6a957d6a25b0225f65560df",
@@ -55277,7 +55196,7 @@
         "event:llm/retry.data[0]"
       ],
       "sources": [
-        "packages/llm/llm-retry/src/types.ts:17"
+        "packages/llm/llm-retry/src/types.ts"
       ]
     },
     {
@@ -55563,7 +55482,7 @@
         "packages/goal/goal/src/domain.ts#GoalClearChangeMeta"
       ],
       "sources": [
-        "packages/goal/goal/src/domain.ts:35"
+        "packages/goal/goal/src/domain.ts"
       ]
     },
     {
@@ -55866,7 +55785,7 @@
         "event:turn/end.data"
       ],
       "sources": [
-        "packages/core/session/src/types.ts:285"
+        "packages/core/session/src/types.ts"
       ]
     },
     {
@@ -56332,7 +56251,7 @@
         "packages/llm/llm/src/types.ts#ToolResultBlock"
       ],
       "sources": [
-        "packages/llm/llm/src/types.ts:114"
+        "packages/llm/llm/src/types.ts"
       ]
     },
     {
@@ -56556,7 +56475,7 @@
         "packages/schedule/schedule/src/types.ts#ScheduleRecord"
       ],
       "sources": [
-        "packages/schedule/schedule/src/types.ts:69"
+        "packages/schedule/schedule/src/types.ts"
       ]
     },
     {
@@ -56608,7 +56527,7 @@
         "packages/llm/llm/src/message.ts#ToolMessageSource"
       ],
       "sources": [
-        "packages/llm/llm/src/message.ts:29"
+        "packages/llm/llm/src/message.ts"
       ]
     },
     {
@@ -56742,34 +56661,6 @@
         ]
       },
       "names": [],
-      "sources": []
-    },
-    {
-      "digest": "dbe4366de73a26efc408a30b1d8e0b5649bc5d1402f47b491a5b93cf6387e9c0",
-      "schema": {
-        "root": 0,
-        "nodes": [
-          {
-            "kind": "union",
-            "types": [
-              1,
-              2
-            ]
-          },
-          {
-            "kind": "literal",
-            "value": "headless"
-          },
-          {
-            "kind": "literal",
-            "value": "subagent"
-          }
-        ]
-      },
-      "names": [
-        "JsonlHeaderLine.origin",
-        "SessionHeader.origin"
-      ],
       "sources": []
     },
     {
@@ -57005,7 +56896,7 @@
         "packages/experimental/agent-team/src/types.ts#TeamMemberPhase"
       ],
       "sources": [
-        "packages/experimental/agent-team/src/types.ts:44"
+        "packages/experimental/agent-team/src/types.ts"
       ]
     },
     {
@@ -58498,7 +58389,7 @@
         "packages/schedule/schedule/src/types.ts#ScheduleChange"
       ],
       "sources": [
-        "packages/schedule/schedule/src/types.ts:105"
+        "packages/schedule/schedule/src/types.ts"
       ]
     },
     {
@@ -58790,7 +58681,7 @@
         "event:tool/call.data"
       ],
       "sources": [
-        "packages/core/session/src/types.ts:341"
+        "packages/core/session/src/types.ts"
       ]
     },
     {
@@ -59161,7 +59052,7 @@
         "packages/llm/llm/src/message.ts#AssistantMessage"
       ],
       "sources": [
-        "packages/llm/llm/src/message.ts:148"
+        "packages/llm/llm/src/message.ts"
       ]
     },
     {
@@ -59241,7 +59132,7 @@
         "packages/schedule/schedule/src/types.ts#EveryScheduleDispatchChange"
       ],
       "sources": [
-        "packages/schedule/schedule/src/types.ts:93"
+        "packages/schedule/schedule/src/types.ts"
       ]
     },
     {
@@ -59334,7 +59225,7 @@
         "event:assistant/attempt.data.stream[0][0]"
       ],
       "sources": [
-        "packages/llm/llm/src/assistant-stream.ts:21"
+        "packages/llm/llm/src/assistant-stream.ts"
       ]
     },
     {
@@ -59604,7 +59495,7 @@
         "event:turn/end.data.reason[1].reason[4]"
       ],
       "sources": [
-        "packages/core/session/src/types.ts:195"
+        "packages/core/session/src/types.ts"
       ]
     },
     {
@@ -59761,8 +59652,7 @@
         "event:step/start.data"
       ],
       "sources": [
-        "packages/core/session/src/types.ts:287",
-        "packages/core/session/src/types.ts:289"
+        "packages/core/session/src/types.ts"
       ]
     },
     {
@@ -59829,7 +59719,7 @@
         "packages/api/session-controller/src/types.ts#ModelSelection"
       ],
       "sources": [
-        "packages/api/session-controller/src/types.ts:86"
+        "packages/api/session-controller/src/types.ts"
       ]
     },
     {
@@ -59886,7 +59776,7 @@
         "packages/attachment/attachment/src/types.ts#FileAttachmentRef"
       ],
       "sources": [
-        "packages/attachment/attachment/src/types.ts:39"
+        "packages/attachment/attachment/src/types.ts"
       ]
     },
     {
@@ -59960,7 +59850,7 @@
         "event:assistant/attempt.data.stream[0][3].chunk[5]"
       ],
       "sources": [
-        "packages/llm/llm/src/types.ts:432"
+        "packages/llm/llm/src/types.ts"
       ]
     },
     {
@@ -60023,7 +59913,7 @@
         "packages/llm/llm/src/types.ts#FileBlock"
       ],
       "sources": [
-        "packages/llm/llm/src/types.ts:97"
+        "packages/llm/llm/src/types.ts"
       ]
     },
     {
@@ -60041,7 +59931,7 @@
         "packages/llm/llm/src/types.ts#SystemPromptUpdate"
       ],
       "sources": [
-        "packages/llm/llm/src/types.ts:383"
+        "packages/llm/llm/src/types.ts"
       ]
     },
     {
@@ -60181,7 +60071,7 @@
         "packages/context/session-reference/src/types.ts#SessionReferenceSource"
       ],
       "sources": [
-        "packages/context/session-reference/src/types.ts:13"
+        "packages/context/session-reference/src/types.ts"
       ]
     },
     {
@@ -60783,8 +60673,8 @@
         "event:workspace/changes.data"
       ],
       "sources": [
-        "packages/core/session/src/types.ts:276",
-        "packages/deliverables/workspace-changes/src/types.ts:106"
+        "packages/core/session/src/types.ts",
+        "packages/deliverables/workspace-changes/src/types.ts"
       ]
     },
     {
@@ -60832,7 +60722,7 @@
         "packages/sandbox/sandbox/src/index.ts#SandboxMode"
       ],
       "sources": [
-        "packages/sandbox/sandbox/src/index.ts:29"
+        "packages/sandbox/sandbox/src/index.ts"
       ]
     },
     {
@@ -60964,7 +60854,7 @@
         "packages/skill/tool-skill/src/index.ts#SkillCatalogSource"
       ],
       "sources": [
-        "packages/skill/tool-skill/src/index.ts:34"
+        "packages/skill/tool-skill/src/index.ts"
       ]
     },
     {
@@ -61545,7 +61435,7 @@
         "packages/llm/llm/src/types.ts#TokenUsage"
       ],
       "sources": [
-        "packages/llm/llm/src/types.ts:162"
+        "packages/llm/llm/src/types.ts"
       ]
     },
     {

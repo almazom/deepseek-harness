@@ -33,7 +33,7 @@ export interface SessionSummary {
   cwd?: string
   parentId?: SessionId
   /** Coarse durable origin for navigation filtering; not a continuation capability. */
-  origin?: 'subagent'
+  origin?: 'subagent' | 'headless'
   running: boolean
   /** Local ownership counts; Host metadata refreshes cannot overwrite them. */
   readonly retainedBy: SessionRetainInfo['retainedBy']
