@@ -25,12 +25,14 @@ class ReleasedV3ToV4Stage implements SessionFormatMigrationStage {
   private targetCut: number | undefined
   private lastForeignDeliverySeq: number | undefined
 
+  /* jscpd:ignore-start -- construction restates the released-edge source-cut rule; a shared base would couple frozen edges. */
   constructor(private readonly input: SessionFormatMigrationStageInput) {
     assertReleasedV3Header(input.sourceHeader)
     this.sourceCut = input.sourceHeader.isSeeded ? undefined : 0
     this.targetCut = input.sourceHeader.isSeeded ? undefined : 0
     if (!input.sourceHeader.isSeeded) this.headerInheritedEventCount = 0
   }
+  /* jscpd:ignore-end */
 
   transformEvent(event: SessionFormatEvent, context: SessionFormatMigrationContext): void {
     if (event.seq !== this.expectedSeq) throw new SessionFormatError('format v3 source events must be dense')

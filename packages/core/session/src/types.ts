@@ -110,7 +110,7 @@ export interface SessionHeader {
    */
   readonly isSeeded: boolean
   /**
-   * Coarse product classification for a session created as a subagent child.
+   * Coarse creation classification: a subagent child or a one-shot headless run.
    * This is presentation metadata, not proof that the child is continuable.
    */
   readonly origin?: 'subagent' | 'headless'

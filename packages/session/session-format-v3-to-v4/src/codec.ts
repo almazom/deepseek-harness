@@ -19,6 +19,7 @@ import { releasedV3SessionFormatCodec } from '@deepseek-ai/dsh-session-format-v2
 import { assertReleasedV4Header } from './validation.ts'
 
 /** Frozen physical JSON codec for released v4. */
+/* jscpd:ignore-start -- every released edge owns an independent delegation codec; sharing a base would couple frozen generations. */
 export const releasedV4SessionFormatCodec = Object.freeze({
   version: 4,
   decodeHeader(value: unknown) {
@@ -34,6 +35,7 @@ export const releasedV4SessionFormatCodec = Object.freeze({
     return releasedV3SessionFormatCodec.encodeEvent(event)
   },
 } satisfies SessionFormatCodec & SessionFormatCurrentEncoder)
+/* jscpd:ignore-end */
 
 function decodePhysicalHeader(value: unknown): SessionFormatHeader {
   const snapshot = snapshotSessionFormatJson(value, 'released v4 physical header')
@@ -87,6 +89,7 @@ function encodeHeader(header: SessionFormatHeader, inheritedEventCount: number):
   if (!header.isSeeded && cut !== 0) {
     throw new SessionFormatError('unseeded format v4 Session has inherited events')
   }
+  /* jscpd:ignore-start -- the v4 header restate mirrors the frozen edges; a shared helper would couple frozen generations. */
   return {
     type: 'session',
     version: 4,
@@ -99,6 +102,7 @@ function encodeHeader(header: SessionFormatHeader, inheritedEventCount: number):
     delegationDepth: header.delegationDepth,
     ...(header.agentPreset === undefined ? {} : { agentPreset: header.agentPreset }),
   }
+  /* jscpd:ignore-end */
 }
 
 function jsonRecord(value: SessionFormatJsonValue | undefined, label: string): SessionFormatJsonObject {

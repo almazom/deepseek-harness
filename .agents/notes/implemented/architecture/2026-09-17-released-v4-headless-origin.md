@@ -16,7 +16,7 @@ The widened rule lives in one place per concern. The released edge validates the
 
 ## Alternatives considered
 
-**Keep one origin and encode run provenance in events.** The header origin is the existing machine-readable home for creation provenance; a parallel event would duplicate it and leave every pre-headless consumer reading the narrower field.
+**Keep one origin and encode the run kind in events.** The header origin is the existing machine-readable creation field; a parallel event would duplicate it and leave every pre-headless consumer reading the narrower field.
 
 **Admit any string origin.** Open-ended values make every consumer's equality test silently miss new values. The closed two-value union keeps the miss loud at the format boundary.
 
