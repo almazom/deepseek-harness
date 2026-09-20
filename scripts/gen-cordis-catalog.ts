@@ -139,9 +139,10 @@ export const SERVICE_PAGE: Record<string, string> = {
  * face only) name the package README that owns their surface.
  *
  * Two categories remain, and neither is a projection gap a scanning rule could
- * close. An OPTIONAL key (`key?: X`) is a value the launcher or boot code
- * installs before the tree mounts, which the analyzer skips by rule because no
- * plugin provides it and `inject` cannot reach it. A client-face key belongs to
+ * close. An OPTIONAL key (`key?: X`) may be absent when read, which the analyzer
+ * skips by rule: launcher or boot code installs most of them before the tree
+ * mounts, and a plugin mounts the rest only under its own config, so no consumer
+ * can require either through `inject`. A client-face key belongs to
  * the browser Context, which this host-face program never sees; the browser
  * surface has its own generated catalog (`scripts/gen-client-catalog.ts`, served
  * to a model as `cordis_runtime_inspect what:"client"`).
@@ -152,9 +153,9 @@ export const SERVICE_WALK_EXEMPTIONS: Record<string, string> = {
   cmdlineArgs: 'not a service: launcher-provided immutable app argument accessor — packages/boot/cmdline/README.md owns the launcher contract',
   configuredAgentIdentities: 'not a service: launcher-provided boot-context value (ConfiguredAgentIdentities | undefined) — packages/core/agent-loop/README.md owns this launcher contract',
   launcherSessionQueryPath: 'not a service: launcher-provided boot-context value (string | undefined) — packages/session-query/session-query-sqlite/README.md owns this launcher contract',
-  queueAdvisor: 'optional plugin-mounted advisor dispatcher (QueueAdvisorService | undefined) installed by the smart_steer mount when its config names provider/model; optional Context keys are invisible to the host-face rendering projection — packages/plugins/smart_steer/README.md owns this service contract',
   dshHomePath: 'not a service: boot-provided root accessor function (typeof dshHomePath | undefined) for Loader !!js config expressions — packages/boot/app-boot/README.md owns the boot contract',
   launchEnvironment: 'not a service: launcher-provided root accessor value (LaunchEnvironmentSnapshot | undefined) — packages/util/launch-environment/README.md owns this launcher contract',
+  queueAdvisor: 'optional plugin-mounted key: advisor dispatcher (QueueAdvisorService | undefined) that the smart_steer mount installs when its config names a provider and model — packages/plugins/smart_steer/README.md owns this service contract',
   connection: 'interface-typed (HostConnectionHandle); implementing class HostConnectionService is declared in rpc-host.ts — packages/client/connection/README.md owns the API',
   fileUpload: 'client-side browser upload service — packages/client/file-upload/README.md owns the API',
   uiRenderer: 'client-side interface-typed browser service — packages/client/ui-renderer/README.md owns the API',

@@ -949,11 +949,12 @@ class FaceAnalyzer {
     const result: ServiceModel[] = []
     for (const member of context.members) {
       if (!ts.isPropertySignature(member) || member.type === undefined) continue
-      // An OPTIONAL key is not a service: `X | undefined` and `key?: X` both mark
-      // a value the launcher or boot code installs before the tree mounts (a root
-      // accessor, an environment snapshot), which no plugin provides and no
-      // consumer can reach with `inject`. Describing one as a service would answer
-      // "add the plugin that provides it" for a key where no such plugin exists.
+      // A key that can read back absent — `key?: X`, or required with an
+      // `X | undefined` type — is not a service: launcher or boot code installs
+      // most of them before the tree mounts (a root accessor, an environment
+      // snapshot), and a plugin mounts the rest only under its own config.
+      // Describing one as a service would answer "add the plugin that provides
+      // it" for a deployment where the value is legitimately absent.
       if (member.questionToken !== undefined
         || (ts.isUnionTypeNode(member.type)
           && member.type.types.some(node => node.kind === ts.SyntaxKind.UndefinedKeyword))) continue
