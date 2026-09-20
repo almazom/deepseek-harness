@@ -172,12 +172,24 @@ export const goalProjectionDefinition = {
 export interface Config {
   /** Total rounds used when a create request omits its own cap. */
   defaultMaxGoalRounds?: number
+  /**
+   * Reject objectives that lack a verifiable acceptance criterion and a visible
+   * round budget (the fleet goal-flow pipeline's mechanical floor). Off by
+   * default; deployments running the goal-flow pipeline enable it.
+   */
+  requireRichObjective?: boolean
+  /** Minimum admitted objective length while the rich-objective gate is on. */
+  minObjectiveChars?: number
 }
 
 /** Resolved defaults. */
 export interface ResolvedConfig {
   /** Validated positive safe-integer default round cap. */
   defaultMaxGoalRounds: number
+  /** Materialized rich-objective gate switch. */
+  requireRichObjective: boolean
+  /** Validated positive safe-integer objective length floor. */
+  minObjectiveChars: number
 }
 
 /** Process-local activation state crossing the synchronous append boundary. */
@@ -211,11 +223,54 @@ function resolveObjective(value: string): string {
   return value.trim()
 }
 
+/** Objective text admitting the rich-goal verification clause (EN + RU fleet runtimes). */
+const RICH_OBJECTIVE_VERIFICATIONS = [
+  /(?<![\w-])verified by|(?<![\w-])verif(?:y|ies|ied|ying)\b/i,
+  /\bacceptance\b|\bcriteri(?:on|a)\b|\bexit(?: code)? 0\b|\bjudge\b|\brubric\b/i,
+  /провер\w*|критер\w*/i,
+]
+
+/** Objective text admitting the rich-goal budget clause. */
+const RICH_OBJECTIVE_BUDGET = /\blimit\b[^.;]*\d|\d+\s*(?:rounds?|раунд\w*)/i
+
+/**
+ * Reject objectives too weak to loop on: below the length floor, without a
+ * verifiable acceptance criterion, or without a visible round budget. The
+ * explicit-rounds argument admits a request-level `maxGoalRounds` as the
+ * budget clause. No-op unless the deployment enabled `requireRichObjective`.
+ */
+function assertRichObjective(
+  objective: string,
+  policy: ResolvedConfig,
+  explicitRounds: boolean,
+): void {
+  if (!policy.requireRichObjective) return
+  const missing: string[] = []
+  if (objective.length < policy.minObjectiveChars) {
+    missing.push(`at least ${policy.minObjectiveChars} characters of substance (got ${objective.length})`)
+  }
+  if (!RICH_OBJECTIVE_VERIFICATIONS.some(pattern => pattern.test(objective))) {
+    missing.push('a verifiable acceptance criterion ("verified by <command or rubric>")')
+  }
+  if (!explicitRounds && !RICH_OBJECTIVE_BUDGET.test(objective)) {
+    missing.push('a visible round budget ("limit N rounds" or an explicit maxGoalRounds)')
+  }
+  if (missing.length > 0) {
+    throw new GoalError(
+      `objective failed the rich-goal gate; add ${missing.join('; ')} — shape: `
+        + '"<action + object> so that <acceptance criterion> — verified by <command>, limit N rounds" (SGT-1)',
+      'GOAL_OBJECTIVE_TOO_WEAK',
+    )
+  }
+}
+
 /** Materialize deployment defaults and validate one create request. */
-function resolveCreateGoal(request: CreateGoalRequest, defaultMaxGoalRounds: number): ResolvedCreateGoal {
+function resolveCreateGoal(request: CreateGoalRequest, resolved: ResolvedConfig): ResolvedCreateGoal {
+  const objective = resolveObjective(request.objective)
+  assertRichObjective(objective, resolved, request.maxGoalRounds !== undefined)
   return {
-    objective: resolveObjective(request.objective),
-    maxGoalRounds: resolveMaxGoalRounds(request.maxGoalRounds ?? defaultMaxGoalRounds),
+    objective,
+    maxGoalRounds: resolveMaxGoalRounds(request.maxGoalRounds ?? resolved.defaultMaxGoalRounds),
   }
 }
 
@@ -242,6 +297,8 @@ export class GoalService extends TypertRemoteService {
 
   static Config: z<Config> = z.object({
     defaultMaxGoalRounds: z.number().default(256),
+    requireRichObjective: z.boolean().default(false),
+    minObjectiveChars: z.number().step(1).min(1).default(80),
   })
 
   private readonly resolved: ResolvedConfig
@@ -249,8 +306,14 @@ export class GoalService extends TypertRemoteService {
 
   constructor(ctx: Context, config: Config = {}) {
     super(ctx, 'goals')
+    const minObjectiveChars = config.minObjectiveChars ?? 80
+    if (!Number.isSafeInteger(minObjectiveChars) || minObjectiveChars < 1) {
+      throw new TypeError('minObjectiveChars must be a positive safe integer')
+    }
     this.resolved = {
       defaultMaxGoalRounds: resolveMaxGoalRounds(config.defaultMaxGoalRounds ?? 256),
+      requireRichObjective: config.requireRichObjective ?? false,
+      minObjectiveChars,
     }
     ctx.on('agent/session-start', ({ agent }) => {
       this.setActivation(agent.session, 'disarmed')
@@ -301,7 +364,7 @@ export class GoalService extends TypertRemoteService {
    * @returns the created live view.
    */
   create(agent: Agent, request: CreateGoalRequest): GoalView {
-    const spec = resolveCreateGoal(request, this.resolved.defaultMaxGoalRounds)
+    const spec = resolveCreateGoal(request, this.resolved)
     const [state, runtime] = this.prepareMutation(agent)
     const current = state?.goal
     if (current !== undefined && current.phase !== 'complete') {
@@ -336,7 +399,9 @@ export class GoalService extends TypertRemoteService {
     const goal: GoalSnapshot = {
       ...current,
       revision: current.revision + 1,
-      ...request.objective === undefined ? {} : { objective: resolveObjective(request.objective) },
+      ...request.objective === undefined
+        ? {}
+        : { objective: this.resolveEditedObjective(request.objective, request.maxGoalRounds !== undefined) },
       ...request.maxGoalRounds === undefined ? {} : { maxGoalRounds: resolveMaxGoalRounds(request.maxGoalRounds) },
     }
     return this.commitCurrent(agent, currentState, runtime, 'edit', goal, runtime.activation)
@@ -463,6 +528,13 @@ export class GoalService extends TypertRemoteService {
       )
     }
     return state
+  }
+
+  /** Validate one replacement objective against the deployment's rich-goal policy. */
+  private resolveEditedObjective(objective: string, explicitRounds: boolean): string {
+    const resolved = resolveObjective(objective)
+    assertRichObjective(resolved, this.resolved, explicitRounds)
+    return resolved
   }
 
   /** Enforce exact live-agent identity rather than trusting a matching id. */

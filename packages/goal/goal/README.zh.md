@@ -9,7 +9,7 @@ kind: "package-reference"
 
 ## 概述
 
-`dsh-goal` 让一个长期完成目标在多轮、会话恢复、fork 与进程重启后持续存在。用户与 agent（智能体）可以 create、edit、pause、resume、complete、block 或 clear 该目标；比较并设置的更新会拒绝陈旧视图。可配置的 Round 上限（默认 256）约束自动续行，被阻塞的 goal 会保留稳定的策略代码和面向人的说明。本包存储 goal 状态但不调度工作，续行权限是进程本地的而非持久状态。单个目标需要横跨多轮时选择本包；常规单轮工作或并行目标不要使用。
+`dsh-goal` 让一个长期完成目标在多轮、会话恢复、fork 与进程重启后持续存在。用户与 agent（智能体）可以 create、edit、pause、resume、complete、block 或 clear 该目标；比较并设置的更新会拒绝陈旧视图。可配置的 Round 上限（默认 256）约束自动续行；被阻塞的 goal 会保留稳定的策略代码和人可读说明。可选的门会拒绝缺少可验证验收标准或 Round 预算的 objective。本包存储 goal 状态但不调度工作；续行权限是进程本地的，而非持久状态。单个目标需要横跨多轮时选择本包；常规单轮工作或并行目标不要使用。
 
 ## 目录
 
@@ -33,19 +33,23 @@ goal 适合一个需要跨自动 Goal Round 持续的长期完成目标——例
 
 ### 配置服务
 
-通过组合配置项加载本包；唯一的部署选择是默认 Round 上限，应用于未自行指定上限的 create。
+通过组合配置项加载本包；部署选择是应用于未自行指定上限的 create 的默认 Round 上限，以及可选的富 objective 准入门。
 
 ```yaml
 - name: '@deepseek-ai/dsh-goal'
   config:
     defaultMaxGoalRounds: 256
+    requireRichObjective: false
+    minObjectiveChars: 80
 ```
 
 | 字段 | 默认值 | 含义 |
 |---|---|---|
 | `defaultMaxGoalRounds` | `256` | 当 create 请求省略上限时应用的 Round 上限 |
+| `requireRichObjective` | `false` | 拒绝低于富目标准入门的 create 与 edit objective |
+| `minObjectiveChars` | `80` | 门开启时强制执行的 objective 长度下限 |
 
-`defaultMaxGoalRounds` 必须是正的安全整数；指定了自身上限的 create 请求会覆盖它。生成的[配置目录](../../../docs/config-catalog.zh.md#deepseek-aidsh-goal)是每个受支持字段的穷尽式真源。
+`defaultMaxGoalRounds` 必须是正的安全整数；指定了自身上限的 create 请求会覆盖它。当 `requireRichObjective: true` 时，`create` 与 `edit` 会拒绝比 `minObjectiveChars` 更短、缺少可验证验收子句（"verified by …"）、且在请求未指定 Round 上限时缺少可见预算（"limit N rounds"）的 objective；拒绝携带稳定的 `GOAL_OBJECTIVE_TOO_WEAK` 代码，并在 SGT-1 形状的改写提示中指出缺失部分。请求级的 `maxGoalRounds` 满足预算子句。生成的[配置目录](../../../docs/config-catalog.zh.md#deepseek-aidsh-goal)是每个受支持字段的穷尽式真源。
 
 ### 会话投影
 

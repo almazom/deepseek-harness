@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-`dsh-goal` lets one long-running completion objective persist across turns, session resume, fork, and process restarts. Users and agents can create, edit, pause, resume, complete, block, or clear it; compare-and-set updates reject stale views. A configurable round cap (256 by default) bounds automatic continuation, and blocked goals retain a stable policy code with a human-readable explanation. The package stores goal state but does not schedule work, and continuation permission remains process-local rather than durable. Choose it for one objective spanning many turns; skip it for routine single-turn work or parallel objectives.
+`dsh-goal` lets one long-running completion objective persist across turns, session resume, fork, and process restarts. Users and agents can create, edit, pause, resume, complete, block, or clear it; compare-and-set updates reject stale views. A configurable round cap (256 by default) bounds automatic continuation; blocked goals retain a stable policy code and human-readable explanation. An optional gate rejects objectives without a verifiable acceptance criterion or round budget. The package stores goal state but does not schedule work; continuation permission is process-local, not durable. Choose it for one objective spanning many turns; skip it for routine single-turn work or parallel objectives.
 
 ## Table of Contents
 
@@ -33,19 +33,23 @@ A goal suits one long-running completion objective that should continue across a
 
 ### Set up the service
 
-Load the package with a composition entry; the only deployment choice is the default round cap applied to creates that do not name their own.
+Load the package with a composition entry; the deployment choices are the default round cap applied to creates that do not name their own, and the optional rich-objective admission gate.
 
 ```yaml
 - name: '@deepseek-ai/dsh-goal'
   config:
     defaultMaxGoalRounds: 256
+    requireRichObjective: false
+    minObjectiveChars: 80
 ```
 
 | Field | Default | Meaning |
 |---|---|---|
 | `defaultMaxGoalRounds` | `256` | Round cap applied when a create request omits its own |
+| `requireRichObjective` | `false` | Reject create and edit objectives below the rich-goal admission floor |
+| `minObjectiveChars` | `80` | Objective length floor enforced while the gate is on |
 
-`defaultMaxGoalRounds` must be a positive safe integer; a create request that names its own cap overrides it. The generated [configuration catalog](../../../docs/config-catalog.md#deepseek-aidsh-goal) is the exhaustive source for every accepted field.
+`defaultMaxGoalRounds` must be a positive safe integer; a create request that names its own cap overrides it. With `requireRichObjective: true`, `create` and `edit` reject an objective that is shorter than `minObjectiveChars`, lacks a verifiable acceptance clause ("verified by …"), and — when the request names no round cap — lacks a visible budget ("limit N rounds"); the rejection carries the stable `GOAL_OBJECTIVE_TOO_WEAK` code and names the missing pieces in an SGT-1-shaped reformulation hint. An explicit request-level `maxGoalRounds` satisfies the budget clause. The generated [configuration catalog](../../../docs/config-catalog.md#deepseek-aidsh-goal) is the exhaustive source for every accepted field.
 
 ### Session projection
 

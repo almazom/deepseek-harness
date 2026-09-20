@@ -80,7 +80,11 @@ function stubAgent(
   return stubAgentForSession(session, ctx)
 }
 
-async function harness(config: { defaultMaxGoalRounds?: number } = {}) {
+async function harness(config: {
+  defaultMaxGoalRounds?: number
+  requireRichObjective?: boolean
+  minObjectiveChars?: number
+} = {}) {
   const ctx = new Context()
   await ctx.plugin(SessionStore)
   await ctx.plugin(SessionProjectionRegistry)
@@ -842,5 +846,89 @@ describe('goal replay validation', () => {
       roundsStarted: 0,
       lastRef: { id: change.goal.id, revision: 2 },
     })
+  })
+})
+
+describe('GoalService rich-objective gate', () => {
+  const RICH
+    = 'Fix the login redirect so that the focused goal suite exits 0 — verified by pnpm exec vitest run, limit 3 rounds.'
+  const VERIFIED_NO_BUDGET
+    = 'Rewrite the onboarding copy so that the style guide checklist is fully satisfied — verified by the editor rubric.'
+  const PLAIN_PROSE = 'Make the whole product better and improve everything users may ever notice about it'
+  const STUFFED_UNVERIFIED = 'Build a monument so that it is unverified and pretty, limit 3 rounds'
+  const STUFFED_JUDGEMENT = 'Polish things; a real judgement call for the panel, limit 3 rounds'
+  const STUFFED_REVERIFIED = 'Trust the deploy, it was re-verified by yesterday, limit 3 rounds'
+
+  it('admits weak objectives while the gate is off (deployment default)', async () => {
+    const { ctx, agent } = await harness()
+    expect(ctx.goals.create(agent, { objective: 'ship' }).phase).toBe('active')
+  })
+
+  it('rejects a short objective with the instructive gate code', async () => {
+    const { ctx, agent } = await harness({ requireRichObjective: true })
+    expect(() => ctx.goals.create(agent, { objective: 'ship it' })).toThrow(expect.objectContaining({
+      code: 'GOAL_OBJECTIVE_TOO_WEAK',
+    }))
+    expect(() => ctx.goals.create(agent, { objective: 'ship it' })).toThrow(/SGT-1/)
+  })
+
+  it('rejects long prose without a verification clause or budget', async () => {
+    const { ctx, agent } = await harness({ requireRichObjective: true })
+    expect(() => ctx.goals.create(agent, { objective: PLAIN_PROSE })).toThrow(expect.objectContaining({
+      code: 'GOAL_OBJECTIVE_TOO_WEAK',
+    }))
+  })
+
+  it('rejects keyword-stuffed objectives where the keyword is negated ("unverified")', async () => {
+    const { ctx, agent } = await harness({ requireRichObjective: true })
+    expect(() => ctx.goals.create(agent, { objective: STUFFED_UNVERIFIED })).toThrow(expect.objectContaining({
+      code: 'GOAL_OBJECTIVE_TOO_WEAK',
+    }))
+  })
+
+  it('rejects keyword-stuffed objectives where the keyword is inflected ("judgement")', async () => {
+    const { ctx, agent } = await harness({ requireRichObjective: true })
+    expect(() => ctx.goals.create(agent, { objective: STUFFED_JUDGEMENT })).toThrow(expect.objectContaining({
+      code: 'GOAL_OBJECTIVE_TOO_WEAK',
+    }))
+  })
+
+  it('rejects keyword-stuffed objectives where the keyword is prefixed ("re-verified")', async () => {
+    const { ctx, agent } = await harness({ requireRichObjective: true })
+    expect(() => ctx.goals.create(agent, { objective: STUFFED_REVERIFIED })).toThrow(expect.objectContaining({
+      code: 'GOAL_OBJECTIVE_TOO_WEAK',
+    }))
+  })
+
+  it('admits a verified objective and accepts explicit rounds as the budget', async () => {
+    const { ctx, agent } = await harness({ requireRichObjective: true })
+    expect(() => ctx.goals.create(agent, { objective: VERIFIED_NO_BUDGET })).toThrow(GoalError)
+    expect(ctx.goals.create(agent, { objective: VERIFIED_NO_BUDGET, maxGoalRounds: 4 }).maxGoalRounds).toBe(4)
+
+    const other = await harness({ requireRichObjective: true })
+    expect(other.ctx.goals.create(other.agent, { objective: RICH }).phase).toBe('active')
+  })
+
+  it('gates a replacement objective through edit under the same policy', async () => {
+    const { ctx, agent } = await harness({ requireRichObjective: true })
+    const goal = ctx.goals.create(agent, { objective: RICH })
+    const ref = { id: goal.id, revision: goal.revision }
+    expect(() => ctx.goals.edit(agent, ref, { objective: 'ship it' })).toThrow(
+      expect.objectContaining({ code: 'GOAL_OBJECTIVE_TOO_WEAK' }),
+    )
+    const edited = ctx.goals.edit(agent, ref, {
+      objective: VERIFIED_NO_BUDGET,
+      maxGoalRounds: 4,
+    })
+    expect(edited.objective).toBe(VERIFIED_NO_BUDGET)
+  })
+
+  it('honors the configured objective length floor', async () => {
+    const { ctx, agent } = await harness({ requireRichObjective: true, minObjectiveChars: 20 })
+    expect(ctx.goals.create(agent, { objective: 'ship it now — verified by tests, limit 2 rounds' }).phase).toBe('active')
+    expect(() => ctx.goals.create(
+      agent,
+      { objective: 'plain prose filler without any machine checkable promise here' },
+    )).toThrow(expect.objectContaining({ code: 'GOAL_OBJECTIVE_TOO_WEAK' }))
   })
 })
