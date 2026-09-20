@@ -10,7 +10,7 @@ The annotated browser-video recording skill lived under `.agents/skills/` inside
 
 ## Decision
 
-The skill is no longer maintained in this core checkout. Its canonical home is `~/projects/dsh/plugins/observability/dsh-almazom-browser-video-record/` — the fleet iron rule: custom plugins are isolated in the plugins repo, and the name describes the function and carries "almazom". User-facing doctrine stays at `~/.agents/skills/browser-video-proof/SKILL.md`; the MCP layer lives at `~/projects/dsh/plugins/observability/dsh-almazom-browser-video-mcp/`. Full history is preserved on the archive branch `dsh/almazom-skills-archive` at commit df6548a372. The convention decision is saved in OpenViking resources as `projects/dsh/conventions/2026-09-20-browser-proof-convention.md`.
+The skill's canonical home is the fleet plugins repository, under `observability/dsh-almazom-browser-video-record/`: the isolation law keeps custom plugins and their tooling there, and the name describes the function and carries "almazom". Operator-facing guidance stays in the `browser-video-proof` skill at `~/.agents/skills/browser-video-proof/`, and the MCP layer lives at `observability/dsh-almazom-browser-video-mcp/` in the same repository. Full history of the removed core copy stays on the `dsh/almazom-skills-archive` branch.
 
 ## Alternatives considered
 
@@ -18,5 +18,6 @@ The skill is no longer maintained in this core checkout. Its canonical home is `
 
 ## Consequences
 
-- Do not recreate skill content under `.agents/skills/` in release checkouts.
-- Recording-behavior changes go to the plugins-repo skill; this note stays a pointer, not documentation of the skill itself.
+- The skill has one owner, so a release checkout can no longer grow a copy that drifts from it.
+- Recording a browser session now needs the plugins repository present: a fresh core checkout carries no skill, and its gates no longer cover recording behavior.
+- Do not recreate skill content under `.agents/skills/` in release checkouts; behavior changes go to the plugins-repo skill, and this note stays a pointer rather than documentation of the skill itself.

@@ -10,13 +10,14 @@ Status: implemented
 
 ## 决策
 
-该技能不再在此 core checkout 中维护。其唯一正源是 `~/projects/dsh/plugins/observability/dsh-almazom-browser-video-record/`——车队铁律：自定义插件隔离在 plugins 仓库，名称描述功能并携带「almazom」。面向用户的准则保持在 `~/.agents/skills/browser-video-proof/SKILL.md`；MCP 层位于 `~/projects/dsh/plugins/observability/dsh-almazom-browser-video-mcp/`。完整历史保留在归档分支 `dsh/almazom-skills-archive` 的 commit df6548a372 上。约定决定已存入 OpenViking resources：`projects/dsh/conventions/2026-09-20-browser-proof-convention.md`。
+该技能的正源是车队 plugins 仓库中的 `observability/dsh-almazom-browser-video-record/`：隔离法把自定义插件及其工具留在仓库里，名称描述功能并携带「almazom」。面向操作者的准则位于 `~/.agents/skills/browser-video-proof/` 的 `browser-video-proof` 技能；MCP 层在同一仓库的 `observability/dsh-almazom-browser-video-mcp/`。已移除的 core 副本的完整历史保留在 `dsh/almazom-skills-archive` 分支上。
 
-## Alternatives considered
+## 曾考虑的替代方案
 
 - **在 core checkout 保留与 plugins 仓库同步的副本** — 该副本此前已经相对车队原件发生漂移（见上文），第二个家恰好重演隔离法迁移所终结的失败。
 
-## Consequences
+## 后果
 
-- 不要在 release checkout 的 `.agents/skills/` 下重建技能内容。
-- 录制行为的变更进入 plugins 仓库的技能；本笔记只是指针，不是技能本身的文档。
+- 技能只有一个归属方，release checkout 不再会长出偏离它的副本。
+- 录制浏览器会话现在需要 plugins 仓库在场：全新的 core checkout 不携带技能，其门禁也不再覆盖录制行为。
+- 不要在 release checkout 的 `.agents/skills/` 下重建技能内容；行为变更进入 plugins 仓库的技能，本笔记只是指针，不是技能本身的文档。

@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/process/2026-09-20-browser-video-record-skill.md
-2026-09-20-browser-video-record-skill.md: c324ffdae04ba53ca991bd22a8b091dd73d972ca
-2026-09-20-browser-video-record-skill.zh.md: 698903238f4d6868b04284e0a4d010b2cb609dd5
+2026-09-20-browser-video-record-skill.md: 1c179a2bba48cbc911d9f8679f17f029f363b3f8
+2026-09-20-browser-video-record-skill.zh.md: b24d2c4e6a9e938a3686fdbbc9e0beb6786101c7
