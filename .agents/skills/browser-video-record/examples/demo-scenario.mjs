@@ -2,10 +2,9 @@
 // behavioral arc (typing, clicks, progress animation, theme toggle, hover).
 // Usage: node scripts/pw-video.mjs run examples/demo-scenario.mjs --out <dir>
 import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { resolveRepoRoot } from '../scripts/video-context.mjs';
 
-const repoRoot = fileURLToPath(new URL('../../../..', import.meta.url));
-const demoUrl = 'file://' + join(repoRoot, '.playwright-mcp', 'video-poc', 'demo-app.html');
+const demoUrl = 'file://' + join(resolveRepoRoot(import.meta.url), '.playwright-mcp', 'video-poc', 'demo-app.html');
 
 export default async function scenario({ page, step }) {
   await page.goto(demoUrl);

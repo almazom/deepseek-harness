@@ -6,14 +6,16 @@
 // Exit codes: 0 ok · 2 usage · 3 media tool or input missing · 1 runtime error.
 import process from 'node:process';
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync } from 'node:fs';
+import { existsSync, mkdirSync, unlinkSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
-import { ffprobeSummary, resolvePlaywright, withVideoRecording } from './video-context.mjs';
+import { ffprobeSummary, resolvePlaywright, resolveRepoRoot, withVideoRecording } from './video-context.mjs';
 
-// Skill lives at <repo>/.agents/skills/browser-video-record/scripts/ — repo root is 4 up.
-const DEFAULT_REPO = fileURLToPath(new URL('../../../..', import.meta.url));
+// Skill lives at <repo>/.agents/skills/browser-video-record/scripts/ — single
+// root definition lives in the library (adversarial architect optic: no
+// duplicated walk-up heuristics).
+const DEFAULT_REPO = resolveRepoRoot(import.meta.url);
 
 const USAGE = `usage:
   pw-video run <scenario.mjs> --out <dir> [--w N] [--h N] [--repo path]
@@ -22,6 +24,14 @@ const USAGE = `usage:
 
 function failUsage(msg) { console.error(`${msg}\n${USAGE}`); process.exit(2); }
 function failMissing(msg) { console.error(`MEDIA_TOOL_OR_INPUT_MISSING: ${msg}`); process.exit(3); }
+
+function numberOpt(values, name, { min = -Infinity, max = Infinity } = {}) {
+  const n = Number(values[name]);
+  if (!Number.isFinite(n) || n < min || n > max) {
+    failUsage(`--${name} must be a finite number in [${min}, ${max}]: ${values[name]}`);
+  }
+  return n;
+}
 
 function parseOpts(argv, minPositional) {
   const { values, positionals } = parseArgs({
@@ -40,13 +50,32 @@ function toMp4(webm) {
   const out = webm.replace(/\.webm$/i, '.mp4');
   const res = spawnSync('ffmpeg', ['-y', '-loglevel', 'error', '-i', webm,
     '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', out],
-    { encoding: 'utf8' });
-  return res.status === 0 ? out : null; // mp4 is a convenience copy; webm is the artifact
+    { encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 });
+  if (res.status !== 0) {
+    // mp4 is a convenience copy; the webm artifact stays authoritative, but a
+    // stale mp4 must not survive silently next to a fresh webm.
+    console.error(`pw-video: mp4 conversion failed (${res.status}); demo.webm remains the artifact`);
+    return null;
+  }
+  return out;
+}
+
+// Remove artifacts of a PREVIOUS run so a crash or partial re-run can never
+// leave a fresh webm next to a stale events.json/mp4 (adversarial reliability
+// optic: no mixed-generation output dirs). Only known artifact names are
+// removed — the operator's out dir may hold unrelated files.
+function clearStaleArtifacts(outDir) {
+  for (const name of ['demo.webm', 'demo.mp4', 'events.json', 'events.json.tmp']) {
+    const p = join(outDir, name);
+    if (existsSync(p)) unlinkSync(p);
+  }
 }
 
 async function cmdRun(values, positionals) {
   const [scenarioPath] = positionals;
   const outDir = resolve(values.out ?? '.');
+  const width = numberOpt(values, 'w', { min: 200, max: 7680 });
+  const height = numberOpt(values, 'h', { min: 200, max: 4320 });
   const mod = await import(pathToFileURL(resolve(scenarioPath)).href);
   if (typeof mod.default !== 'function') {
     failUsage(`scenario must default-export async ({ page, step, log }) => {}: ${scenarioPath}`);
@@ -57,10 +86,8 @@ async function cmdRun(values, positionals) {
   } catch (err) {
     failMissing(err.message);
   }
-  const result = await withVideoRecording(
-    { playwright, runDir: outDir, width: Number(values.w), height: Number(values.h) },
-    mod.default,
-  );
+  clearStaleArtifacts(outDir);
+  const result = await withVideoRecording({ playwright, runDir: outDir, width, height }, mod.default);
   const mp4 = toMp4(result.videoPath);
   console.log(JSON.stringify({ ok: true, video: result.videoPath, mp4, events: result.events.length, ...ffprobeSummary(result.videoPath) }, null, 2));
 }
@@ -73,15 +100,17 @@ function cmdInfo(file) {
 function cmdFrames(values, positionals) {
   const [file, outDir] = positionals;
   if (!existsSync(file)) failMissing(`input not found: ${file}`);
+  const fps = numberOpt(values, 'fps', { min: 0.01, max: 120 });
   mkdirSync(outDir, { recursive: true });
   const res = spawnSync('ffmpeg', ['-y', '-loglevel', 'error', '-i', file,
-    '-vf', `fps=${Number(values.fps)}`, join(outDir, 'frame_%04d.png')], { encoding: 'utf8' });
+    '-vf', `fps=${fps}`, join(outDir, 'frame_%04d.png')],
+    { encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 });
   if (res.error) failMissing(res.error.message);
   if (res.status !== 0) {
     console.error(`ffmpeg failed (${res.status}): ${String(res.stderr).trim()}`);
     process.exit(1);
   }
-  console.log(JSON.stringify({ ok: true, outDir, fps: Number(values.fps) }));
+  console.log(JSON.stringify({ ok: true, outDir, fps }));
 }
 
 const [cmd, ...rest] = process.argv.slice(2);

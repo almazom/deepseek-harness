@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { mkdtempSync, readFileSync } from 'node:fs';
 import {
   BANNER_ID, createEventLog, parseFfprobeJson, resolvePlaywright,
-  showStep, stepBannerJs,
+  resolveRepoRoot, showStep, stepBannerJs,
 } from '../scripts/video-context.mjs';
 
 test('stepBannerJs builds a parseable expression carrying id, css and label', () => {
@@ -51,4 +51,16 @@ test('showStep writes through the injected evaluator (fake page, no browser)', a
   await showStep(fakePage, 'ШАГ 1: тест', log);
   assert.equal(log.events.length, 1);
   assert.match(calls[0], /ШАГ 1: тест/);
+});
+
+test('resolveRepoRoot maps the skill scripts URL to the checkout root', () => {
+  const scriptsUrl = new URL('../scripts/video-context.mjs', import.meta.url).href;
+  const root = resolveRepoRoot(scriptsUrl).replace(/\/+$/, '');
+  assert.equal(root.split('/').pop(), 'dsh-release-0.1.5-rc.2');
+});
+
+test('resolvePlaywright resolves from the host repo (root or apps/web layout)', () => {
+  const root = resolveRepoRoot(new URL('../scripts/video-context.mjs', import.meta.url).href);
+  const playwright = resolvePlaywright(root);
+  assert.ok(playwright.chromium, 'expected chromium binding on resolved playwright');
 });
