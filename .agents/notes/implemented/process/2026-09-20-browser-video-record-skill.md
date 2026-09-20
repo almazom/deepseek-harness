@@ -1,4 +1,4 @@
-# Agent Note: browser-video-record moved to the plugins fleet (2026-09-20)
+# Agent Note: browser-video-record moved to the plugins fleet
 
 Status: implemented
 
@@ -14,8 +14,7 @@ The skill is no longer maintained in this core checkout. Its canonical home is `
 
 ## Alternatives considered
 
-- **Keep a core copy synced from the plugins repo** — two homes for one skill reproduce exactly the drift the isolation law removes; rejected.
-- **Delete the history instead of keeping the archive branch** — the branch costs nothing to maintain and keeps provenance for future readers; deletion rejected.
+- **Keep the core checkout's copy synced with the plugins repo** — the copy had already drifted from the fleet original (recorded above), so a second home reproduces exactly the failure the isolation-law move ended.
 
 ## Consequences
 
