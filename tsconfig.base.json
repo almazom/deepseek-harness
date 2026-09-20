@@ -252,6 +252,13 @@
       // session-log-export lives under session-query/, so the generated aliases map only its
       // bare name; the browser half needs this explicit subpath for source-mode dynamic imports.
       "@deepseek-ai/dsh-session-log-export/client": ["./packages/session-query/session-log-export/src/client"],
+      // smart_steer lives under packages/plugins/ with an npm name that does not match its
+      // directory, so the generated aliases cannot map it; these entries stay hand-written.
+      "@deepseek-ai/dsh-smart-steer": ["./packages/plugins/smart_steer/src"],
+      "@deepseek-ai/dsh-smart-steer/client": ["./packages/plugins/smart_steer/src/client/index.ts"],
+      "@deepseek-ai/dsh-smart-steer/advisor-projection": ["./packages/plugins/smart_steer/src/advisor-projection.ts"],
+      "@deepseek-ai/dsh-smart-steer/dispatcher": ["./packages/plugins/smart_steer/src/dispatcher.ts"],
+      "@deepseek-ai/dsh-smart-steer/latest-human": ["./packages/plugins/smart_steer/src/latest-human.ts"],
       // BEGIN generated package aliases — pnpm run gen-tsconfig-paths
       "@deepseek-ai/dsh-acp": ["./packages/acp/acp/src"],
       "@deepseek-ai/dsh-acp-app": ["./packages/bundle/acp-app/src"],
@@ -377,11 +384,6 @@
       "@deepseek-ai/dsh-session-title-all-prompts-llm": ["./packages/session/session-title-all-prompts-llm/src"],
       "@deepseek-ai/dsh-session-title-first-prompt-llm": ["./packages/session/session-title-first-prompt-llm/src"],
       "@deepseek-ai/dsh-session-title-llm": ["./packages/session/session-title-llm/src"],
-      "@deepseek-ai/dsh-smart-steer": ["./packages/plugins/smart_steer/src"],
-      "@deepseek-ai/dsh-smart-steer/client": ["./packages/plugins/smart_steer/src/client/index.ts"],
-      "@deepseek-ai/dsh-smart-steer/advisor-projection": ["./packages/plugins/smart_steer/src/advisor-projection.ts"],
-      "@deepseek-ai/dsh-smart-steer/dispatcher": ["./packages/plugins/smart_steer/src/dispatcher.ts"],
-      "@deepseek-ai/dsh-smart-steer/latest-human": ["./packages/plugins/smart_steer/src/latest-human.ts"],
       "@deepseek-ai/dsh-session-turn-outline": ["./packages/session/session-turn-outline/src"],
       "@deepseek-ai/dsh-settings": ["./packages/settings/settings/src"],
       "@deepseek-ai/dsh-settings/invariant": ["./packages/settings/settings/src/invariant.ts"],
