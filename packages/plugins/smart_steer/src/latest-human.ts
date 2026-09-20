@@ -28,7 +28,11 @@ const latestHumanStateSchema = z.object({
   text: z.string(),
 }).strict()
 
-/** Join one message's text blocks verbatim; non-text blocks contribute nothing. */
+/**
+ * Join one message's text blocks verbatim; non-text blocks contribute nothing.
+ * @param content - Ordered content blocks from a `user/message` event.
+ * @returns The concatenated text of every `text` block, empty when none exist.
+ */
 export function messageText(content: readonly ContentBlock[]): string {
   return content
     .filter((block): block is Extract<ContentBlock, { type: 'text' }> => block.type === 'text')
