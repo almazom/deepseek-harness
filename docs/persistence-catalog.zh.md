@@ -470,7 +470,7 @@ export type SessionEvent<T extends SessionEventType = SessionEventType> = {
 'feedback/message-delete': MessageFeedbackDelete
 ```
 
-来源：[`packages/feedback/message-feedback/src/types.ts:55`](../packages/feedback/message-feedback/src/types.ts)
+来源：[`packages/feedback/message-feedback/src/types.ts:58`](../packages/feedback/message-feedback/src/types.ts)
 
 <a id="feedbackmessage-put--log-only"></a>
 
@@ -481,7 +481,7 @@ export type SessionEvent<T extends SessionEventType = SessionEventType> = {
 'feedback/message-put': MessageFeedbackPut
 ```
 
-来源：[`packages/feedback/message-feedback/src/types.ts:53`](../packages/feedback/message-feedback/src/types.ts)
+来源：[`packages/feedback/message-feedback/src/types.ts:56`](../packages/feedback/message-feedback/src/types.ts)
 
 <a id="feedbackrecord--log-only"></a>
 
