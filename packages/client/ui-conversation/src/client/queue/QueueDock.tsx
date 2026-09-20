@@ -35,6 +35,8 @@ export interface QueueDockInjected {
   notify: (level: 'info' | 'error', text: string) => void
   /** Resolve one durable queued image into a session-scoped browser URL. */
   loadImage: (attachment: ImageAttachmentRef) => Promise<string>
+  /** False when the deployment turns Smart-steer off: no dock button, no auto-open, no advisor surface. */
+  smartSteer: boolean
   hooks: {
     /** Durable Smart-steer confidence gate bound as useSmartSteerMinConfidence. */
     smartSteerMinConfidence: SnapshotStore<number>
@@ -113,7 +115,7 @@ export type QueueDockProps =
  * show sending status and disabled actions until their Host queue rows arrive.
  */
 export function QueueDock(props: QueueDockProps) {
-  const { useSession, useProjection, renderSlot, updateQueue, notify, loadImage, useSmartSteerMinConfidence, t } = props
+  const { useSession, useProjection, renderSlot, updateQueue, notify, loadImage, smartSteer, useSmartSteerMinConfidence, t } = props
   // The renderer binds the chat seat for every session-scoped entry, but the
   // seat's owner (ui-chat) types it through an augmentation this package's
   // program cannot see: a project reference back to ui-chat would close a
@@ -178,7 +180,7 @@ export function QueueDock(props: QueueDockProps) {
   // empty and the run never had a pending row, so a row-anchored run that just
   // drained keeps its cleanup semantics instead of reopening as rowless.
   useEffect(() => {
-    if (advising !== null || liveRun == null || dismissedRuns.has(liveRun.runId)) return
+    if (!smartSteer || advising !== null || liveRun == null || dismissedRuns.has(liveRun.runId)) return
     const row = queue.find(candidate => candidate.id === liveRun.queuedItemId)
     if (row !== undefined) {
       rowAnchoredRuns.current = new Set(rowAnchoredRuns.current).add(liveRun.runId)
@@ -188,7 +190,7 @@ export function QueueDock(props: QueueDockProps) {
     if (rowCount === 0 && !rowAnchoredRuns.current.has(liveRun.runId)) {
       setAdvising({ id: liveRun.queuedItemId, preview: lastHuman ?? '', rowless: true })
     }
-  }, [advising, dismissedRuns, lastHuman, liveRun, queue, rowCount])
+  }, [advising, dismissedRuns, lastHuman, liveRun, queue, rowCount, smartSteer])
 
   /** Close the sheet or pill, remembering the current run so it stays closed. */
   const dismissAdvising = (): void => {
@@ -271,7 +273,7 @@ export function QueueDock(props: QueueDockProps) {
   }
 
   /** Peek pill portal plus the advisor sheet, contributed by the smart_steer plugin's registration; nothing renders without it. */
-  const advisorSurface = renderSlot('conversation.input.dock.advisor', advisorOwner)
+  const advisorSurface = smartSteer ? renderSlot('conversation.input.dock.advisor', advisorOwner) : null
 
   // The dock column is queue-owned, but a /side fallback run advises over a
   // delivered message with nothing queued: the sheet must render anyway.
@@ -439,28 +441,30 @@ export function QueueDock(props: QueueDockProps) {
                             <IconSendOutline14 />
                           </button>
                         </Tooltip>
-                        <Tooltip label={t('queue.steerSmart')} side="bottom" delayMs={500} disabled={!running}>
-                          <button
-                            type="button"
-                            className={css.action}
-                            aria-label={t('queue.steerSmart')}
-                            title={running ? undefined : t('queue.steerSmart.unavailable')}
-                            disabled={busy !== null || !running}
-                            onClick={() => {
-                              setAdvising({ id: row.id, preview: row.preview, rowless: false })
-                              setPeek(false)
-                              setPeekAnswers(0)
-                              // Ask the host for the live advisory side run; the
-                              // sheet already shows the instant tier-1 verdict,
-                              // and the advisor/run projection replaces it as
-                              // the model's phases land. Absent deployments
-                              // reject the action and the tier-1 sheet stands.
-                              void updateQueue(row.id, { kind: 'advise' }).catch(() => undefined)
-                            }}
-                          >
-                            <IconSendSmartOutline14 />
-                          </button>
-                        </Tooltip>
+                        {smartSteer && (
+                          <Tooltip label={t('queue.steerSmart')} side="bottom" delayMs={500} disabled={!running}>
+                            <button
+                              type="button"
+                              className={css.action}
+                              aria-label={t('queue.steerSmart')}
+                              title={running ? undefined : t('queue.steerSmart.unavailable')}
+                              disabled={busy !== null || !running}
+                              onClick={() => {
+                                setAdvising({ id: row.id, preview: row.preview, rowless: false })
+                                setPeek(false)
+                                setPeekAnswers(0)
+                                // Ask the host for the live advisory side run; the
+                                // sheet already shows the instant tier-1 verdict,
+                                // and the advisor/run projection replaces it as
+                                // the model's phases land. Absent deployments
+                                // reject the action and the tier-1 sheet stands.
+                                void updateQueue(row.id, { kind: 'advise' }).catch(() => undefined)
+                              }}
+                            >
+                              <IconSendSmartOutline14 />
+                            </button>
+                          </Tooltip>
+                        )}
                       </>
                     )}
                 </div>}
@@ -521,15 +525,17 @@ export function QueueDock(props: QueueDockProps) {
                   >
                     <IconSendOutline14 />
                   </button>
-                  <button
-                    type="button"
-                    className={css.action}
-                    aria-label={t('queue.steerSmart')}
-                    title={t('queue.sending')}
-                    disabled
-                  >
-                    <IconSendSmartOutline14 />
-                  </button>
+                  {smartSteer && (
+                    <button
+                      type="button"
+                      className={css.action}
+                      aria-label={t('queue.steerSmart')}
+                      title={t('queue.sending')}
+                      disabled
+                    >
+                      <IconSendSmartOutline14 />
+                    </button>
+                  )}
                 </div>}
               </li>
             )
@@ -548,7 +554,7 @@ export function QueueDock(props: QueueDockProps) {
  * @param gate - reactive source of the durable Smart-steer confidence gate.
  * @returns the registrable queue-dock plugin.
  */
-export function createQueueDockEntry(gate: SnapshotStore<number>) {
+export function createQueueDockEntry(gate: SnapshotStore<number>, smartSteer = true) {
   return {
     name: 'conversation-queue-dock',
     inject: ['slots', 'conversation', 'sessions', 'uiConversation'],
@@ -570,6 +576,7 @@ export function createQueueDockEntry(gate: SnapshotStore<number>) {
             updateQueue: (itemId, action) => conversation.updateQueue(itemId, action),
             notify: (level, text) => { conversation.input.for(actx).notify(level, text) },
             loadImage: attachment => ctx.uiConversation.imageUrl(sessionId, attachment),
+            smartSteer,
             hooks: { smartSteerMinConfidence: gate },
           }
         },

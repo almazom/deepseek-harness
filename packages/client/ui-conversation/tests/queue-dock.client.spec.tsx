@@ -90,7 +90,7 @@ function makeUseChat(nodes: readonly ConversationNode[]): QueueDockProps['useCha
   })
 }
 
-function kitFor(snapshot: SessionSnapshot, injected: Partial<QueueDockInjected & Pick<QueueDockProps, 'useChat' | 'useProjection'>> = {}) {
+function kitFor(snapshot: SessionSnapshot, injected: Partial<QueueDockInjected & Pick<QueueDockProps, 'useChat' | 'useProjection' | 'renderSlot'>> = {}) {
   return {
     sessionId: SID,
     t,
@@ -113,6 +113,7 @@ function kitFor(snapshot: SessionSnapshot, injected: Partial<QueueDockInjected &
     updateQueue: vi.fn(() => Promise.resolve()),
     notify: vi.fn(),
     loadImage: vi.fn(() => Promise.resolve('blob:unused')),
+    smartSteer: true,
     SessionProvider: ({ children }: { children: ReactNode }) => children,
     renderSlot: vi.fn((_key: string, _owner: AdvisorOwnerProps) => null) as unknown as QueueDockProps['renderSlot'],
     ...injected,
@@ -587,6 +588,21 @@ describe('QueueDock', () => {
     act(() => { source.push({ ...running, running: false }) })
     expect(rendered.getByLabelText('插话发送')).toHaveProperty('disabled', true)
     expect(rendered.getByLabelText('插话发送').getAttribute('title')).toBe('仅运行中可插话发送')
+  })
+
+  it('renders Smart-steer entry points by default and omits them when the feature is off', () => {
+    const snap = snapshotWith([row('i-smart', 'smart me')])
+    const on = render(<QueueDock {...kitFor(snap)} useSession={liveSession(snap).useSession} />)
+    expect(on.getAllByLabelText('智能插话发送').length).toBeGreaterThan(0)
+    on.unmount()
+
+    const renderSlotOff = vi.fn((_key: string, _owner: AdvisorOwnerProps) => null) as unknown as QueueDockProps['renderSlot']
+    const off = render(
+      <QueueDock {...kitFor(snap, { smartSteer: false, renderSlot: renderSlotOff })} useSession={liveSession(snap).useSession} />,
+    )
+    expect(off.queryAllByLabelText('智能插话发送')).toHaveLength(0)
+    // The advisor slot owner is never handed out with the feature off.
+    expect((renderSlotOff as unknown as Mock).mock.calls).toHaveLength(0)
   })
 
   it('renders ordinary queue actions for a continuable child', () => {

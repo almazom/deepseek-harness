@@ -53,11 +53,14 @@ export const inject = [
 export interface Config {
   /** Maximum generic-file uploads allowed to run concurrently in browser Workers. */
   maxConcurrentFileUploads?: number
+  /** Render the queue dock's Smart-steer entry points and advisor surface. */
+  smartSteer?: boolean
 }
 
 /** Validated Conversation runtime configuration. */
 export const Config: z<Config> = z.object({
   maxConcurrentFileUploads: z.natural().min(1).default(2),
+  smartSteer: z.boolean().default(true),
 })
 
 // Stable no-session sources keep the renderer's observable-hook cache and
@@ -131,6 +134,7 @@ export function apply(ctx: Context, config: Config = Config({})): void {
   const slots = ctx.slots
   // Schemastery's field default is materialized before Cordis calls apply.
   const maxConcurrentFileUploads = config.maxConcurrentFileUploads as number
+  const smartSteer = config.smartSteer as boolean
   const workspaceNavigation = ctx.get('uiWorkspace') as unknown as WorkspaceNavigation
   const uiConversation = new UiConversation(ctx, sessions)
 
@@ -426,5 +430,5 @@ export function apply(ctx: Context, config: Config = Config({})): void {
     maxConcurrentFileUploads,
   })
   ctx.plugin(todoDockEntry)
-  ctx.plugin(createQueueDockEntry(submissionPolicy.smartSteerMinConfidence))
+  ctx.plugin(createQueueDockEntry(submissionPolicy.smartSteerMinConfidence, smartSteer))
 }
