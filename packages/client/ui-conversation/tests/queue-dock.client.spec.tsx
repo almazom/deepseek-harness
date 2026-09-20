@@ -696,7 +696,7 @@ describe('QueueDock', () => {
   })
 
   it('registers as the terminal composer-context entry', () => {
-    const entry = createQueueDockEntry(createSnapshotStore(0.95))
+    const entry = createQueueDockEntry(createSnapshotStore(0.95), true)
     expect(entry.name).toBe('conversation-queue-dock')
     expect(entry.inject).toEqual(['slots', 'conversation', 'sessions', 'uiConversation'])
     const register = vi.fn(() => () => undefined)
@@ -916,6 +916,20 @@ describe('QueueDock advisor side-runtime', () => {
     })
     const { props } = openAdvised({ useProjection: running })
     expect(advisorOwnerOf(props).followUp?.disabled).toBe(true)
+  })
+
+  it('never auto-opens or renders advisor entry points with smartSteer off', () => {
+    // A /side command starts the run host-side; with the feature off the dock
+    // hands out no advisor owner at all, so nothing can open.
+    const renderSlot = vi.fn((_key: string, _owner: AdvisorOwnerProps) => null) as unknown as QueueDockProps['renderSlot']
+    const { useProjection, push } = projectionKit()
+    const snap = snapshotWith([row('r1', 'почини тесты', 'почини тесты')])
+    const source = liveSession(snap)
+    render(
+      <QueueDock {...kitFor(snap, { smartSteer: false, renderSlot, useProjection })} useSession={source.useSession} />,
+    )
+    act(() => { push(liveValue({ status: 'running', steps: [{ step: 'tail', finding: RUN_FINDING_ZH }] })) })
+    expect((renderSlot as unknown as Mock).mock.calls).toHaveLength(0)
   })
 
   it('auto-opens the advisor when a projected run starts without the smart button', () => {

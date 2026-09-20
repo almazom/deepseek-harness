@@ -552,9 +552,11 @@ export function QueueDock(props: QueueDockProps) {
  * the composer submission policy's reactive fact, shared with this entry
  * through the apply closure; the dock only reads it.
  * @param gate - reactive source of the durable Smart-steer confidence gate.
+ * @param smartSteer - false when the deployment turns Smart-steer off: the
+ *   dock renders no Smart-steer entry points and never opens the advisor.
  * @returns the registrable queue-dock plugin.
  */
-export function createQueueDockEntry(gate: SnapshotStore<number>, smartSteer = true) {
+export function createQueueDockEntry(gate: SnapshotStore<number>, smartSteer: boolean) {
   return {
     name: 'conversation-queue-dock',
     inject: ['slots', 'conversation', 'sessions', 'uiConversation'],
