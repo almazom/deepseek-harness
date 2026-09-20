@@ -805,6 +805,14 @@ Requires: `agents` · `sessionProjections`
 export interface Config {
   /** Total rounds used when a create request omits its own cap. */
   defaultMaxGoalRounds?: number
+  /**
+   * Reject objectives that lack a verifiable acceptance criterion and a visible
+   * round budget (the fleet goal-flow pipeline's mechanical floor). Off by
+   * default; deployments running the goal-flow pipeline enable it.
+   */
+  requireRichObjective?: boolean
+  /** Minimum admitted objective length while the rich-objective gate is on. */
+  minObjectiveChars?: number
 }
 ```
 
@@ -2218,6 +2226,34 @@ export interface Config {
 ```
 
 Source: [`packages/skill/skill-filesystem/src/index.ts:49`](../packages/skill/skill-filesystem/src/index.ts)
+
+<a id="deepseek-aidsh-smart-steer"></a>
+
+## `@deepseek-ai/dsh-smart-steer`
+
+Requires: `commands` · `sessionProjections`
+
+```ts config-catalog
+/** Required deployment policy for the model-backed advisor run. */
+export interface AdvisorLlmConfig {
+  /** Maximum UTF-8 bytes in the JSON-framed advisory user prompt. */
+  readonly maxInputBytes: number
+  /** Advisory generation output-token cap. */
+  readonly maxOutputTokens: number
+  /** End-to-end advisory request deadline in milliseconds. */
+  readonly timeoutMs: number
+  /** Longest conversation tail kept in the framed snapshot. */
+  readonly tailEntries: number
+  /** Longest distinct-request list kept in the framed snapshot. */
+  readonly recentRequests: number
+  /** Optional explicit provider route; must be paired with `model`. */
+  readonly provider?: string
+  /** Optional explicit model id; must be paired with `provider`. */
+  readonly model?: string
+}
+```
+
+Source: [`packages/plugins/smart_steer/src/types.ts:64`](../packages/plugins/smart_steer/src/types.ts)
 
 <a id="deepseek-aidsh-spill-local"></a>
 
