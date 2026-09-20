@@ -16,7 +16,7 @@ Status: implemented
 
 [证据链决策](2026-08-08-browser-gif-evidence-chain.zh.md)规定浏览器控制方式选择、应用状态隔离、真实模型执行、准确提交归属及发布验证。视频在这些规则内增加更高采样帧率的录制选项。失败录制的画面不得用于成功运行。
 
-[browser-video-record 说明](2026-09-20-browser-video-record-skill.md)后续将这些捕获机制（视口尺寸匹配的 `recordVideo`、上下文关闭后再 `saveAs`）推广为带帧内步骤横幅对齐的独立录制技能；该技能是录制准则的权威来源，而本说明仍是 GIF 演示编码与 PR 证据链的权威来源。
+[browser-video-record 说明](2026-09-20-browser-video-record-skill.zh.md)后续将这些捕获机制（视口尺寸匹配的 `recordVideo`、上下文关闭后再 `saveAs`）推广为带帧内步骤横幅对齐的独立录制技能；该技能是录制准则的权威来源，而本说明仍是 GIF 演示编码与 PR 证据链的权威来源。
 
 ## 曾考虑的替代方案
 
