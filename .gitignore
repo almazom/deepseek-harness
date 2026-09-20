@@ -46,3 +46,11 @@ worktrees/
 .agents/worktrees/
 .typert-*/
 native/system/test/bin/
+
+# Fleet pipeline artifacts (p2i / plan2trello / screen-video-intake local state)
+/plans/
+/trello-cards/
+/BOARD.md
+.video-intake-*/
+/.zcodeignore
+.qoder/
