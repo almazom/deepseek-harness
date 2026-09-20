@@ -89,16 +89,27 @@ Sources: [`packages/core/session/src/types.ts:404`](../packages/core/session/src
 
 ### `advisor/*`
 
+<a id="advisorfailed--log-only"></a>
+
+#### `advisor/failed` — log-only
+
+```ts persistence-catalog
+/** Advisory run that ended without a verdict. */
+'advisor/failed': AdvisorFailedEventData
+```
+
+Source: [`packages/plugins/smart_steer/src/types.ts:125`](../packages/plugins/smart_steer/src/types.ts)
+
 <a id="advisorrun-requested--log-only"></a>
 
 #### `advisor/run-requested` — log-only
 
 ```ts persistence-catalog
 /** Log-only pre-dispatch record of one advisory side run. */
-'advisor/run-requested': import('./types.ts').AdvisorRunRequestedEventData
+'advisor/run-requested': AdvisorRunRequestedEventData
 ```
 
-Source: [`packages/plugins/smart_steer/src/config.ts:39`](../packages/plugins/smart_steer/src/config.ts)
+Source: [`packages/plugins/smart_steer/src/types.ts:119`](../packages/plugins/smart_steer/src/types.ts)
 
 <a id="advisorstep--log-only"></a>
 
@@ -106,10 +117,10 @@ Source: [`packages/plugins/smart_steer/src/config.ts:39`](../packages/plugins/sm
 
 ```ts persistence-catalog
 /** One advisory cognitive phase completed with its real finding. */
-'advisor/step': import('./types.ts').AdvisorStepEventData
+'advisor/step': AdvisorStepEventData
 ```
 
-Source: [`packages/plugins/smart_steer/src/config.ts:41`](../packages/plugins/smart_steer/src/config.ts)
+Source: [`packages/plugins/smart_steer/src/types.ts:121`](../packages/plugins/smart_steer/src/types.ts)
 
 <a id="advisorverdict--log-only"></a>
 
@@ -117,10 +128,10 @@ Source: [`packages/plugins/smart_steer/src/config.ts:41`](../packages/plugins/sm
 
 ```ts persistence-catalog
 /** Final advisory decision against the Smart-steer confidence gate. */
-'advisor/verdict': import('./types.ts').AdvisorVerdictEventData
+'advisor/verdict': AdvisorVerdictEventData
 ```
 
-Source: [`packages/plugins/smart_steer/src/config.ts:43`](../packages/plugins/smart_steer/src/config.ts)
+Source: [`packages/plugins/smart_steer/src/types.ts:123`](../packages/plugins/smart_steer/src/types.ts)
 
 ### `agent/*`
 
