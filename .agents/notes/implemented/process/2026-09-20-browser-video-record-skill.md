@@ -12,6 +12,10 @@ plugin layer (precedent: `record-browser-gif`); the helper is plain ESM with
 zero dependencies, resolved per-checkout (`apps/web/package.json`), so the
 skill travels with the repo without a versioned dependency edge.
 
+Supersession scope: partial. The capture mechanics this note generalizes were
+first recorded in the [playwright-video-gif note](2026-09-08-playwright-video-gif.md);
+that note stays authoritative for GIF demo encoding and PR evidence chains.
+
 ## Banner over Test-runner annotations
 
 Playwright Test's `video: { show: { actions } }` annotates videos, but the

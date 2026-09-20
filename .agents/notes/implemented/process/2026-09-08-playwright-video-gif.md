@@ -16,6 +16,8 @@ One encoder accepts either a video file or a screenshot directory. Video input s
 
 The [evidence-chain decision](2026-08-08-browser-gif-evidence-chain.md) owns browser-control selection, isolated application state, real model execution, exact commit attribution, and verified publication. Video adds a higher-cadence capture option within those rules. Failed recordings cannot contribute frames to a successful run.
 
+The [browser-video-record note](2026-09-20-browser-video-record-skill.md) later generalized these capture mechanics (viewport-sized `recordVideo`, context close before `saveAs`) into a standalone recording skill with in-frame step-banner alignment; that skill is the recording doctrine of record, while this note remains authoritative for GIF demo encoding and PR evidence chains.
+
 ## Alternatives considered
 
 **Increase only the encoded frame rate.** Repeating sparse screenshots does not capture additional motion. Screenshots remain useful for explicit state holds, requested storyboards, and browser workflows without video support.
