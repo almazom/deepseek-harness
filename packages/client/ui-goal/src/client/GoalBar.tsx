@@ -135,8 +135,11 @@ export function GoalBar({ goal, activation, onEdit, onPause, onResume, onClear, 
   const label = goal.phase === 'active' ? activeLabel(activation, t) : t(PHASE_LABELS[goal.phase])
   const showResume = goal.phase === 'paused'
     || (goal.phase === 'active' && activation === 'disarmed')
+  // Pill mode: an active goal waiting on the operator (disarmed activation)
+  // collapses to a compact pill so the waiting state reads at a glance.
+  const pill = goal.phase === 'active' && activation === 'disarmed'
   return (
-    <div className={css.dock} data-goal-bar>
+    <div className={css.dock} data-goal-bar data-goal-pill={pill || undefined}>
       <div className={css.bar} title={title}>
         <span className={css.goalGlyph}><IconGoalOutline16 size={14} /></span>
         <span className={css.label}>{label}</span>
