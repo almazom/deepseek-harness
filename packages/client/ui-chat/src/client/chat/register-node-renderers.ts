@@ -9,6 +9,7 @@ import {
 import { SystemPromptNodeView } from './SystemPromptRow.tsx'
 import { TurnProcessNodeView } from './TurnProcessNodeView.tsx'
 import { TurnTailNodeView } from './TurnTailNodeView.tsx'
+import { HooksNodeView } from './HooksCard.tsx'
 
 /**
  * Register this package's business renderers behind the keyed Chat Node seat.
@@ -35,6 +36,8 @@ export function registerChatNodeRenderers(ctx: Context): void {
     { name: 'conversation.chat.node', key: 'manual-compaction', locale: NS }, ManualCompactionNodeView))
   ctx.slots.inject('conversation.chat.node', () => ctx.slots.register(
     { name: 'conversation.chat.node', key: 'compaction', locale: NS }, CompactionNodeView))
+  ctx.slots.inject('conversation.chat.node', () => ctx.slots.register(
+    { name: 'conversation.chat.node', key: 'hooks', locale: NS }, HooksNodeView))
   ctx.slots.inject('conversation.chat.node', () => ctx.slots.register(
     { name: 'conversation.chat.node', key: 'model-retry', locale: NS }, RetryNodeView))
   ctx.slots.inject('conversation.chat.node', () => ctx.slots.register(

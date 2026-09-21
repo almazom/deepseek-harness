@@ -221,3 +221,67 @@
 .modalAction {
   min-width: 72px;
 }
+
+/* Per-turn hook telemetry card. */
+
+.hooksCard {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 12px;
+  border: 0.5px solid var(--dsw-alias-border-l1);
+  border-radius: 10px;
+  background: var(--dsw-specific-tip);
+}
+
+.hooksTitle {
+  font-size: 12px;
+  line-height: 18px;
+  font-weight: 500;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.hooksRuns {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.hooksRun {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.hooksPoint {
+  flex: none;
+  color: var(--dsw-alias-label-secondary);
+}
+
+.hooksHandler {
+  overflow: hidden;
+  color: var(--dsw-alias-label-primary-dimmed);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hooksDecision {
+  flex: none;
+  margin-left: auto;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.hooksRun[data-hook-decision='stop'] .hooksDecision {
+  color: var(--dsw-alias-state-error-primary);
+}
+
+.hooksDuration {
+  flex: none;
+  color: var(--dsw-alias-label-caption);
+}

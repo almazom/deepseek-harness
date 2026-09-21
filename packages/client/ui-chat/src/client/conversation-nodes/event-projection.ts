@@ -179,3 +179,82 @@ export function isTokenDelta(chunk: StreamChunk): boolean {
 }
 
 /* jscpd:ignore-end */
+
+/** One projected hook run on the Chat hooks card. */
+export interface HookRunView {
+  /** Durable hook point, e.g. `PreToolUse`. */
+  readonly point: string
+  /** Handler identity that served the invocation. */
+  readonly handlerId: string
+  /** Wire dialect of the invocation, when recorded. */
+  readonly dialect?: string
+  /** Matcher expression that routed the invocation, when recorded. */
+  readonly matcher?: string
+  /** Parsed decision, defaulting to `stop`/`pass`; absent while still running. */
+  readonly decision?: string
+  /** Handler process exit code, when recorded. */
+  readonly exitCode?: number
+  /** Measured handler wall duration, recorded by the paired result. */
+  readonly durationMs?: number
+}
+
+/** Durable `hook/invoked` payload fields consumed by the projection. */
+export type HookInvokedData = {
+  readonly point: string
+  readonly handlerId: string
+  readonly dialect: string
+} & { readonly matcher?: string }
+
+/** Durable `hook/result` payload fields consumed by the projection. */
+export interface HookResultData {
+  readonly point: string
+  readonly handlerId: string
+  readonly decision: string
+  readonly exitCode?: number
+  readonly durationMs: number
+}
+
+/**
+ * Project one durable `hook/invoked` payload to a pending hooks-card row.
+ * @param data - Logged `hook/invoked` payload.
+ * @returns The run row awaiting its paired result.
+ */
+export function hookRunOfInvoked(data: HookInvokedData): HookRunView {
+  return {
+    point: data.point,
+    handlerId: data.handlerId,
+    ...(data.dialect === undefined ? {} : { dialect: data.dialect }),
+    ...(data.matcher === undefined ? {} : { matcher: data.matcher }),
+  }
+}
+
+/**
+ * Apply one durable `hook/result` payload to the projected runs of its turn.
+ * The result payload names no invocation id, so it completes the latest still-open
+ * run with the same point and handler — the log orders invoked before result.
+ * @param runs - Runs projected so far for the turn.
+ * @param data - Logged `hook/result` payload.
+ * @returns Replacement run list with the paired run completed.
+ */
+export function applyHookResult(
+  runs: readonly HookRunView[],
+  data: HookResultData,
+): HookRunView[] {
+  let paired = -1
+  for (let index = runs.length - 1; index >= 0; index -= 1) {
+    const run = runs[index]
+    if (run.point === data.point && run.handlerId === data.handlerId && run.decision === undefined) {
+      paired = index
+      break
+    }
+  }
+  if (paired < 0) return [...runs]
+  return runs.map((run, index) => index === paired
+    ? {
+      ...run,
+      decision: data.decision,
+      ...(data.exitCode === undefined ? {} : { exitCode: data.exitCode }),
+      durationMs: data.durationMs,
+    }
+    : run)
+}
