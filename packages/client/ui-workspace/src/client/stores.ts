@@ -6,6 +6,7 @@
  * share from the return type.
  */
 import { defineStore, type EngineStoreHandle } from '@deepseek-ai/dsh-client-store'
+import type { SessionId } from '@deepseek-ai/dsh-session/types'
 
 /** Browser-local order account for the hierarchy-free flat Session list. */
 export const FLAT_SESSION_ORDER_KEY = '__flat_session_order__'
@@ -26,7 +27,7 @@ type WorkspaceViewState = {
   /** Last observed update timestamps per order account for one-time promotion events. */
   sessionUpdatedAtByAccount: Record<string, Record<string, number>>
   /** Pinned session ids rendered in the Pinned section above the time buckets. */
-  pinnedIds: string[]
+  pinnedIds: SessionId[]
 }
 
 /**
@@ -45,8 +46,8 @@ type WorkspaceViewActions = {
     updatedAt: Record<string, number>,
   ) => void
   setSessionOrder: (draft: WorkspaceViewState, accountKey: string, order: string[]) => void
-  pinSession: (draft: WorkspaceViewState, sessionId: string) => void
-  unpinSession: (draft: WorkspaceViewState, sessionId: string) => void
+  pinSession: (draft: WorkspaceViewState, sessionId: SessionId) => void
+  unpinSession: (draft: WorkspaceViewState, sessionId: SessionId) => void
 }
 
 /** Local calendar-day bucket of a session's latest activity. */
@@ -65,16 +66,6 @@ export function todayBucket(updatedAt: number, now: Date): SessionDayBucket {
     && updated.getDate() === now.getDate()
     ? 'today'
     : 'earlier'
-}
-
-/**
- * Whether a session id sits in the pinned set.
- * @param state - Viewing store state.
- * @param sessionId - Session id to test.
- * @returns true when pinned.
- */
-export function isPinnedId(state: { readonly pinnedIds: readonly string[] }, sessionId: string): boolean {
-  return state.pinnedIds.includes(sessionId)
 }
 
 /**
@@ -115,10 +106,10 @@ export function createWorkspaceViewStore(): EngineStoreHandle<WorkspaceViewState
       setSessionOrder: (d, accountKey: string, order: string[]) => {
         d.sessionOrderByAccount[accountKey] = order
       },
-      pinSession: (d, sessionId: string) => {
+      pinSession: (d, sessionId: SessionId) => {
         if (!d.pinnedIds.includes(sessionId)) d.pinnedIds.push(sessionId)
       },
-      unpinSession: (d, sessionId: string) => {
+      unpinSession: (d, sessionId: SessionId) => {
         d.pinnedIds = d.pinnedIds.filter(pinned => pinned !== sessionId)
       },
     },

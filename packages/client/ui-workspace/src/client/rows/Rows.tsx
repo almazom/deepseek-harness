@@ -432,7 +432,13 @@ export function SessionNodeItem({
   // touches the session log, so it is not styled as destructive and needs no
   // confirmation dialog.
   const sessionMenuItems = [
-    { id: pinned ? 'unpin' : 'pin', label: pinned ? t('menu.unpin') : t('menu.pin'), icon: <PinIcon /> },
+    // Flat and search rows have no pinned section to render the state in, so
+    // the affordance is withheld there instead of no-oping on click.
+    ...(onPinToggle === undefined ? [] : [{
+      id: pinned ? 'unpin' : 'pin',
+      label: pinned ? t('menu.unpin') : t('menu.pin'),
+      icon: <PinIcon />,
+    }]),
     { id: 'rename', label: t('rename'), icon: <IconEditOutline16 /> },
     { id: 'fork', label: t('menu.fork'), icon: <IconBranchOutline16 /> },
     // 20-native glyph in the menu's 16px icon slot (Menu.module.css .itemIcon).

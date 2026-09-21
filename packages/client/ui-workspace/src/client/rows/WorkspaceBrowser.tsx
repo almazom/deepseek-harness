@@ -42,14 +42,14 @@ const SEARCH_QUERY_MAX_CODE_UNITS = 500
 /** Session rows visible per Workspace before the local overflow control. */
 const COLLAPSED_SESSION_LIMIT = 5
 
-/** Fold one Workspace without charging its provisional New Session against the ordinary-row limit. */
-function collapsedSessionRows(sessions: readonly SessionNode[]): {
+/** Fold one Workspace without charging its provisional New Session or its pinned rows against the ordinary-row limit. */
+function collapsedSessionRows(sessions: readonly SessionNode[], pinnedIds: readonly SessionNode['id'][]): {
   rows: readonly SessionNode[]
   hiddenCount: number
 } {
   let ordinaryCount = 0
   const rows = sessions.filter((session) => {
-    if (session.blank) return true
+    if (session.blank || pinnedIds.includes(session.id)) return true
     if (ordinaryCount >= COLLAPSED_SESSION_LIMIT) return false
     ordinaryCount += 1
     return true
@@ -244,16 +244,20 @@ type SessionSection = { readonly bucket: 'pinned' | SessionDayBucket; readonly r
  */
 function sectionsOf(
   rows: readonly SessionNode[],
-  pinnedIds: readonly string[],
+  pinnedIds: readonly SessionNode['id'][],
   now: number,
 ): readonly SessionSection[] {
+  const pinned = new Set(pinnedIds)
   const reference = new Date(now)
-  const pinned = rows.filter(node => pinnedIds.includes(node.id))
-  const rest = rows.filter(node => !pinnedIds.includes(node.id))
+  const sections: Record<'pinned' | SessionDayBucket, SessionNode[]> = { pinned: [], today: [], earlier: [] }
+  for (const node of rows) {
+    if (pinned.has(node.id)) sections.pinned.push(node)
+    else sections[todayBucket(node.updatedAt, reference)].push(node)
+  }
   return [
-    { bucket: 'pinned', rows: pinned },
-    { bucket: 'today', rows: rest.filter(node => todayBucket(node.updatedAt, reference) === 'today') },
-    { bucket: 'earlier', rows: rest.filter(node => todayBucket(node.updatedAt, reference) === 'earlier') },
+    { bucket: 'pinned', rows: sections.pinned },
+    { bucket: 'today', rows: sections.today },
+    { bucket: 'earlier', rows: sections.earlier },
   ]
 }
 
@@ -292,7 +296,7 @@ type SessionTreeProps = Pick<
   /** Session order behavior: fixed after edits, or additionally promoted by user activity. */
   orderBy: SessionOrderBy
   /** Pinned session ids rendered in the Pinned section above the time buckets. */
-  pinnedIds: readonly string[]
+  pinnedIds: readonly SessionNode['id'][]
   /** Toggle one session's pinned membership (row menu action). */
   onPinToggle: (sessionId: SessionNode['id'], pinned: boolean) => void
   /** One Session chosen from search that must be exposed and scrolled into view. */
@@ -397,9 +401,9 @@ function SessionTree({
     if (revealSessionId === undefined || revealGroup === undefined) return
     const group = groups.find(candidate => candidate.key === revealGroup)
     if (group === undefined || !group.expanded || !group.sessions.some(row => row.id === revealSessionId)) return
-    if (collapsedSessionRows(group.sessions).rows.some(row => row.id === revealSessionId)) return
+    if (collapsedSessionRows(group.sessions, pinnedIds).rows.some(row => row.id === revealSessionId)) return
     setExpandedSessionGroups(keys => keys.includes(revealGroup) ? keys : [...keys, revealGroup])
-  }, [groups, revealGroup, revealSessionId])
+  }, [groups, revealGroup, revealSessionId, pinnedIds])
   const now = Date.now()
   const commitSessionDrag = (activeDrag: DragState, over: NonNullable<DragState['over']>): void => {
     if (sessionDropCommitted.current) return
@@ -408,7 +412,7 @@ function SessionTree({
     const group = groups.find(candidate => candidate.key === activeDrag.accountKey)
     if (group === undefined) return
     const sessionsExpanded = expandedSessionGroups.includes(group.key)
-    const renderedSessions = sessionsExpanded ? group.sessions : collapsedSessionRows(group.sessions).rows
+    const renderedSessions = sessionsExpanded ? group.sessions : collapsedSessionRows(group.sessions, pinnedIds).rows
     const targetIndex = renderedSessions.findIndex(session => session.id === over.id)
     if (targetIndex === -1) return
     const sourceIndex = renderedSessions.findIndex(session => session.id === activeDrag.sessionId)
@@ -446,7 +450,7 @@ function SessionTree({
         const node = nodes.get(id)
         return node === undefined ? [] : [node]
       })
-      if (!collapsedSessionRows(nextGroup).rows.some(node => node.id === activeDrag.sessionId)) return
+      if (!collapsedSessionRows(nextGroup, pinnedIds).rows.some(node => node.id === activeDrag.sessionId)) return
     }
     setSessionOrder(activeDrag.accountKey, nextOrder.map(id => id as string))
     if (orderBy === 'updated' || activeDrag.accountKey === UNGROUPED_KEY) return
@@ -491,7 +495,7 @@ function SessionTree({
         )}
         {groups.map((group) => {
           const workspaceId = group.workspaceId
-          const collapsed = collapsedSessionRows(group.sessions)
+          const collapsed = collapsedSessionRows(group.sessions, pinnedIds)
           const sessionsExpanded = expandedSessionGroups.includes(group.key)
           const workspaceMarker = workspaceId !== undefined && workspaceDrag?.over?.id === workspaceId
             ? workspaceDrag.over.half
@@ -624,7 +628,7 @@ function SessionTree({
                       <SessionNodeItem
                         key={node.id}
                         node={node}
-                        pinned={pinnedIds.includes(node.id)}
+                        pinned={section.bucket === 'pinned'}
                         onPinToggle={onPinToggle}
                         currentId={current}
                         now={now}

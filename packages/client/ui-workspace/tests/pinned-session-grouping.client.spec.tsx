@@ -131,4 +131,41 @@ describe('pinned session grouping', () => {
     expect(within(heading2.parentElement!).getByText('Старая-пин')).toBeTruthy()
     await reloaded.dispose()
   })
+
+  it('a pinned row stays visible in a collapsed group past the ordinary-row limit', async () => {
+    const runtime = await createRuntime()
+    const threeDaysAgo = Date.now() - 3 * 86_400_000
+    const sessionIds: string[] = []
+    for (let index = 0; index < 7; index += 1) {
+      const id = `s-deep-${index}` as SessionId
+      await runtime.sessions.add({
+        id,
+        summary: { title: `Глубокая-${index}`, displayTitle: `Глубокая-${index}`, cwd: '/w/alpha', updatedAt: threeDaysAgo } as never,
+      })
+      sessionIds.push(id)
+    }
+    await runtime.workspaces.update((draft) => {
+      draft.items = [{
+        workspaceId: 'w1' as WorkspaceId, title: 'alpha', path: '/w/alpha',
+        sessionIds, createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z',
+      }] as never
+    })
+    // No current session in the group, so the row collapse applies; s-deep-6
+    // sits past the five-row cut. The pinned set is seeded the way a previous
+    // run would have persisted it (whole-value v6 payload).
+    localStorage.setItem('dsh.workspace.view.v6', JSON.stringify({
+      groupBy: 'workspace',
+      orderBy: 'updated',
+      groupExpansion: {},
+      sessionOrderByAccount: {},
+      sessionUpdatedAtByAccount: {},
+      pinnedIds: ['s-deep-6'],
+    }))
+    const view = await mountBrowser(runtime)
+    const pinnedHeading = await view.findByText('已置顶')
+    expect(within(pinnedHeading.parentElement!).getByText('Глубокая-6')).toBeTruthy()
+    // The overflow count excludes the pinned row: 6 ordinary - 5 visible = 1.
+    expect(view.getByRole('button', { name: '展开其余 1 个会话' })).not.toBeNull()
+    await runtime.dispose()
+  })
 })
