@@ -25,6 +25,8 @@ type WorkspaceViewState = {
   sessionOrderByAccount: Record<string, string[]>
   /** Last observed update timestamps per order account for one-time promotion events. */
   sessionUpdatedAtByAccount: Record<string, Record<string, number>>
+  /** Pinned session ids rendered in the Pinned section above the time buckets. */
+  pinnedIds: string[]
 }
 
 /**
@@ -43,6 +45,36 @@ type WorkspaceViewActions = {
     updatedAt: Record<string, number>,
   ) => void
   setSessionOrder: (draft: WorkspaceViewState, accountKey: string, order: string[]) => void
+  pinSession: (draft: WorkspaceViewState, sessionId: string) => void
+  unpinSession: (draft: WorkspaceViewState, sessionId: string) => void
+}
+
+/** Local calendar-day bucket of a session's latest activity. */
+export type SessionDayBucket = 'today' | 'earlier'
+
+/**
+ * Bucket a session update time against the local calendar day of `now`.
+ * @param updatedAt - Session update epoch milliseconds.
+ * @param now - Reference instant.
+ * @returns `today` inside the current local calendar day, otherwise `earlier`.
+ */
+export function todayBucket(updatedAt: number, now: Date): SessionDayBucket {
+  const updated = new Date(updatedAt)
+  return updated.getFullYear() === now.getFullYear()
+    && updated.getMonth() === now.getMonth()
+    && updated.getDate() === now.getDate()
+    ? 'today'
+    : 'earlier'
+}
+
+/**
+ * Whether a session id sits in the pinned set.
+ * @param state - Viewing store state.
+ * @param sessionId - Session id to test.
+ * @returns true when pinned.
+ */
+export function isPinnedId(state: { readonly pinnedIds: readonly string[] }, sessionId: string): boolean {
+  return state.pinnedIds.includes(sessionId)
 }
 
 /**
@@ -57,8 +89,9 @@ export function createWorkspaceViewStore(): EngineStoreHandle<WorkspaceViewState
       groupExpansion: {},
       sessionOrderByAccount: {},
       sessionUpdatedAtByAccount: {},
+      pinnedIds: [],
     }),
-    persist: 'dsh.workspace.view.v5',
+    persist: 'dsh.workspace.view.v6',
     actions: {
       setGroupBy: (d, mode: SessionGroupBy) => { d.groupBy = mode },
       setOrderBy: (d, mode: SessionOrderBy) => { d.orderBy = mode },
@@ -81,6 +114,12 @@ export function createWorkspaceViewStore(): EngineStoreHandle<WorkspaceViewState
       },
       setSessionOrder: (d, accountKey: string, order: string[]) => {
         d.sessionOrderByAccount[accountKey] = order
+      },
+      pinSession: (d, sessionId: string) => {
+        if (!d.pinnedIds.includes(sessionId)) d.pinnedIds.push(sessionId)
+      },
+      unpinSession: (d, sessionId: string) => {
+        d.pinnedIds = d.pinnedIds.filter(pinned => pinned !== sessionId)
       },
     },
   })

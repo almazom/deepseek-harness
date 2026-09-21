@@ -9,7 +9,7 @@
  * menu in between; the flow and its error dialog live in WorkspacePicker
  * (same package — direct composition, no slot between them).
  */
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import clsx from 'clsx'
 import {
   Button, IconCloseFill14, IconPersonalizationOutline16,
@@ -26,7 +26,7 @@ import {
   deriveFlat, deriveGroups, deriveSearchResults, owningGroupKey, UNGROUPED_KEY,
 } from '../tree.ts'
 import { ProjectRowItem, SearchResultItem, SessionNodeItem } from './Rows.tsx'
-import { FLAT_SESSION_ORDER_KEY } from '../stores.ts'
+import { FLAT_SESSION_ORDER_KEY, todayBucket, type SessionDayBucket } from '../stores.ts'
 import { WorkspacePickFlow } from '../WorkspacePicker.tsx'
 import css from './WorkspaceBrowser.module.css'
 
@@ -232,6 +232,31 @@ function workspaceGroupHalf(e: { clientY: number; currentTarget: HTMLElement }):
   return e.clientY < rect.top + rect.height / 2 ? 'before' : 'after'
 }
 
+/** One rendered workspace-group section: pinned rows, then local-day buckets. */
+type SessionSection = { readonly bucket: 'pinned' | SessionDayBucket; readonly rows: readonly SessionNode[] }
+
+/**
+ * Order one group's rendered rows into Pinned / Today / Earlier sections.
+ * @param rows - The group's visible session rows.
+ * @param pinnedIds - The persisted pinned set.
+ * @param now - Reference instant for the local calendar day.
+ * @returns Sections in render order; empty sections render without a heading.
+ */
+function sectionsOf(
+  rows: readonly SessionNode[],
+  pinnedIds: readonly string[],
+  now: number,
+): readonly SessionSection[] {
+  const reference = new Date(now)
+  const pinned = rows.filter(node => pinnedIds.includes(node.id))
+  const rest = rows.filter(node => !pinnedIds.includes(node.id))
+  return [
+    { bucket: 'pinned', rows: pinned },
+    { bucket: 'today', rows: rest.filter(node => todayBucket(node.updatedAt, reference) === 'today') },
+    { bucket: 'earlier', rows: rest.filter(node => todayBucket(node.updatedAt, reference) === 'earlier') },
+  ]
+}
+
 type SessionTreeProps = Pick<
   WorkspaceBrowserProps,
   'useSessions' | 'useSessionPendingInteraction' | 'startSession' | 'open' | 'forkSession'
@@ -266,6 +291,10 @@ type SessionTreeProps = Pick<
   onSessionArchive: (sessionId: SessionNode['id']) => void
   /** Session order behavior: fixed after edits, or additionally promoted by user activity. */
   orderBy: SessionOrderBy
+  /** Pinned session ids rendered in the Pinned section above the time buckets. */
+  pinnedIds: readonly string[]
+  /** Toggle one session's pinned membership (row menu action). */
+  onPinToggle: (sessionId: SessionNode['id'], pinned: boolean) => void
   /** One Session chosen from search that must be exposed and scrolled into view. */
   revealSessionId?: SessionId | undefined
   /** Acknowledge that the chosen Session row has been revealed. */
@@ -277,7 +306,7 @@ function SessionTree({
   useSessions, useSessionPendingInteraction, startSession, open, forkSession, workspaces, archivedSessionIds,
   workspaceReady, usePanelInfo,
   onRenameRequest, onDeleteRequest, onSessionRename, onSessionArchive,
-  insertWorkspaceBefore, insertSessionBefore, orderBy,
+  insertWorkspaceBefore, insertSessionBefore, orderBy, pinnedIds, onPinToggle,
   groupExpansion, setGroupExpanded,
   sessionOrderByAccount, sessionUpdatedAtByAccount, syncSessionOrderAccount, setSessionOrder, home, t,
   revealSessionId, onSessionRevealed,
@@ -549,53 +578,70 @@ function SessionTree({
                     },
                   }}
               />
-              {(sessionsExpanded
+              {sectionsOf(sessionsExpanded
                 ? group.sessions
-                : collapsed.rows
-              ).map((node) => {
-              // Session drag never leaves its group. Ungrouped writes only the
-              // browser-local account; real Workspaces may also write Host order.
-                const sameGroupDrag = drag !== null && drag.accountKey === group.key
-                const dragProps = {
-                  start: () => {
-                    sessionDropCommitted.current = false
-                    setDrag({ accountKey: group.key, sessionId: node.id, over: null })
-                  },
-                  active: sameGroupDrag,
-                  marker: sameGroupDrag && drag.over?.id === node.id ? drag.over.half : null,
-                  hover: (half: 'before' | 'after') => {
-                  /* v8 ignore next -- narrowing guard: Rows gates hover on `active`, which is false while the drag state is null. */
-                    setDrag(d => (d === null ? d : { ...d, over: { id: node.id, half } }))
-                  },
-                  drop: (half: 'before' | 'after') => {
-                  /* v8 ignore next -- narrowing guard: Rows gates drop on `active`, which is false while the drag state is null. */
-                    if (drag === null) return
-                    commitSessionDrag(drag, { id: node.id, half })
-                  },
-                  end: () => {
-                    if (drag?.over !== null && drag?.over !== undefined) commitSessionDrag(drag, drag.over)
-                    else setDrag(null)
-                    sessionDropCommitted.current = false
-                  },
-                }
-                return (
-                  <SessionNodeItem
-                    key={node.id}
-                    node={node}
-                    currentId={current}
-                    now={now}
-                    onOpen={open}
-                    onRename={onSessionRename}
-                    onFork={forkSession}
-                    onArchive={onSessionArchive}
-                    onReveal={node.id === revealSessionId && group.key === revealGroup
-                      ? () => { onSessionRevealed(node.id) }
-                      : undefined}
-                    drag={dragProps}
-                    t={t}
-                  />
-                )
-              })}
+                : collapsed.rows, pinnedIds, now).map(section => (
+                <Fragment key={section.bucket}>
+                  {section.rows.length > 0 && (
+                    <div
+                      className={css.sectionHeading}
+                      data-session-section={section.bucket}
+                    >
+                      {section.bucket === 'pinned'
+                        ? t('sections.pinned')
+                        : section.bucket === 'today'
+                          ? t('sections.today')
+                          : t('sections.earlier')}
+                    </div>
+                  )}
+                  {section.rows.map((node) => {
+                    // Session drag never leaves its group. Ungrouped writes only the
+                    // browser-local account; real Workspaces may also write Host order.
+                    const sameGroupDrag = drag !== null && drag.accountKey === group.key
+                    const dragProps = {
+                      start: () => {
+                        sessionDropCommitted.current = false
+                        setDrag({ accountKey: group.key, sessionId: node.id, over: null })
+                      },
+                      active: sameGroupDrag,
+                      marker: sameGroupDrag && drag.over?.id === node.id ? drag.over.half : null,
+                      hover: (half: 'before' | 'after') => {
+                        /* v8 ignore next -- narrowing guard: Rows gates hover on `active`, which is false while the drag state is null. */
+                        setDrag(d => (d === null ? d : { ...d, over: { id: node.id, half } }))
+                      },
+                      drop: (half: 'before' | 'after') => {
+                        /* v8 ignore next -- narrowing guard: Rows gates drop on `active`, which is false while the drag state is null. */
+                        if (drag === null) return
+                        commitSessionDrag(drag, { id: node.id, half })
+                      },
+                      end: () => {
+                        if (drag?.over !== null && drag?.over !== undefined) commitSessionDrag(drag, drag.over)
+                        else setDrag(null)
+                        sessionDropCommitted.current = false
+                      },
+                    }
+                    return (
+                      <SessionNodeItem
+                        key={node.id}
+                        node={node}
+                        pinned={pinnedIds.includes(node.id)}
+                        onPinToggle={onPinToggle}
+                        currentId={current}
+                        now={now}
+                        onOpen={open}
+                        onRename={onSessionRename}
+                        onFork={forkSession}
+                        onArchive={onSessionArchive}
+                        onReveal={node.id === revealSessionId && group.key === revealGroup
+                          ? () => { onSessionRevealed(node.id) }
+                          : undefined}
+                        drag={dragProps}
+                        t={t}
+                      />
+                    )
+                  })}
+                </Fragment>
+              ))}
               {collapsed.hiddenCount > 0 && (
                 <button
                   type="button"
@@ -875,6 +921,7 @@ export function WorkspaceBrowser({
   const groupExpansion = useStore(s => s.groupExpansion)
   const sessionOrderByAccount = useStore(s => s.sessionOrderByAccount)
   const sessionUpdatedAtByAccount = useStore(s => s.sessionUpdatedAtByAccount)
+  const pinnedIds = useStore(s => s.pinnedIds)
   const currentBlankSessionId = useSessions((state) => {
     const current = state.current
     return current !== undefined && state.byId[current]?.blank === true ? current : undefined
@@ -1303,6 +1350,11 @@ export function WorkspaceBrowser({
                 sessionUpdatedAtByAccount={sessionUpdatedAtByAccount}
                 syncSessionOrderAccount={actions.syncSessionOrderAccount}
                 setSessionOrder={actions.setSessionOrder}
+                pinnedIds={pinnedIds}
+                onPinToggle={(sessionId, pinned) => {
+                  if (pinned) actions.pinSession(sessionId)
+                  else actions.unpinSession(sessionId)
+                }}
                 archivedSessionIds={archivedSessionIds}
                 startSession={startSession}
                 open={open}

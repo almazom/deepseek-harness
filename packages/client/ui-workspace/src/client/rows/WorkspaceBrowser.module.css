@@ -377,6 +377,15 @@
   margin-top: 4px;
 }
 
+/* Pinned / Today / Earlier sub-section headings inside one workspace group. */
+.sectionHeading {
+  padding: 6px 12px 2px;
+  font-size: 11px;
+  line-height: 16px;
+  font-weight: 500;
+  color: var(--dsw-alias-label-caption);
+}
+
 .listTopDropIndicator,
 .workspaceDropBefore::before,
 .workspaceDropAfter::after {
