@@ -7,6 +7,10 @@
  * the Conversation or a global panel. Each column occupant owns its Session
  * binding and reports the geometry it needs.
  *
+ * Narrow frames navigate by page instead of a sidebar drawer: with a main
+ * panel selected the sidebar track drops to zero so the panel owns the frame,
+ * and without one the closed rail keeps the shell's toggle reachable.
+ *
  * The right column is a track, not a box: its occupant draws its panel anchored
  * to the frame's right edge at the resolved normal width, and the
  * track only decides whether the centre makes room for it. The occupant reports
@@ -158,17 +162,26 @@ export function AppFrame({
   }, [actions])
 
   const narrow = viewport < SIDEBAR_AUTO_COLLAPSE
-  const sidebarCollapsed = narrow ? !layoutInfo.narrowExpanded : layoutInfo.sidebar === 0
+  const panelActive = usePanelInfo(info => info.activePanelId !== null)
+  // Page navigation replaces the drawer: with a main panel selected on a
+  // narrow frame the sidebar yields the whole left track, so the panel owns
+  // the frame. The closed rail stays the narrow no-panel geometry, keeping the
+  // toggle affordance reachable; a wide frame keeps plain sidebar === 0 rules.
+  const pageNavigation = narrow && panelActive
+  const sidebarCollapsed = layoutInfo.sidebar === 0 || pageNavigation
   const sidebarPreference = sidebarCollapsed
     ? 0
     : layoutInfo.sidebar === 0 ? SIDEBAR_DEFAULT : layoutInfo.sidebar
   const rightbarPreference = layoutInfo.rightbar ?? viewport * RIGHTBAR_DEFAULT_RATIO
-  // Opening on a narrow frame collapses the left sidebar. Eligibility must
+  // Opening on a narrow frame concedes the left rail. Eligibility must
   // include that space before the occupant's first shown report arrives.
   const normal = computeColumns(viewport, !layoutInfo.rightbarShown && narrow ? 0 : sidebarPreference, rightbarPreference)
   const cols = computeColumns(viewport, sidebarPreference, layoutInfo.rightbarTrack ? rightbarPreference : 0)
-  const colsRef = useRef(cols)
-  colsRef.current = cols
+  // computeColumns floors a closed sidebar at the 56px rail; page navigation
+  // removes the track outright and the centre absorbs the rail's width.
+  const solved = pageNavigation ? { ...cols, sidebar: 0, center: viewport - cols.rightbar } : cols
+  const colsRef = useRef(solved)
+  colsRef.current = solved
   const rightbarWidth = useRef(normal.rightbar)
   rightbarWidth.current = normal.rightbar
 
@@ -192,8 +205,9 @@ export function AppFrame({
   const productTitle = process.env.DSH_CLIENT_TITLE ?? t('brand.localBuild')
   const sidebar = useMemo(() => renderSlot('sidebar', {
     collapsed: sidebarCollapsed,
-    width: cols.sidebar,
-  }), [renderSlot, sidebarCollapsed, cols.sidebar])
+    width: solved.sidebar,
+    narrow,
+  }), [renderSlot, sidebarCollapsed, solved.sidebar, narrow])
   const main = useMemo(() => (
     <MainPanel usePanelInfo={usePanelInfo} renderSlot={renderSlot} />
   ), [usePanelInfo, renderSlot])
@@ -205,10 +219,10 @@ export function AppFrame({
       className={css.frame}
       style={{
         gridTemplateColumns:
-          `${cols.sidebar}px minmax(0, 1fr) ${cols.rightbar}px`,
+          `${solved.sidebar}px minmax(0, 1fr) ${solved.rightbar}px`,
       }}
       data-sidebar-collapsed={sidebarCollapsed || undefined}
-      data-rightbar-collapsed={cols.rightbar === 0 || undefined}
+      data-rightbar-collapsed={solved.rightbar === 0 || undefined}
       data-rightbar-fullscreen={layoutInfo.rightbarFullscreen || undefined}
       data-rightbar-instant={layoutInfo.rightbarInstant || undefined}
       data-dragging={dragging || undefined}
@@ -231,7 +245,7 @@ export function AppFrame({
         {overlays}
       </div>
       {/* The collapsed rail is fixed-width: no resize handle while closed. */}
-      {!sidebarCollapsed && <DragHandle side="sidebar" left={cols.sidebar} onStart={onSidebarStart} onDrag={onSidebarDrag} onEnd={onDragEnd} />}
+      {!sidebarCollapsed && <DragHandle side="sidebar" left={solved.sidebar} onStart={onSidebarStart} onDrag={onSidebarDrag} onEnd={onDragEnd} />}
       {layoutInfo.rightbarShown && !layoutInfo.rightbarFullscreen && normal.rightbar > 0 && (
         <DragHandle side="rightbar" left={viewport - normal.rightbar} onStart={onRightbarStart} onDrag={onRightbarDrag} onEnd={onDragEnd} />
       )}

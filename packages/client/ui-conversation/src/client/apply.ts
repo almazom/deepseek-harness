@@ -11,6 +11,8 @@ import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-client-ui-session/client'
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
+// Type-only: pulls the layout service merge (ctx.layout).
+import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
 import { UiConversation } from './conversation/assembly.ts'
 import type { ViewTab } from './contract/views.ts'
 import type {
@@ -46,7 +48,7 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
 
 /** Services required by the Conversation plugin. */
 export const inject = [
-  'slots', 'sessions', 'fileUpload', 'uiSession', 'uiWorkspace', 'locale', 'settingsScope',
+  'slots', 'sessions', 'fileUpload', 'uiSession', 'uiWorkspace', 'locale', 'settingsScope', 'layout',
 ]
 
 /** Conversation runtime configuration. */
@@ -311,7 +313,7 @@ export function apply(ctx: Context, config: Config = Config({})): void {
     },
     store: conversationStore,
     inject: (sessionId: SessionId, actions: BoundActions<typeof conversationStore>): ConversationSessionHeaderInjected => ({
-      hooks: { conversationViews },
+      hooks: { conversationViews, narrow: ctx.layout.narrow },
       open: (id) => { workspaceNavigation.openSession(id) },
       rename: async (title) => {
         // Row → session-face hop shared with the workspace browser: rename is a
@@ -325,6 +327,8 @@ export function apply(ctx: Context, config: Config = Config({})): void {
         activateView(sessionId, view)
         actions.setView(view)
       },
+      // The narrow header's back affordance leaves the selected main panel.
+      selectPanel: (panelId) => { ctx.layout.selectPanel(panelId) },
     }),
   }, ConversationSessionHeader)
 

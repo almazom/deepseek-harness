@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import clsx from 'clsx'
-import { IconEditOutline16 } from '@deepseek-ai/dsh-client-ui-primitives'
+import { IconChevronLeftOutline14, IconEditOutline16 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { SessionListState, SessionSummary } from '@deepseek-ai/dsh-api-session-controller/client'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type {
@@ -59,8 +59,9 @@ function equalBreadcrumbs(left: readonly Breadcrumb[], right: readonly Breadcrum
  */
 export function ConversationSessionHeader({
   sessionId, useSession, useSessions, useConversation, useConversationViews, useStore,
-  renderSlot, open, rename, selectView, t,
+  renderSlot, open, rename, selectView, selectPanel, useNarrow, t,
 }: ConversationSessionHeaderProps) {
+  const narrow = useNarrow(value => value)
   const tabs = useConversationViews(value => value)
   const selectedId = useStore(s => s.view)
   const active = resolveActiveView(tabs, selectedId)
@@ -116,6 +117,18 @@ export function ConversationSessionHeader({
       {!hideChrome && (
         <>
           <div className={css.titleRow}>
+            {/* Narrow frames navigate by page: the back affordance leaves the
+                selected main panel and returns to the Conversation. */}
+            {narrow && (
+              <button
+                type="button"
+                className={css.backBtn}
+                aria-label={t('session.back.aria')}
+                onClick={() => { selectPanel(null) }}
+              >
+                <IconChevronLeftOutline14 size={16} />
+              </button>
+            )}
             <div className={css.titleCluster}>
               <nav className={css.crumbs} aria-label={t('session.hierarchy')}>
                 {ancestry.map((summary, index) => {

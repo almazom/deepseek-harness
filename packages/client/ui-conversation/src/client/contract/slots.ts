@@ -11,7 +11,8 @@ import type {
   InjectFace, PropsLocale, PropsRenderSlots, PropsRuntime, PropsStore,
 } from '@deepseek-ai/dsh-client-ui-slots'
 import type { SessionPendingInteraction } from '@deepseek-ai/dsh-client-ui-session/client'
-import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
+// Type-only: pulls the layout service merge (ctx.layout) and MainPanelId.
+import type { MainPanelId } from '@deepseek-ai/dsh-client-ui-layout/client'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { WorkspaceId } from '@deepseek-ai/dsh-workspace/types'
 import type { ComposerBlock } from './composer-blocks.ts'
@@ -277,8 +278,14 @@ export interface ConversationSessionInjected {
 
 /** Business callbacks injected into the strict Session header. */
 export interface ConversationSessionHeaderInjected {
-  /** Package-owned View roster source bound only for the Conversation header. */
-  readonly hooks: { readonly conversationViews: ObservableSnapshot<readonly ViewTab[]> }
+  /**
+   * Package-owned View roster source bound only for the Conversation header,
+   * plus the layout store's narrow-viewport fact backing the back affordance.
+   */
+  readonly hooks: {
+    readonly conversationViews: ObservableSnapshot<readonly ViewTab[]>
+    readonly narrow: ObservableSnapshot<boolean>
+  }
   /** Select a Session through the Session Controller. */
   open: (sessionId: SessionId) => void
   /**
@@ -289,6 +296,11 @@ export interface ConversationSessionHeaderInjected {
   rename?: (title: string) => Promise<void>
   /** Select and activate one registered Conversation View. */
   selectView: (view: string) => void
+  /**
+   * Leave the selected main panel and show the Conversation; the narrow
+   * header's back affordance routes through it.
+   */
+  selectPanel: (panelId: MainPanelId | null) => void
 }
 
 /** Owner share of the resident composer bar. */

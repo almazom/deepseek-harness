@@ -4,7 +4,7 @@ import {
   SlotTestRuntime, stubSettingsScope, usePinnedBrowserLanguages,
 } from '@deepseek-ai/dsh-client-test-runtime'
 import { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
-import type { ObservableSnapshot } from '@deepseek-ai/dsh-client-store'
+import { createSnapshotStore, type ObservableSnapshot } from '@deepseek-ai/dsh-client-store'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import { apply, inject, type ViewTab } from '@deepseek-ai/dsh-client-ui-conversation/client'
 
@@ -22,6 +22,16 @@ async function bench(options: { declareConversation?: boolean } = {}) {
     openSession: (id: SessionId) => { runtime.sessions.open(id) },
   } as never)
   runtime.ctx.provide('settingsScope', { bind: () => stubSettingsScope().scope } as never)
+  // The header inject reads the layout face: the narrow fact backs the back
+  // affordance and selectPanel leaves the selected main panel.
+  runtime.ctx.provide('layout', {
+    beginNavigation: vi.fn(() => new AbortController().signal),
+    toggleSidebar: vi.fn(),
+    selectPanel: vi.fn(),
+    openRightbar: vi.fn(),
+    closeRightbar: vi.fn(),
+    narrow: createSnapshotStore<boolean>(false),
+  })
   const locale = new LocaleRuntime(runtime.ctx)
   runtime.ctx.provide('locale', locale)
   runtime.slots.installLocale(locale)

@@ -25,7 +25,6 @@ type LayoutInfo = {
   sidebar: number
   /** Last positive frame measurement; window width bootstraps the first render. */
   viewportWidth: number
-  narrowExpanded: boolean
   /**
    * Saved right panel width in px, or null before its first opening. Resizing
    * the frame and closing the panel preserve this preference.
@@ -71,8 +70,9 @@ type LayoutActions = {
  * width, so closing it forgets its drag width — reopening restores the contract
  * default. The right panel initializes at 45% of the frame on first opening
  * and keeps that px preference across resizes and close. Drag writes clamp to
- * the current frame's range. Narrow sidebar toggles change only the expansion
- * override; opening the right panel clears that override.
+ * the current frame's range. A narrow frame boots closed (the sidebar toggle
+ * navigates to a main panel from there), so only the boot width is responsive;
+ * every later toggle flips closed ⟷ default on both viewport classes.
  * @returns the store handle (spec + type + identity + factory in one).
  */
 export function createLayoutStore(): EngineStoreHandle<LayoutState, LayoutActions>  {
@@ -80,9 +80,11 @@ export function createLayoutStore(): EngineStoreHandle<LayoutState, LayoutAction
     init: (): LayoutState => ({
       panelInfo: { activePanelId: null },
       layoutInfo: {
-        sidebar: SIDEBAR_DEFAULT,
+        // Boot-time responsive default only: a narrow frame starts at the
+        // closed rail (the shell toggle navigates from there), a wide frame
+        // starts expanded. Later width changes never rewrite this value.
+        sidebar: window.innerWidth < SIDEBAR_AUTO_COLLAPSE ? 0 : SIDEBAR_DEFAULT,
         viewportWidth: window.innerWidth,
-        narrowExpanded: false,
         rightbar: null,
         rightbarShown: false,
         rightbarTrack: false,
@@ -103,21 +105,15 @@ export function createLayoutStore(): EngineStoreHandle<LayoutState, LayoutAction
         d.layoutInfo.rightbarInstant = false
         d.layoutInfo.sidebar = clampWidth(px, SIDEBAR_MIN, SIDEBAR_MAX)
       },
-      // Narrow toggles flip only the override: the width preference survives
-      // untouched, so re-widening restores the pre-squeeze layout.
+      // Toggling forgets the drag width in both directions: closed reopens at
+      // the contract default, open closes outright.
       toggleSidebar: (d) => {
         d.layoutInfo.rightbarInstant = false
-        if (d.layoutInfo.viewportWidth < SIDEBAR_AUTO_COLLAPSE) d.layoutInfo.narrowExpanded = !d.layoutInfo.narrowExpanded
-        else d.layoutInfo.sidebar = d.layoutInfo.sidebar === 0 ? SIDEBAR_DEFAULT : 0
+        d.layoutInfo.sidebar = d.layoutInfo.sidebar === 0 ? SIDEBAR_DEFAULT : 0
       },
-      // Crossing the breakpoint in either direction drops the override: the
-      // narrow default is auto-collapsed, the wide state is the preference.
       setViewportWidth: (d, width: number) => {
         if (d.layoutInfo.viewportWidth === width) return
         d.layoutInfo.rightbarInstant = false
-        if ((d.layoutInfo.viewportWidth < SIDEBAR_AUTO_COLLAPSE) !== (width < SIDEBAR_AUTO_COLLAPSE)) {
-          d.layoutInfo.narrowExpanded = false
-        }
         d.layoutInfo.viewportWidth = width
       },
       setRightbar: (d, px: number) => {
@@ -128,7 +124,6 @@ export function createLayoutStore(): EngineStoreHandle<LayoutState, LayoutAction
         if (!d.layoutInfo.rightbarShown || d.layoutInfo.rightbarTrack !== track || d.layoutInfo.rightbarFullscreen !== fullscreen) {
           d.layoutInfo.rightbarInstant = d.layoutInfo.rightbarFullscreen && !fullscreen
         }
-        if (!d.layoutInfo.rightbarShown && d.layoutInfo.viewportWidth < SIDEBAR_AUTO_COLLAPSE) d.layoutInfo.narrowExpanded = false
         d.layoutInfo.rightbar ??= Math.max(RIGHTBAR_MIN, Math.round(d.layoutInfo.viewportWidth * RIGHTBAR_DEFAULT_RATIO))
         d.layoutInfo.rightbarShown = true
         d.layoutInfo.rightbarTrack = track

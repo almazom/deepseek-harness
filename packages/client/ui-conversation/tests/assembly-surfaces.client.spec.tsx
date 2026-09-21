@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, waitFor, within } from '@testing-library/react'
 import { useState } from 'react'
 import { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
+import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
 import type { ISession } from '@deepseek-ai/dsh-api-session-controller/client'
 import type { PropsRenderSlots } from '@deepseek-ai/dsh-client-ui-slots'
 import {
@@ -59,6 +60,22 @@ function WorkspaceProbe({ open }: EmptyWorkspaceOwnerProps) {
   )
 }
 
+/**
+ * Provide the layout face the Conversation inject list requires: the header's
+ * narrow fact backs the back affordance and selectPanel leaves the selected
+ * main panel.
+ */
+function provideLayout(runtime: SlotTestRuntime): void {
+  runtime.ctx.provide('layout', {
+    beginNavigation: vi.fn(() => new AbortController().signal),
+    toggleSidebar: vi.fn(),
+    selectPanel: vi.fn(),
+    openRightbar: vi.fn(),
+    closeRightbar: vi.fn(),
+    narrow: createSnapshotStore<boolean>(false),
+  })
+}
+
 async function bench(opts?: { blank?: boolean }) {
   const runtime = await SlotTestRuntime.create()
   runtime.ctx.provide('uiWorkspace', {
@@ -69,6 +86,7 @@ async function bench(opts?: { blank?: boolean }) {
     openSession: (id: SessionId) => { runtime.sessions.open(id) },
   } as never)
   runtime.ctx.provide('settingsScope', { bind: () => stubSettingsScope().scope } as never)
+  provideLayout(runtime)
   const locale = new LocaleRuntime(runtime.ctx)
   runtime.ctx.provide('locale', locale)
   runtime.slots.installLocale(locale)
@@ -97,6 +115,7 @@ describe('resident composer', () => {
       openSession: (id: SessionId) => { runtime.sessions.open(id) },
     } as never)
     runtime.ctx.provide('settingsScope', { bind: () => stubSettingsScope().scope } as never)
+    provideLayout(runtime)
     const locale = new LocaleRuntime(runtime.ctx)
     runtime.ctx.provide('locale', locale)
     runtime.slots.installLocale(locale)
@@ -130,6 +149,7 @@ describe('resident composer', () => {
       openSession: (id: SessionId) => { runtime.sessions.open(id) },
     } as never)
     runtime.ctx.provide('settingsScope', { bind: () => stubSettingsScope().scope } as never)
+    provideLayout(runtime)
     const locale = new LocaleRuntime(runtime.ctx)
     runtime.ctx.provide('locale', locale)
     runtime.slots.installLocale(locale)
@@ -201,6 +221,7 @@ describe('prompt rejection through the assembled composer', () => {
       openSession: (id: SessionId) => { runtime.sessions.open(id) },
     } as never)
     runtime.ctx.provide('settingsScope', { bind: () => stubSettingsScope().scope } as never)
+    provideLayout(runtime)
     const locale = new LocaleRuntime(runtime.ctx)
     runtime.ctx.provide('locale', locale)
     runtime.slots.installLocale(locale)

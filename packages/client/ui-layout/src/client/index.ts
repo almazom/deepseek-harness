@@ -14,6 +14,7 @@ import type {} from '@deepseek-ai/dsh-client-ui-session/client'
 import type {} from '@deepseek-ai/dsh-client-ui-theme/client'
 import type { HostObservable, SnapshotSelectorHook } from '@deepseek-ai/dsh-client-ui-slots'
 import type { PanelInfo } from './service.ts'
+import { SIDEBAR_AUTO_COLLAPSE } from './columns.ts'
 import { AppFrame } from './AppFrame.tsx'
 import { createLayoutStore } from './stores.ts'
 import { LayoutController } from './service.ts'
@@ -102,8 +103,10 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
 export interface SidebarOwnerProps {
   /** True when the sidebar is closed (the column renders the compact control rail). */
   collapsed: boolean
-  /** Rendered column width in px (SIDEBAR_COLLAPSED when collapsed). */
+  /** Rendered column width in px (SIDEBAR_COLLAPSED when collapsed; 0 under page navigation). */
   width: number
+  /** Whether the frame is narrow (below SIDEBAR_AUTO_COLLAPSE): the shell's toggle navigates instead of folding. */
+  narrow: boolean
 }
 
 /** Right column owner share: resolved normal geometry and opening eligibility. */
@@ -133,8 +136,16 @@ export function apply(ctx: ClientContext): void {
     const handle = createLayoutStore()
     const instance = handle.create()
     const store: typeof handle = { ...handle, create: () => instance }
-    const layout = new LayoutController(instance.actions, id =>
-      ctx.slots.entries('main').some(entry => entry.options.key === id))
+    const layout = new LayoutController(
+      instance.actions,
+      id => ctx.slots.entries('main').some(entry => entry.options.key === id),
+      // The narrow fact rides the same store instance: any layout-store change
+      // re-renders subscribers, and the snapshot re-derives from the fresh width.
+      {
+        getSnapshot: () => instance.getSnapshot().layoutInfo.viewportWidth < SIDEBAR_AUTO_COLLAPSE,
+        subscribe: listener => instance.subscribe(listener),
+      },
+    )
     const retainMainPanels = (): void => {
       instance.actions.retainMainPanels(ctx.slots.entries('main').flatMap(entry =>
         entry.options.key === undefined ? [] : [entry.options.key]))

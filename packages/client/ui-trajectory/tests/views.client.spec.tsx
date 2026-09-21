@@ -391,6 +391,10 @@ function mount(fixture: Awaited<ReturnType<typeof bench>>) {
       />
     )
   }
+  // Narrow-frame header chrome: the fact stays wide here; selectPanel is the
+  // back affordance's route out of the selected main panel.
+  const useNarrow = bindSnapshotSelector(createSnapshotStore(false))
+  const selectPanel = vi.fn()
   return render(
     <>
       <ConversationSessionHeader
@@ -401,6 +405,8 @@ function mount(fixture: Awaited<ReturnType<typeof bench>>) {
         renderSlot={() => null}
         open={vi.fn()}
         selectView={conversation.actions.setView}
+        selectPanel={selectPanel}
+        useNarrow={useNarrow}
         t={tConversation}
       />
       <ConversationSession

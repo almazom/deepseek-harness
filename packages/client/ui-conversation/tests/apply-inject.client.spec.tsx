@@ -3,7 +3,7 @@ import { describe, expect, it, onTestFinished, vi } from 'vitest'
 import type { CommandContribution, CommandUiContract } from '@deepseek-ai/dsh-client-ui-commands/client'
 import type { ISession } from '@deepseek-ai/dsh-api-session-controller/client'
 import { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
-import type { ObservableSnapshot } from '@deepseek-ai/dsh-client-store'
+import { createSnapshotStore, type ObservableSnapshot } from '@deepseek-ai/dsh-client-store'
 import {
   SlotTestRuntime, stubSettingsScope, usePinnedBrowserLanguages,
 } from '@deepseek-ai/dsh-client-test-runtime'
@@ -58,6 +58,16 @@ async function bench() {
     },
     openSession: (id: SessionId) => { runtime.sessions.open(id) },
   } as never)
+  // The header inject reads the layout face: the narrow fact backs the back
+  // affordance and selectPanel leaves the selected main panel.
+  runtime.ctx.provide('layout', {
+    beginNavigation: vi.fn(() => new AbortController().signal),
+    toggleSidebar: vi.fn(),
+    selectPanel: vi.fn(),
+    openRightbar: vi.fn(),
+    closeRightbar: vi.fn(),
+    narrow: createSnapshotStore<boolean>(false),
+  })
   const sessionFake = sessionFakeFor()
   await runtime.sessions.add({
     id: ROOT,

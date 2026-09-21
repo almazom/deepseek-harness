@@ -168,6 +168,9 @@ function mount(
   const inputActions = wiring.actions
   const stop = vi.fn()
   const open = vi.fn()
+  const selectPanel = vi.fn()
+  const narrow = createSnapshotStore<boolean>(false)
+  const useNarrow = bindSnapshotSelector(narrow)
   const slotCalls: string[] = []
   const lineageOwners: ConversationHeaderLineageOwnerProps[] = []
   const viewTabs = options.viewTabs ?? [
@@ -211,6 +214,8 @@ function mount(
           renderSlot={renderSlot as never}
           open={open}
           selectView={(view) => { store.actions.setView(view) }}
+          selectPanel={selectPanel}
+          useNarrow={useNarrow}
           t={t}
         />
       )
@@ -319,6 +324,7 @@ function mount(
   const view = render(<ConversationRoot {...props} />)
   return {
     view, store, wiring, sink, retargetWorkspace, session, conversation, slotCalls, lineageOwners, seatOwners, open,
+    narrow, selectPanel,
     pickerOwner: () => pickerOwner,
     rerender: () => { view.rerender(<ConversationRoot {...props} />) },
   }
@@ -416,6 +422,15 @@ describe('ConversationRoot resident composer', () => {
     expect((b.view.getByRole('button', { name: 'Child' }) as HTMLButtonElement).disabled).toBe(true)
     fireEvent.click(root)
     expect(b.open).toHaveBeenCalledWith(sid('root'))
+  })
+
+  it('narrow frames gain the header back affordance, and it routes through selectPanel', () => {
+    const b = mount(sessionSnapshotOf())
+    // Wide frames keep the plain header: page navigation is narrow-only chrome.
+    expect(b.view.queryByRole('button', { name: t('session.back.aria') })).toBeNull()
+    act(() => { b.narrow.set(true) })
+    fireEvent.click(b.view.getByRole('button', { name: t('session.back.aria') }))
+    expect(b.selectPanel).toHaveBeenCalledWith(null)
   })
 
   it('keeps intermediate subagent breadcrumbs at the compact title size', () => {

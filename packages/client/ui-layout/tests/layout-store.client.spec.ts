@@ -15,7 +15,6 @@ describe('createLayoutStore', () => {
       layoutInfo: {
         sidebar: 280,
         viewportWidth: 1920,
-        narrowExpanded: false,
         rightbar: null,
         rightbarShown: false,
         rightbarTrack: false,
@@ -23,6 +22,15 @@ describe('createLayoutStore', () => {
         rightbarInstant: false,
       },
     })
+  })
+
+  it('boots a narrow frame at the closed rail and a wide frame expanded', () => {
+    vi.stubGlobal('innerWidth', 800)
+    const narrow = createLayoutStore().create()
+    expect(narrow.store.getSnapshot().layoutInfo).toMatchObject({ sidebar: 0, viewportWidth: 800 })
+    vi.stubGlobal('innerWidth', 1920)
+    const wide = createLayoutStore().create()
+    expect(wide.store.getSnapshot().layoutInfo).toMatchObject({ sidebar: 280, viewportWidth: 1920 })
   })
 
   it('creates independent instances without browser persistence', () => {
@@ -53,27 +61,25 @@ describe('createLayoutStore', () => {
     expect(store.getSnapshot().layoutInfo.sidebar).toBe(280)
   })
 
-  it('keeps the sidebar preference while toggling its narrow override', () => {
+  it('toggles between closed and the default width on a narrow viewport too', () => {
     const { store, actions } = createLayoutStore().create()
     actions.setSidebar(400)
     actions.setViewportWidth(980)
     actions.toggleSidebar()
-    expect(store.getSnapshot().layoutInfo).toMatchObject({ sidebar: 400, viewportWidth: 980, narrowExpanded: true })
+    expect(store.getSnapshot().layoutInfo).toMatchObject({ sidebar: 0, viewportWidth: 980 })
     actions.toggleSidebar()
-    expect(store.getSnapshot().layoutInfo).toMatchObject({ sidebar: 400, narrowExpanded: false })
+    expect(store.getSnapshot().layoutInfo.sidebar).toBe(280)
   })
 
-  it('clears the manual override only when crossing 1024px', () => {
+  it('records frame measurements without touching the sidebar selection', () => {
     const { store, actions } = createLayoutStore().create()
+    actions.setSidebar(400)
     actions.setViewportWidth(980)
-    actions.toggleSidebar()
-    actions.setViewportWidth(980)
-    actions.setViewportWidth(1023)
-    expect(store.getSnapshot().layoutInfo.narrowExpanded).toBe(true)
+    expect(store.getSnapshot().layoutInfo.sidebar).toBe(400)
     actions.setViewportWidth(1024)
-    expect(store.getSnapshot().layoutInfo.narrowExpanded).toBe(false)
+    expect(store.getSnapshot().layoutInfo.sidebar).toBe(400)
     actions.setViewportWidth(980)
-    expect(store.getSnapshot().layoutInfo.narrowExpanded).toBe(false)
+    expect(store.getSnapshot().layoutInfo.sidebar).toBe(400)
   })
 })
 
@@ -196,19 +202,19 @@ describe('right panel', () => {
     expect(store.getSnapshot().layoutInfo.rightbar).toBe(300)
   })
 
-  it('collapses a manually expanded narrow sidebar on opening, not presentation reports', () => {
+  it('never rewrites the sidebar when the right panel opens or changes presentation', () => {
     const { store, actions } = createLayoutStore().create()
     actions.setSidebar(400)
     actions.setViewportWidth(800)
     actions.toggleSidebar()
     actions.openRightbar(true, false)
-    expect(store.getSnapshot().layoutInfo).toMatchObject({ sidebar: 400, narrowExpanded: false })
+    expect(store.getSnapshot().layoutInfo.sidebar).toBe(0)
     actions.toggleSidebar()
     actions.openRightbar(true, true)
-    expect(store.getSnapshot().layoutInfo.narrowExpanded).toBe(true)
+    expect(store.getSnapshot().layoutInfo.sidebar).toBe(280)
     actions.closeRightbar()
     actions.openRightbar(true, false)
-    expect(store.getSnapshot().layoutInfo.narrowExpanded).toBe(false)
+    expect(store.getSnapshot().layoutInfo.sidebar).toBe(280)
   })
 
   it('keeps the wide sidebar preference and never opens a closed right panel on resize', () => {

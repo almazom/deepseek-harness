@@ -60,6 +60,27 @@
   min-height: 30px;
 }
 
+/* Narrow-viewport back affordance leading the title row (page navigation):
+   the rename button's control anatomy, one size step up for a touch target,
+   with the cluster's 10px gap reproduced after it. */
+.backBtn {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  margin-right: 2px;
+  padding: 5px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  cursor: pointer;
+}
+
+.backBtn:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+  color: var(--dsw-alias-label-primary);
+}
+
 .titleCluster {
   display: flex;
   flex: 1;

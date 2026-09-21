@@ -88,7 +88,11 @@ export interface SidebarPanelMetadata {
 export interface SidebarSectionOwnerProps {
   /** Shell fold-state output: wide renders the full browser, rail the icon column. */
   wide: boolean
-  /** Rail icons request expansion; the browser rides the wide flip for focus. */
+  /**
+   * Rail icons request the expanded browser: on a wide frame this folds the
+   * column open; on a narrow frame it navigates to the Sessions page panel,
+   * because the narrow sidebar never re-expands over the conversation.
+   */
   expandSidebar: () => void
 }
 

@@ -5,10 +5,12 @@
  * the per-session active view dissolved into ui-conversation's session store
  * (its only consumer). What remains here is the contract other plugins'
  * apply worlds reach for panel transitions (main-panel selection and sidebar toggle,
- * right-panel show/hide from ui-sidebar-right) — writes stay inside the
- * store's declared action set, shared with the root registration.
+ * right-panel show/hide from ui-sidebar-right) plus the narrow-viewport fact
+ * plugins read for responsive chrome — writes stay inside the store's
+ * declared action set, shared with the root registration.
  */
 import type { BoundActions } from '@deepseek-ai/dsh-client-ui-slots'
+import type { ObservableSnapshot } from '@deepseek-ai/dsh-client-store'
 import type { Branded } from '@deepseek-ai/dsh-brand'
 import type { createLayoutStore } from './stores.ts'
 
@@ -24,7 +26,7 @@ export interface PanelInfo {
 /** The layout store's bound action set (framework-baked, draft params peeled). */
 export type PanelActions = BoundActions<ReturnType<typeof createLayoutStore>>
 
-/** Panel navigation and geometry actions exposed through ctx.layout. */
+/** Panel navigation, geometry actions, and the narrow-viewport fact exposed through ctx.layout. */
 export interface ILayout {
   /**
    * Select a global central panel without changing the current Session.
@@ -39,6 +41,12 @@ export interface ILayout {
   beginNavigation(): AbortSignal
   /** Toggle the sidebar panel (closed ⟷ contract default width). */
   toggleSidebar(): void
+  /**
+   * The live narrow-viewport fact (frame below SIDEBAR_AUTO_COLLAPSE), derived
+   * from the layout store's frame measurement. Bare observable: the source
+   * identity and each snapshot stay stable between changes.
+   */
+  readonly narrow: ObservableSnapshot<boolean>
   /**
    * Report the right panel's presentation without changing its expanded state.
    * @param track - whether the normal panel width reserves a grid track,
@@ -58,11 +66,18 @@ export class LayoutController implements ILayout {
   /**
    * @param panels - actions of the instance shared with the root entry.
    * @param hasMainPanel - checks the live main-slot registry for a panel id.
+   * @param narrow - the narrow-viewport fact over the same store instance.
    */
   constructor(
     private readonly panels: PanelActions,
     private readonly hasMainPanel: (id: MainPanelId) => boolean,
+    private readonly narrowFact: ObservableSnapshot<boolean>,
   ) {}
+
+  /** The stable narrow-viewport fact source over the shared layout store. */
+  get narrow(): ObservableSnapshot<boolean> {
+    return this.narrowFact
+  }
 
   /** Select a global panel or return to the Conversation. */
   selectPanel(panelId: MainPanelId | null): void {

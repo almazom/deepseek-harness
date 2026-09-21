@@ -11,6 +11,10 @@
  * and the foot holds `sidebar.settings` plus `sidebar.footer.action`; the shell
  * hands them the wide flag (plus an expand request callback for the browser).
  *
+ * On a narrow frame the shell's fold controls navigate instead: the toggle
+ * and the rail's expand requests open the Sessions page panel, because the
+ * narrow sidebar never re-expands over the conversation.
+ *
  * The column also owns whether the scroll regions nested in it draw a
  * scrollbar at all: the shell tracks the pointer and rebinds ui-theme's
  * scrollbar indirection away while it is elsewhere, so a list the user is not
@@ -22,10 +26,14 @@ import {
   FishLogo, IconNewChatOutline16, IconPanelLeftOutline16, Tooltip,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { InjectFace, PropsRenderSlots, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
+import type { MainPanelId } from '@deepseek-ai/dsh-client-ui-layout/client'
 import type {
   SidebarPanelMetadata, SidebarRootComponentProps, SidebarRootInjected, SidebarSectionOwnerProps,
 } from './contract/slots.ts'
 import css from './SidebarRoot.module.css'
+
+/** The Sessions page main key (ui-workspace registers it); the narrow toggle's navigation target. */
+const SESSIONS_PANEL = 'sessions' as MainPanelId
 
 /** Wide-content unmount delay; matches the 150ms wide-content fade-out. */
 const COLLAPSE_SETTLE_MS = 150
@@ -88,6 +96,7 @@ function PanelRow({ id, label, wide, usePanelInfo, selectPanel, renderSlot }: Pa
 export function SidebarRoot({
   collapsed,
   width,
+  narrow,
   startSession,
   toggleSidebar,
   selectPanel,
@@ -97,6 +106,12 @@ export function SidebarRoot({
   renderSlot,
 }: SidebarRootComponentProps) {
   const panels = usePanels(snapshot => snapshot)
+  // On a narrow frame folding is replaced by page navigation: the shell's
+  // fold controls open the Sessions page panel instead of re-expanding the
+  // column over the conversation.
+  const foldRequest = (): void => {
+    if (narrow) { selectPanel(SESSIONS_PANEL) } else { toggleSidebar() }
+  }
   // Wide content stays mounted while the collapse animates (fading via
   // .collapsed .wide), unmounts at settle, and remounts right away on expand.
   const [settled, setSettled] = useState(collapsed)
@@ -213,7 +228,7 @@ export function SidebarRoot({
             type="button"
             className={clsx(css.iconButton, css.toggle)}
             aria-label={collapsed ? t('toggle.open') : t('toggle.collapse')}
-            onClick={() => { toggleSidebar() }}
+            onClick={foldRequest}
           >
             {!wide && (
               <span className={css.railMark} aria-hidden="true">
@@ -260,7 +275,7 @@ export function SidebarRoot({
       <div className={css.regionArea}>
         {renderSlot('sidebar.workspaces', {
           wide,
-          expandSidebar: () => { if (collapsed) toggleSidebar() },
+          expandSidebar: () => { if (collapsed) foldRequest() },
         })}
       </div>
 

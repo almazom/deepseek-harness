@@ -7,6 +7,7 @@ import type {
   IWorkspaces, WorkspaceId, WorkspaceSnapshot, WorkspaceView,
 } from '@deepseek-ai/dsh-api-workspace-controller/client'
 import type { ClientRemote, DirectoryListing } from '@deepseek-ai/dsh-api-remotes/client'
+import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
 import { RemoteError } from '@deepseek-ai/dsh-client-test-runtime'
 import type { RemoteResult } from '@deepseek-ai/dsh-api-remotes/client'
 import { SessionId } from '@deepseek-ai/dsh-session/types'
@@ -196,7 +197,7 @@ function bench(options: BenchOptions = {}) {
     selectPanel: vi.fn(), retainMainPanels: vi.fn(),
     setSidebar: vi.fn(), toggleSidebar: vi.fn(), setViewportWidth: vi.fn(),
     setRightbar: vi.fn(), openRightbar: vi.fn(), closeRightbar: vi.fn(),
-  }, () => true)
+  }, () => true, createSnapshotStore<boolean>(false))
   const selectPanel = vi.spyOn(layout, 'selectPanel')
   ctx.provide('layout', layout)
   ctx.effect(() => () => { layout.dispose() })

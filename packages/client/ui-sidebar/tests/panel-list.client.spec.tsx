@@ -7,6 +7,7 @@ import { SlotTestRuntime } from '@deepseek-ai/dsh-client-test-runtime'
 import { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
 import { en as commonEn } from '@deepseek-ai/dsh-client-locale/src/locales/en.ts'
 import { zh as commonZh } from '@deepseek-ai/dsh-client-locale/src/locales/zh.ts'
+import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
 import { IconGlobeOutline14 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { ILayout, MainPanelId } from '@deepseek-ai/dsh-client-ui-layout/client'
 import type { PropsRenderSlots, PropsRuntime, SlotLabel } from '@deepseek-ai/dsh-client-ui-slots'
@@ -42,6 +43,7 @@ async function bench(collapsed = false) {
     selectPanel: vi.fn((activePanelId: MainPanelId | null) => { runtime.panelInfo.set({ activePanelId }) }),
     openRightbar: vi.fn(),
     closeRightbar: vi.fn(),
+    narrow: createSnapshotStore<boolean>(false),
   } satisfies ILayout
   await runtime.mount({
     inject: ['slots'],
@@ -63,7 +65,7 @@ async function bench(collapsed = false) {
     const activePanelId = usePanelInfo(info => info.activePanelId)
     return (
       <>
-        <aside>{renderSlot('sidebar', { collapsed, width: collapsed ? 56 : 300 })}</aside>
+        <aside>{renderSlot('sidebar', { collapsed, width: collapsed ? 56 : 300, narrow: false })}</aside>
         <main>{renderSlot('main', {}, { entryKey: activePanelId ?? 'conversation' })}</main>
       </>
     )

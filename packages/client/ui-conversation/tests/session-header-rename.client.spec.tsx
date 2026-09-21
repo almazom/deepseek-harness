@@ -4,6 +4,7 @@ import type { ISession } from '@deepseek-ai/dsh-api-session-controller/client'
 import type { SessionListState } from '@deepseek-ai/dsh-api-session-controller/client'
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
+import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
 import { SlotTestRuntime, stubSettingsScope, usePinnedBrowserLanguages } from '@deepseek-ai/dsh-client-test-runtime'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { WorkspaceId } from '@deepseek-ai/dsh-workspace/types'
@@ -38,6 +39,16 @@ async function bench(sessionFake: ReturnType<typeof sessionFakeFor>) {
     },
     openSession: (id: SessionId) => { runtime.sessions.open(id) },
   } as never)
+  // The header inject reads the layout face: the narrow fact backs the back
+  // affordance and selectPanel leaves the selected main panel.
+  runtime.ctx.provide('layout', {
+    beginNavigation: vi.fn(() => new AbortController().signal),
+    toggleSidebar: vi.fn(),
+    selectPanel: vi.fn(),
+    openRightbar: vi.fn(),
+    closeRightbar: vi.fn(),
+    narrow: createSnapshotStore<boolean>(false),
+  })
   await runtime.sessions.add({
     id: ROOT,
     summary: { title: 'One', displayTitle: 'One', cwd: '/proj' },
@@ -78,12 +89,14 @@ function headerHarness(overrides: Partial<Parameters<typeof ConversationSessionH
     useInput: ((selector: (s: object) => unknown) => selector({})) as never,
     inputActions: {} as never,
     useConversationViews: ((selector: (s: readonly unknown[]) => unknown) => selector([])) as never,
+    useNarrow: ((selector: (narrow: boolean) => unknown) => selector(false)) as never,
     useStore: ((selector: (s: typeof storeState) => unknown) => selector(storeState)) as never,
     actions: {} as never,
     renderSlot: (() => null) as never,
     open: vi.fn(),
     rename: vi.fn(() => Promise.resolve()),
     selectView: vi.fn(),
+    selectPanel: vi.fn(),
     t,
     ...overrides,
   }
