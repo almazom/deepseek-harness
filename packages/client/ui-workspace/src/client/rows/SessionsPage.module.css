@@ -1,0 +1,69 @@
+/* Full-width Sessions page: a title header row and the full-bleed browsing
+   body (SessionBrowserCore). Chrome polish — max width, search field, view
+   options — is a later card; this module fixes only the page frame. */
+
+.page {
+  /* SessionBrowserCore's scroll accounting reads the browser shell's custom
+     property triple; the page shell defines the same contract with a
+     page-width inline inset (the sidebar's --dsh-sidebar-inline-padding has
+     no ancestor here). */
+  --dsh-session-list-edge-inset: 20px;
+  --dsh-session-list-scrollbar-width: 8px;
+  --dsh-session-list-scrollbar-offset: 2px;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+
+.pageHeader {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 36px;
+  padding: 12px 20px 8px;
+  box-sizing: border-box;
+}
+
+.pageTitle {
+  margin: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 500;
+  color: var(--dsw-alias-label-primary);
+}
+
+/* Same 28px circular control as the browser's header actions. */
+.iconButton {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 50%;
+  corner-shape: round;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+  color: var(--dsw-alias-label-secondary);
+}
+
+.iconButton:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+/* Full-bleed: no inset, no max width; the core owns its own scroll region. */
+.pageBody {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}

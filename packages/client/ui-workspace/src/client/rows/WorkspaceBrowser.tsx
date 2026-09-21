@@ -33,8 +33,12 @@ const EXPAND_SLIDE_MS = 300
 /** `session.search` wire bound, measured in JavaScript UTF-16 code units. */
 const SEARCH_QUERY_MAX_CODE_UNITS = 500
 
-/** Keep controlled input and RPC payload inside the session.search wire contract. */
-function sanitizeSearchQuery(value: string): string {
+/**
+ * Keep a controlled search input and its `session.search` RPC payload inside
+ * the wire contract. Shared by every surface that owns the query state
+ * (sidebar region, full-page Sessions surface).
+ */
+export function sanitizeSearchQuery(value: string): string {
   const withoutNul = value.replaceAll('\0', '')
   if (withoutNul.length <= SEARCH_QUERY_MAX_CODE_UNITS) return withoutNul
   let end = SEARCH_QUERY_MAX_CODE_UNITS
