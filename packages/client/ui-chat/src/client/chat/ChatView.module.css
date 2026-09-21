@@ -232,6 +232,10 @@
   border: 0.5px solid var(--dsw-alias-border-l1);
   border-radius: 10px;
   background: var(--dsw-specific-tip);
+  /* The card paints an elevated rung and the sheet scrolls: per-element rebind
+     so the themed bar substitutes the l2 elevation pair here. */
+  --dsh-scrollbar-thumb: var(--dsw-alias-scrollbar-bg-l2);
+  --dsh-scrollbar-thumb-hover: var(--dsw-alias-scrollbar-hover-l2);
 }
 
 .hooksTitle {
