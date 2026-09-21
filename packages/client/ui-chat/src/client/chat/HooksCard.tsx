@@ -20,7 +20,7 @@ export const HooksNodeView = memo(function HooksNodeView({ node, t }: ChatNodeVi
               <span className={css.hooksDecision}>{run.decision}</span>
             )}
             {run.durationMs !== undefined && (
-              <span className={css.hooksDuration}>{run.durationMs}ms</span>
+              <span className={css.hooksDuration}>{t('hooks.card.duration', { n: run.durationMs })}</span>
             )}
           </li>
         ))}
