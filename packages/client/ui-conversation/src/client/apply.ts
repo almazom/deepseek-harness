@@ -313,6 +313,14 @@ export function apply(ctx: Context, config: Config = Config({})): void {
     inject: (sessionId: SessionId, actions: BoundActions<typeof conversationStore>): ConversationSessionHeaderInjected => ({
       hooks: { conversationViews },
       open: (id) => { workspaceNavigation.openSession(id) },
+      rename: async (title) => {
+        // Row → session-face hop shared with the workspace browser: rename is a
+        // per-session verb (ISession), not a list-service verb.
+        const session = sessions.binding(sessionId)?.session
+        if (session === undefined) throw new Error(`unknown session "${sessionId}"`)
+        const result = await session.rename(title)
+        if (!result.ok) throw new Error(result.error.message)
+      },
       selectView: (view) => {
         activateView(sessionId, view)
         actions.setView(view)

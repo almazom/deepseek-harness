@@ -281,6 +281,8 @@ export interface ConversationSessionHeaderInjected {
   readonly hooks: { readonly conversationViews: ObservableSnapshot<readonly ViewTab[]> }
   /** Select a Session through the Session Controller. */
   open: (sessionId: SessionId) => void
+  /** Rename the current Session through the Session Controller (ISession.rename). */
+  rename: (title: string) => Promise<void>
   /** Select and activate one registered Conversation View. */
   selectView: (view: string) => void
 }

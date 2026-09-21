@@ -1,7 +1,8 @@
 /** Strict per-session header/body content inserted into the resident conversation layout. */
 
-import { useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import clsx from 'clsx'
+import { IconEditOutline16 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { SessionListState, SessionSummary } from '@deepseek-ai/dsh-api-session-controller/client'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type {
@@ -58,7 +59,7 @@ function equalBreadcrumbs(left: readonly Breadcrumb[], right: readonly Breadcrum
  */
 export function ConversationSessionHeader({
   sessionId, useSession, useSessions, useConversation, useConversationViews, useStore,
-  renderSlot, open, selectView, t,
+  renderSlot, open, rename, selectView, t,
 }: ConversationSessionHeaderProps) {
   const tabs = useConversationViews(value => value)
   const selectedId = useStore(s => s.view)
@@ -67,6 +68,44 @@ export function ConversationSessionHeader({
   const session = useSession(s => s)
   const conversation = useConversation(s => s)
   const hideChrome = session.blank && conversationPhase(session, conversation) === 'blank'
+  const [renaming, setRenaming] = useState(false)
+  const [draft, setDraft] = useState('')
+  const [pending, setPending] = useState(false)
+  const [renameError, setRenameError] = useState<string | null>(null)
+
+  // A session switch discards a half-open editor so the draft never leaks across sessions.
+  useEffect(() => {
+    setRenaming(false)
+    setPending(false)
+    setRenameError(null)
+  }, [sessionId])
+
+  const startRename = useCallback(() => {
+    const current = ancestry.at(-1)
+    if (current === undefined) return
+    setDraft(current.displayTitle)
+    setRenameError(null)
+    setRenaming(true)
+  }, [ancestry])
+
+  const commitRename = useCallback(async () => {
+    if (pending) return
+    const current = ancestry.at(-1)
+    const trimmed = draft.trim()
+    if (current === undefined || trimmed === '' || trimmed === current.displayTitle) {
+      setRenaming(false)
+      return
+    }
+    setPending(true)
+    try {
+      await rename(trimmed)
+      setRenaming(false)
+    } catch (reason) {
+      setRenameError(reason instanceof Error ? reason.message : String(reason))
+    } finally {
+      setPending(false)
+    }
+  }, [ancestry, draft, pending, rename])
 
   return (
     <header
@@ -80,7 +119,28 @@ export function ConversationSessionHeader({
               <nav className={css.crumbs} aria-label={t('session.hierarchy')}>
                 {ancestry.map((summary, index) => {
                   const last = index === ancestry.length - 1
-                  const title = (
+                  const renameTarget = last && !summary.subagent
+                  const title = renameTarget && renaming ? (
+                    <>
+                      <input
+                        className={css.crumbInput}
+                        type="text"
+                        aria-label={t('session.rename.aria')}
+                        value={draft}
+                        disabled={pending}
+                        onChange={(e) => { setDraft(e.target.value); setRenameError(null) }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') void commitRename()
+                          if (e.key === 'Escape') { setRenaming(false); setRenameError(null) }
+                        }}
+                        onBlur={() => { void commitRename() }}
+                        autoFocus
+                      />
+                      {renameError !== null && (
+                        <span className={css.renameError} role="alert">{renameError}</span>
+                      )}
+                    </>
+                  ) : (
                     <button
                       type="button"
                       className={clsx(
@@ -126,6 +186,16 @@ export function ConversationSessionHeader({
                 })}
                 {ancestry.length === 0 && <span className={css.crumbCurrent}>{sessionId}</span>}
               </nav>
+              {!renaming && (
+                <button
+                  type="button"
+                  className={css.renameBtn}
+                  aria-label={t('session.rename.aria')}
+                  onClick={startRename}
+                >
+                  <IconEditOutline16 size={14} />
+                </button>
+              )}
               <div className={css.headerActions}>
                 {renderSlot('conversation.session.header.actions', {})}
               </div>
