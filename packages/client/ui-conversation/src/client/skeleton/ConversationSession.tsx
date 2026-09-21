@@ -96,6 +96,7 @@ export function ConversationSessionHeader({
       setRenaming(false)
       return
     }
+    if (rename === undefined) return
     setPending(true)
     try {
       await rename(trimmed)
@@ -186,7 +187,7 @@ export function ConversationSessionHeader({
                 })}
                 {ancestry.length === 0 && <span className={css.crumbCurrent}>{sessionId}</span>}
               </nav>
-              {!renaming && (
+              {!renaming && rename !== undefined && (
                 <button
                   type="button"
                   className={css.renameBtn}

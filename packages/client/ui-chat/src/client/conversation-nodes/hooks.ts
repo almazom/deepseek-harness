@@ -15,7 +15,7 @@ export interface HooksChatData {
   readonly hooks: readonly HookRunView[]
 }
 
-interface HooksState {
+export interface HooksState {
   readonly turn: number
   readonly runs: readonly HookRunView[]
 }
@@ -47,7 +47,7 @@ export const hooksDefinition: ConversationNodeDefinition<HooksState> = {
   buildViewNode: (context) => {
     const state = context.state
     if (state === undefined || state.runs.length === 0) return null
-    return chatNode(context, 'hooks', context.startSeq, { hooks: state.runs })
+    return chatNode(context, 'hooks', context.start?.event.seq ?? 0, { hooks: state.runs })
   },
 }
 

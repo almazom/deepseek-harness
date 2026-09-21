@@ -214,6 +214,18 @@ export interface HookResultData {
   readonly durationMs: number
 }
 
+// Client-face declaration of the two log-only hook events: this program does
+// not compile packages/hooks/hook-protocol, where the shapes originate, so the
+// wire face mirrors them here (keep both in sync).
+declare module '@deepseek-ai/dsh-session/types' {
+  interface SessionEventMap {
+    /** Mirrors `hook-protocol`'s `hook/invoked`: one logged hook invocation inside an open turn. */
+    'hook/invoked': { turn: number } & HookInvokedData
+    /** Mirrors `hook-protocol`'s `hook/result`: the outcome paired by `handlerId`. */
+    'hook/result': { turn: number } & HookResultData
+  }
+}
+
 /**
  * Project one durable `hook/invoked` payload to a pending hooks-card row.
  * @param data - Logged `hook/invoked` payload.
@@ -243,7 +255,7 @@ export function applyHookResult(
   let paired = -1
   for (let index = runs.length - 1; index >= 0; index -= 1) {
     const run = runs[index]
-    if (run.point === data.point && run.handlerId === data.handlerId && run.decision === undefined) {
+    if (run !== undefined && run.point === data.point && run.handlerId === data.handlerId && run.decision === undefined) {
       paired = index
       break
     }
