@@ -132,7 +132,9 @@ export function ConversationSessionHeader({
                         onChange={(e) => { setDraft(e.target.value); setRenameError(null) }}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') void commitRename()
-                          if (e.key === 'Escape') { setRenaming(false); setRenameError(null) }
+                          // Escape while the commit is in flight would strand the
+                          // outcome: the verb still lands but the editor is gone.
+                          if (e.key === 'Escape' && !pending) { setRenaming(false); setRenameError(null) }
                         }}
                         onBlur={() => { void commitRename() }}
                         autoFocus
@@ -187,7 +189,8 @@ export function ConversationSessionHeader({
                 })}
                 {ancestry.length === 0 && <span className={css.crumbCurrent}>{sessionId}</span>}
               </nav>
-              {!renaming && rename !== undefined && (
+              {!renaming && rename !== undefined && ancestry.at(-1) !== undefined
+                && !ancestry.at(-1)?.subagent && (
                 <button
                   type="button"
                   className={css.renameBtn}

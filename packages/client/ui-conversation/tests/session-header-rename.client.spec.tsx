@@ -136,6 +136,21 @@ describe('session header rename', () => {
     expect(screen.getByRole('button', { name: 'One' })).not.toBeNull()
   })
 
+  it('a subagent session header offers no rename affordance', () => {
+    // The rename verb targets the last ancestry crumb and subagent crumbs are
+    // excluded from hosting the editor, so the pencil must be absent there —
+    // otherwise clicking it opens a dead-end state with no input.
+    const listState = {
+      byId: {
+        [ROOT]: { id: ROOT, title: 'Sub', displayTitle: 'Sub', origin: 'subagent', parentId: 'parent-1' },
+      },
+      current: ROOT,
+    } as unknown as SessionListState
+    headerHarness({ useSessions: ((selector: (s: SessionListState) => unknown) => selector(listState)) as never })
+    onTestFinished(cleanup)
+    expect(screen.queryByRole('button', { name: t('session.rename.aria') })).toBeNull()
+  })
+
   it('the assembled header inject renames through ISession.rename and propagates failures', async () => {
     const sessionFake = sessionFakeFor()
     const b = await bench(sessionFake)
