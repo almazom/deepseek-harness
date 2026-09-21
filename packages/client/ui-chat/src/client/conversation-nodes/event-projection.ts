@@ -235,7 +235,7 @@ export function hookRunOfInvoked(data: HookInvokedData): HookRunView {
   return {
     point: data.point,
     handlerId: data.handlerId,
-    ...(data.dialect === undefined ? {} : { dialect: data.dialect }),
+    dialect: data.dialect,
     ...(data.matcher === undefined ? {} : { matcher: data.matcher }),
   }
 }
@@ -243,7 +243,9 @@ export function hookRunOfInvoked(data: HookInvokedData): HookRunView {
 /**
  * Apply one durable `hook/result` payload to the projected runs of its turn.
  * The result payload names no invocation id, so it completes the latest still-open
- * run with the same point and handler — the log orders invoked before result.
+ * run with the same point and handler — the log orders invoked before result. The
+ * protocol invariant permits concurrent open runs of one point+handler key; this
+ * pairing then attributes the result to the latest of them (accepted heuristic).
  * @param runs - Runs projected so far for the turn.
  * @param data - Logged `hook/result` payload.
  * @returns Replacement run list with the paired run completed.
