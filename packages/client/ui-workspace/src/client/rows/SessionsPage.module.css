@@ -1,6 +1,6 @@
-/* Full-width Sessions page: a title header row and the full-bleed browsing
-   body (SessionBrowserCore). Chrome polish — max width, search field, view
-   options — is a later card; this module fixes only the page frame. */
+/* Full-width Sessions page: a title header row with the landing counts line
+   and the browsing body (SessionBrowserCore). Wide frames center the landing
+   column at the conversation reading width; narrow frames stay full-bleed. */
 
 .page {
   /* SessionBrowserCore's scroll accounting reads the browser shell's custom
@@ -13,9 +13,22 @@
   flex: 1;
   min-height: 0;
   min-width: 0;
+  width: 100%;
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
+}
+
+/* The shell's own narrow threshold is 1024px; at and above it the landing
+   column caps at the conversation reading width (the 748px reference width
+   of --dsh-chat-content-width, which no ancestor publishes on this page)
+   and gets vertical breathing room. */
+@media (min-width: 1024px) {
+  .page {
+    align-self: center;
+    max-width: 748px;
+    padding-block: 20px 40px;
+  }
 }
 
 .pageHeader {
@@ -29,6 +42,11 @@
   box-sizing: border-box;
 }
 
+.pageHeading {
+  flex: 1;
+  min-width: 0;
+}
+
 .pageTitle {
   margin: 0;
   overflow: hidden;
@@ -37,6 +55,14 @@
   line-height: 24px;
   font-weight: 500;
   color: var(--dsw-alias-label-primary);
+}
+
+/* The counts line: two localized unit spans around a plain ' · ' separator,
+   muted under the title. */
+.pageCounts {
+  margin: 0;
+  font: var(--dsw-font-xs-13);
+  color: var(--dsw-alias-label-secondary);
 }
 
 /* Same 28px circular control as the browser's header actions. */
@@ -60,7 +86,8 @@
   background: var(--dsw-alias-interactive-bg-hover);
 }
 
-/* Full-bleed: no inset, no max width; the core owns its own scroll region. */
+/* The browsing body fills the page frame below the header; the core owns its
+   own scroll region. */
 .pageBody {
   flex: 1;
   min-height: 0;

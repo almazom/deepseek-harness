@@ -1,21 +1,24 @@
 /**
  * The full-page Sessions surface, the `main` slot's `sessions` key: a title
- * header row and the same browsing core the sidebar region mounts
- * (SessionBrowserCore — search results, grouped/flat lists, workspace and
- * session dialogs) at full width. The page owns the search-query state and
- * its own directory-flow hole (`sessions.page.directoryFlow`); a composition
- * with no hole occupant hides the header's add-workspace affordance rather
- * than rendering a dead one. Page chrome (search field, view options,
- * counts) stays with the sidebar region; the landing surface grows it
- * deliberately, not by mirroring the sidebar header.
+ * header row with the landing counts line, and the same browsing core the
+ * sidebar region mounts (SessionBrowserCore — search results, grouped/flat
+ * lists, workspace and session dialogs) at full width. The page owns the
+ * search-query state, its own directory-flow hole
+ * (`sessions.page.directoryFlow`), and the counts line — workspaces and
+ * sessions derived from the same framework data the core renders. A
+ * composition with no hole occupant hides the header's add-workspace
+ * affordance rather than rendering a dead one. The remaining chrome (search
+ * field, view options) stays with the sidebar region; the landing surface
+ * grows the title deliberately, not by mirroring the sidebar header.
  */
-import { useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import {
   IconListPenOutline16, IconProjectAddOutline16, Tooltip,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type { SessionsPageProps } from '../contract/slots.ts'
 import { sanitizeSearchQuery } from './WorkspaceBrowser.tsx'
+import { deriveFlat } from '../tree.ts'
 import { WorkspacePickFlow } from '../WorkspacePicker.tsx'
 import { SessionBrowserCore } from './SessionBrowserCore.tsx'
 import css from './SessionsPage.module.css'
@@ -76,6 +79,18 @@ export function SessionsPage({
   const sessionOrderByAccount = useStore(s => s.sessionOrderByAccount)
   const sessionUpdatedAtByAccount = useStore(s => s.sessionUpdatedAtByAccount)
   const pinnedIds = useStore(s => s.pinnedIds)
+  // The counts line reads the same framework data the mounted core renders:
+  // workspaces from the global snapshot, sessions as the visible top-level
+  // rows the core derives (deriveFlat — archived, subagent-origin, and
+  // non-current blank rows excluded; the grouped and flat bodies show the
+  // same set). A pure derivation over hook data, not a second subscription.
+  const pendingInteractions = useSessionPendingInteraction(s => s)
+  const sessions = useSessions(s => s)
+  const workspaceCount = workspaces.length
+  const sessionCount = useMemo(
+    () => deriveFlat(sessions, archivedSessionIds, pendingInteractions).length,
+    [sessions, archivedSessionIds, pendingInteractions],
+  )
   // The query and expansion state outlive the core's body (the sidebar region
   // keeps the same contract): one owner holds the in-progress filter while
   // search results mount and clear in the core. The core clears both on a
@@ -91,7 +106,16 @@ export function SessionsPage({
   return (
     <div className={css.page}>
       <div className={css.pageHeader}>
-        <h1 className={css.pageTitle}>{t('panel.sessions')}</h1>
+        <div className={css.pageHeading}>
+          <h1 className={css.pageTitle}>{t('panel.sessions')}</h1>
+          {/* Each count keeps its own localized unit string, joined by a
+              plain separator, so zh and en both read naturally. */}
+          <p className={css.pageCounts}>
+            <span>{t('sessions.counts.workspaces', { n: workspaceCount })}</span>
+            {' · '}
+            <span>{t('sessions.counts.sessions', { n: sessionCount })}</span>
+          </p>
+        </div>
         {/* Adding is the button's one action, so a composition with no
             picking affordance has nothing to offer here: the header hides the
             button rather than leaving a dead one. */}

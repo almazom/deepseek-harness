@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
 /**
  * The Sessions page surface (SlotTestRuntime, real apply, real SessionsPage):
- * the keyed `main` entry under key `sessions` renders the locale page title
- * and the mounted browsing core, a session-row click opens the Session, the
- * page's directory-flow hole is declared and stays affordance-free while
+ * the keyed `main` entry under key `sessions` renders the locale page title,
+ * the landing counts line (real numbers over the seeded fixture), and the
+ * mounted browsing core; a session-row click opens the Session, the page's
+ * directory-flow hole is declared and stays affordance-free while
  * unoccupied, and the `sidebar.panellist` row advertises the page.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -109,6 +110,22 @@ describe('sessions page entry', () => {
     expect(view.getByText('Свежая')).toBeTruthy()
     expect(view.getByText('Старая')).toBeTruthy()
     expect(view.getByText('alpha')).toBeTruthy()
+    await runtime.dispose()
+  })
+
+  it('renders the counts line from the seeded fixture data', async () => {
+    const { runtime } = await createRuntime()
+    await seedSessions(runtime)
+    const view = await mountPage(runtime)
+    // One workspace, two visible sessions — the same rows the core renders.
+    expect(view.getByText('1 个工作区')).toBeTruthy()
+    expect(view.getByText('2 个会话')).toBeTruthy()
+    // Both counts share one header line joined by the plain separator
+    // (getByText sees only direct text nodes, so match the line's textContent).
+    const counts = view.getByText(
+      (_, element) => element?.textContent === '1 个工作区 · 2 个会话',
+    )
+    expect(counts.tagName).toBe('P')
     await runtime.dispose()
   })
 

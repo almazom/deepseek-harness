@@ -1,6 +1,7 @@
 /**
  * `workspace` namespace dictionaries: the browsing region (section header,
- * search, tree rows, dialogs) and the pick/add flow. Runtime failure
+ * search, tree rows, dialogs), the full-page Sessions surface (title counts
+ * line), and the pick/add flow. Runtime failure
  * messages (wire error strings) pass through untranslated by policy.
  */
 
@@ -20,6 +21,8 @@ export const zh = {
   'orderBy.updated': '最近更新',
   'sessions.expand': '展开其余 {n} 个会话',
   'sessions.collapse': '收起',
+  'sessions.counts.workspaces': '{n} 个工作区',
+  'sessions.counts.sessions': '{n} 个会话',
   'empty.none': '暂无会话',
   'empty.noMatches': '无匹配结果',
   'workspace.add': '添加工作区',
@@ -96,6 +99,8 @@ export const en = {
   'orderBy.updated': 'Last updated',
   'sessions.expand': 'Show {n} more sessions',
   'sessions.collapse': 'Show less',
+  'sessions.counts.workspaces': '{n} workspaces',
+  'sessions.counts.sessions': '{n} sessions',
   'empty.none': 'No sessions yet',
   'empty.noMatches': 'No matches',
   'workspace.add': 'Add workspace',
