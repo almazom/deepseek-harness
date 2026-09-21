@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it } from 'vitest'
 import { cleanup, render, screen } from '@testing-library/react'
+import type { ComponentProps } from 'react'
 import { makeTranslate } from '@deepseek-ai/dsh-client-test-runtime'
 import { zh as commonZh } from '@deepseek-ai/dsh-client-locale/src/locales/zh.ts'
 import type { ConversationMatch, ConversationNodeContext } from '@deepseek-ai/dsh-client-ui-conversation/client'
@@ -32,9 +33,11 @@ function run(events: readonly [string, object][]): HooksState {
 }
 
 function viewNode(state: HooksState) {
-  return hooksDefinition.buildViewNode({
+  const build = hooksDefinition.buildViewNode
+  if (build === undefined) throw new Error('hooks definition lost its view builder')
+  return build({
     state,
-    startSeq: 7,
+    start: undefined,
     matches: [],
     current: new Map(),
   } as unknown as ConversationNodeContext<HooksState>)
@@ -68,34 +71,32 @@ describe('hooks card projection', () => {
     ])
     const node = viewNode(pending)
     expect(node).not.toBeNull()
-    expect(node?.data.hooks).toEqual([{ point: 'SessionStart', handlerId: 'warm', dialect: 'claude-code' }])
+    expect((node as unknown as { data: { hooks: unknown } }).data.hooks)
+      .toEqual([{ point: 'SessionStart', handlerId: 'warm', dialect: 'claude-code' }])
   })
 })
 
 describe('HooksNodeView', () => {
   it('renders the telemetry card with points, handlers, decisions, and durations', () => {
-    render(
-      <HooksNodeView
-        {...({ t } as never)}
-        {...{
-          node: {
-            key: 'hooks/3',
-            kind: 'hooks',
-            id: '3',
-            target: 'chat',
-            anchorSeq: 7,
-            location: { kind: 'session' },
-            visibility: 'visible',
-            data: {
-              hooks: [
-                { point: 'PreToolUse', handlerId: 'gate', decision: 'pass', durationMs: 1200 },
-                { point: 'PostToolUse', handlerId: 'mem', decision: 'stop', exitCode: 2, durationMs: 250 },
-              ],
-            },
-          },
-        } as never}
-      />,
-    )
+    const viewProps = {
+      t,
+      node: {
+        key: 'hooks/3',
+        kind: 'hooks',
+        id: '3',
+        target: 'chat',
+        anchorSeq: 7,
+        location: { kind: 'session' },
+        visibility: 'visible' as const,
+        data: {
+          hooks: [
+            { point: 'PreToolUse', handlerId: 'gate', decision: 'pass', durationMs: 1200 },
+            { point: 'PostToolUse', handlerId: 'mem', decision: 'stop', exitCode: 2, durationMs: 250 },
+          ],
+        },
+      },
+    } as unknown as ComponentProps<typeof HooksNodeView>
+    render(<HooksNodeView {...viewProps} />)
     expect(screen.getByRole('group', { name: '钩子遥测' }).hasAttribute('data-hooks-card')).toBe(true)
     expect(screen.getByText('钩子')).toBeTruthy()
     expect(screen.getByText('PreToolUse')).toBeTruthy()

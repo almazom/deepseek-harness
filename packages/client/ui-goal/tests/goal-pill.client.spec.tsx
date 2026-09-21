@@ -26,10 +26,10 @@ function makeGoal(over: Partial<GoalSnapshot> = {}): GoalSnapshot {
 
 function makeActions(): GoalBarActions {
   return {
-    onEdit: vi.fn(() => Promise.resolve({ ok: true, value: undefined })),
-    onPause: vi.fn(() => Promise.resolve({ ok: true, value: undefined })),
-    onResume: vi.fn(() => Promise.resolve({ ok: true, value: undefined })),
-    onClear: vi.fn(() => Promise.resolve({ ok: true, value: undefined })),
+    onEdit: vi.fn(() => Promise.resolve({ ok: true as const, value: undefined })),
+    onPause: vi.fn(() => Promise.resolve({ ok: true as const, value: undefined })),
+    onResume: vi.fn(() => Promise.resolve({ ok: true as const, value: undefined })),
+    onClear: vi.fn(() => Promise.resolve({ ok: true as const, value: undefined })),
   }
 }
 
