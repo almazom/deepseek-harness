@@ -9,7 +9,7 @@ kind: "package-reference"
 
 ## 概述
 
-从配置的发布目录向浏览器提供已构建的 Web 壳。根路径与配置的 index 路径渲染包含启动信息的 index；已有资产直接提供，而缺失或非文件路径返回 404、路径遍历返回 403、不支持的方法返回 405。访问 index 需要有效的进程 token 或浏览器 cookie，但静态资产仍可公开访问。同一时间只能有一个实例处理未匹配的路由；第二个实例启动失败，卸载活动实例后，未匹配的请求返回 404。
+从配置的发布目录向浏览器提供已构建的 Web 壳。根路径与配置的 index 路径渲染包含启动信息的 index；已有资产直接提供，无扩展名的路由未命中按 history fallback 渲染 index，资产未命中返回 404、路径遍历返回 403、不支持的方法返回 405。访问 index 需要有效的进程 token 或浏览器 cookie，但静态资产仍可公开访问。同一时间只能有一个实例处理未匹配的路由；第二个实例启动失败，卸载活动实例后，未匹配的请求返回 404。
 
 ## 目录
 
@@ -39,13 +39,13 @@ kind: "package-reference"
 
 ### 服务器实施的约束
 
-请求从 dist 根目录（包含 `distIndex` 的目录）提供。dist 根目录与配置的 index 路径以 HTTP 200 渲染 `index.html`；任何其他已有文件按自身 MIME 类型直接提供，未知扩展名按 `application/octet-stream` 提供。解析到根目录之外的路径以 403 拒绝，因此精心构造的路径无法读取 dist 之上的文件。dist 根目录内不存在或不是文件的目标——文件缺失、目录或配置的 index 缺失——返回空 404。没有匹配具名路由的非 GET／HEAD 请求返回 405。每个成功的 index 响应都经 webserver 的 `renderIndex` 渲染，因此启动 manifest（元数据清单）会通过 `/` 与配置的 index 路径送达页面。
+请求从 dist 根目录（包含 `distIndex` 的目录）提供。dist 根目录与配置的 index 路径以 HTTP 200 渲染 `index.html`；任何其他已有文件按自身 MIME 类型直接提供，未知扩展名按 `application/octet-stream` 提供。解析到根目录之外的路径以 403 拒绝，因此精心构造的路径无法读取 dist 之上的文件。dist 根目录内解析不到文件的无扩展名目标同样渲染 `index.html`（面向客户端页面路径的 history fallback）；带扩展名的未命中或配置的 index 缺失返回空 404。没有匹配具名路由的非 GET／HEAD 请求返回 405。每个成功的 index 响应都经 webserver 的 `renderIndex` 渲染，因此启动 manifest（元数据清单）会通过 `/` 与配置的 index 路径送达页面。
 
 根路径与配置的 index 响应会在读取 HTML 前调用 `ctx.connection.authorizeIndex`。有效进程 token 会得到 303 重定向与持久浏览器 cookie；已有有效 cookie 时直接提供 index；其他 index 请求得到 Connection 所有的 401 响应。非 index 文件仍是公开静态资源。Token、cookie、过期时间与签名记录语义都归 Connection 所有。
 
 ### 可观察的失败
 
-遍历返回 403 而不是错误页。dist 根目录内不存在或不是文件的目标返回空 404，因此失效链接或拼错的 pathname 是显式失败，而不是静默的 SPA 回退。第二次占据席位会抛错，而席位无人占据时 webserver 返回 404——本插件的 fiber 被 dispose（资源释放）后，浏览器看到的就是该响应。
+遍历返回 403 而不是错误页。解析不到文件的无扩展名目标渲染 index（history fallback：Web 壳拥有 `/sessions` 之类的客户端页面路径），深层链接因此拿到应用而非错误；配置的 index 缺失仍返回 404。带扩展名的未命中（失效的资产 URL）返回空 404，缺失的资产不能退化成 HTML 文档。第二次占据席位会抛错，而席位无人占据时 webserver 返回 404——本插件的 fiber 被 dispose（资源释放）后，浏览器看到的就是该响应。
 
 -----
 

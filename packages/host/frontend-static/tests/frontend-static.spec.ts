@@ -2,7 +2,8 @@
  * REAL-composition coverage: a test-only cordis.yml booted through the
  * vendored Loader mounts the webserver and frontend-static rows, and every
  * assertion observes the served HTTP surface — asset serving, explicit index
- * entry points with index taps, 404 misses, traversal rejection, 405 on non-
+ * entry points with index taps, history-fallback route misses, 404 asset
+ * misses, traversal rejection, 405 on non-
  * GET/HEAD, and seat release on fiber disposal (HMR safety).
  */
 
@@ -165,10 +166,23 @@ describe('real Loader composition', () => {
       expect(get).toEqual({ status: 404, type: null, body: '' })
       expect(head).toEqual(get)
     }
+    // The dist is whole again for the remaining sections (a live deployment
+    // keeps its index; only the fallback's dependence on it is under test).
+    await writeFile(join(root!, 'dist', 'index.html'), '<head></head><body>shell</body>')
 
-    // Ordinary unknown paths and static-resource misses are empty 404s for
-    // both GET and HEAD; neither class can be mistaken for the HTML shell.
-    const ordinaryMisses = ['/no/such/route', '/empty', '/app.js/child']
+    // Extensionless route misses render the HTML shell through the history
+    // fallback (deep client-side page paths); the base anchor keeps their
+    // asset URLs at the site root. Extension misses stay empty 404s: a
+    // missing asset must not degrade into an HTML document.
+    const routeMisses = ['/no/such/route', '/empty', '/sessions', '/app.js/child']
+    for (const path of routeMisses) {
+      const get = await request(port, path, authenticated())
+      const head = await request(port, path, authenticated({ method: 'HEAD' }))
+      expect(get.status).toBe(200)
+      expect(get.type).toBe('text/html; charset=utf-8')
+      expect(get.body).toContain('shell')
+      expect(head).toEqual({ ...get, body: '' })
+    }
     const assetMisses = [
       '/missing.js',
       '/missing.css',
@@ -177,7 +191,7 @@ describe('real Loader composition', () => {
       '/missing.webmanifest',
       '/missing.manifest',
     ]
-    for (const path of [...ordinaryMisses, ...assetMisses]) {
+    for (const path of assetMisses) {
       const get = await request(port, path)
       const head = await request(port, path, { method: 'HEAD' })
       expect(get).toEqual({ status: 404, type: null, body: '' })

@@ -2,10 +2,11 @@
  * @deepseek-ai/dsh-host-frontend-static — SPA dist server over the webserver
  * fallback seat: serves the built frontend directory with explicit index
  * entry points. A readable index renders at the dist root and configured index
- * path; missing paths return 404, traversal outside the dist root is 403,
- * unknown extensions ship as octet-stream, and non-GET/HEAD is 405. Every
- * index response first passes Connection's browser authentication, then the
- * webserver's index render (structured injection rows, then raw taps).
+ * path; extensionless route misses render the index too (history fallback for
+ * client-side page paths), asset misses return 404, traversal outside the dist
+ * root is 403, unknown extensions ship as octet-stream, and non-GET/HEAD is
+ * 405. Every index response first passes Connection's browser authentication,
+ * then the webserver's index render (structured injection rows, then raw taps).
  * Non-index assets stay public. The dist location is workspace knowledge of
  * the composing application, so `distIndex` is typically supplied through a
  * `!!js` expression, never hardcoded by a deployment.
@@ -84,8 +85,16 @@ export async function serveStatic(
   }
   let body: string | Buffer
   let type: string
+  // History fallback: an extensionless miss is a client-side route (the
+  // narrow frame's page paths, e.g. /sessions), not a missing asset, so it
+  // renders the index shell like the dist root — the served <base href="/">
+  // keeps its asset URLs anchored at the site root. Extension misses stay
+  // loud 404s: a missing asset must not degrade into an HTML document.
+  // Malformed targets (control bytes) are not routes: they keep reaching the
+  // webserver's 400 guard through the read failure below.
+  const historyFallback = extname(pathname) === '' && !/\0|[\u0001-\u001f]/.test(pathname)
   try {
-    if (target === distRoot || target === distIndex) {
+    if (target === distRoot || target === distIndex || historyFallback) {
       if (!authorizeIndex()) return
       body = await renderIndex()
       type = HTML_MIME
@@ -94,8 +103,9 @@ export async function serveStatic(
       type = MIME[extname(target)] ?? 'application/octet-stream'
     }
   } catch (error) {
-    // Only absent or non-file targets are 404; other filesystem failures reach
-    // the webserver's request-failure handling.
+    // Absent targets answer 404 (a missing configured index misses its own
+    // render the same way); other filesystem failures reach the webserver's
+    // request-failure handling.
     if (!STATIC_MISS_CODES.has((error as NodeJS.ErrnoException).code)) throw error
     res.writeHead(404)
     res.end()

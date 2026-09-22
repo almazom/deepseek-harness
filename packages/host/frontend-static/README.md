@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-Serve the built Web shell to browsers from its configured distribution directory. The root and configured index path render the bootstrapped index; existing assets are served directly, while missing or non-file paths return 404, traversal returns 403, and unsupported methods return 405. Index access requires a valid process token or browser cookie, but static assets remain public. Only one instance can handle unmatched routes at a time; a second activation fails, and unloading the active instance makes unmatched requests return 404.
+Serve the built Web shell to browsers from its configured distribution directory. The root and configured index path render the bootstrapped index; existing assets are served directly, extensionless route misses render the index as a history fallback, asset misses return 404, traversal returns 403, and unsupported methods return 405. Index access requires a valid process token or browser cookie, but static assets remain public. Only one instance can handle unmatched routes at a time; a second activation fails, and unloading the active instance makes unmatched requests return 404.
 
 ## Table of Contents
 
@@ -39,13 +39,13 @@ Compose this plugin in a browser-facing host that serves the built Web shell: it
 
 ### What the server enforces
 
-Requests are served from the dist root (the directory containing `distIndex`). The dist root and the configured index path render `index.html` with HTTP 200; any other existing file is served directly with its MIME type, and unknown extensions ship as `application/octet-stream`. A path that resolves outside the root is rejected with 403, so a crafted path cannot read files above the dist. An absent or non-file target inside the dist root — a missing file, a directory, or a missing configured index — returns an empty 404. Non-GET/HEAD requests without a matching named route are answered 405. Every successful index response is rendered through the webserver's `renderIndex`, so the boot manifest reaches the page on `/` and on the configured index path.
+Requests are served from the dist root (the directory containing `distIndex`). The dist root and the configured index path render `index.html` with HTTP 200; any other existing file is served directly with its MIME type, and unknown extensions ship as `application/octet-stream`. A path that resolves outside the root is rejected with 403, so a crafted path cannot read files above the dist. An extensionless target inside the dist root that resolves to no file also renders `index.html` (history fallback for client-side page paths); an extension miss or a missing configured index returns an empty 404. Non-GET/HEAD requests without a matching named route are answered 405. Every successful index response is rendered through the webserver's `renderIndex`, so the boot manifest reaches the page on `/`, on the configured index path, and on history-fallback routes.
 
 Root and configured-index responses call `ctx.connection.authorizeIndex` before reading HTML. A valid process token receives a 303 redirect plus the persistent browser cookie; an existing valid cookie serves the index; every other index request receives the Connection-owned 401 response. Non-index files remain public static assets. Connection owns the token, cookie, expiry, and signing-record semantics.
 
 ### Observable failures
 
-Traversal returns 403 rather than an error page. An absent or non-file target inside the dist root returns an empty 404, so a stale link or a mistyped pathname is an explicit failure rather than a silent SPA fallback. Claiming the seat twice throws, and while the seat is unclaimed the webserver answers 404 — which is what a browser sees if this plugin's fiber is disposed.
+Traversal returns 403 rather than an error page. An extensionless target inside the dist root that resolves to no file renders the index instead (history fallback: the Web shell owns client-side page paths such as `/sessions`), so a deep link serves the app rather than an error; a missing configured index still answers 404. Extension misses (a stale asset URL) return an empty 404 so a missing asset cannot degrade into an HTML document. Claiming the seat twice throws, and while the seat is unclaimed the webserver answers 404 — which is what a browser sees if this plugin's fiber is disposed.
 
 -----
 
