@@ -75,11 +75,22 @@
   color: var(--dsw-alias-label-primary);
 }
 
+/* Wide landing: the title steps up one token rung (--dsw-font-l-20,
+   20px/28px weight 500) so the header outranks the 14px row titles it
+   heads. Narrow frames keep 16px — vertical space is scarce there and
+   mobile reading is linear-vertical, not hierarchical scanning. */
+@media (min-width: 1024px) {
+  .pageTitle {
+    font: var(--dsw-font-l-20);
+  }
+}
+
 /* The counts line: two localized unit spans around a plain ' · ' separator,
    muted under the title. */
 .pageCounts {
   margin: 0;
   font: var(--dsw-font-xs-13);
+  font-variant-numeric: tabular-nums;
   color: var(--dsw-alias-label-secondary);
 }
 
@@ -134,8 +145,7 @@
   border: none;
   outline: none;
   background: transparent;
-  font-size: 13px;
-  line-height: 18px;
+  font: var(--dsw-font-xs-13);
   color: var(--dsw-alias-label-primary);
 }
 
@@ -184,8 +194,7 @@
   padding-block: 0;
   background: var(--dsw-alias-interactive-bg-strong, var(--dsw-alias-interactive-bg-hover));
   cursor: pointer;
-  font-size: 13px;
-  line-height: 18px;
+  font: var(--dsw-font-xs-strong-13);
   color: var(--dsw-alias-label-primary);
 }
 
