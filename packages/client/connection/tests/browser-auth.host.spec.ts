@@ -140,6 +140,18 @@ describe('BrowserAuth', () => {
     })
   })
 
+  it('exchanges the launch token on deep SPA paths and preserves the entry path', async () => {
+    const auth = await createAuth(new RecordCredentials())
+    const token = new URL(auth.authenticatedUrl('http://127.0.0.1:3080')).searchParams.get('token')
+    const res = response()
+    expect(auth.authorizeIndex(request(`/sessions?token=${token}`, '127.0.0.1:3080'), res.value)).toBe(false)
+    expect(res.state.status).toBe(303)
+    expect(res.state.headers?.location).toBe('/sessions')
+    expect(res.state.headers?.['set-cookie']).toMatch(/; HttpOnly; SameSite=Strict$/u)
+    const cookie = (res.state.headers?.['set-cookie'] as string).split(';', 1)[0]!
+    expect(auth.isAuthenticated(request('/sessions', '127.0.0.1:3080', { cookie }))).toBe(true)
+  })
+
   it('accepts the cookie for index serving and gives every unauthenticated request one response', async () => {
     const auth = await createAuth(new RecordCredentials())
     const { cookie } = exchange(auth)

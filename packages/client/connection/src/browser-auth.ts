@@ -230,9 +230,11 @@ export class BrowserAuth {
   }
 
   /**
-   * Authenticate an index request. A valid root query token mints the cookie
-   * and redirects to clean `/`; a valid cookie lets the caller serve the
-   * index; every other request receives the same minimal 401 response.
+   * Authenticate an index request. A valid query token mints the cookie and
+   * redirects to the requested path (deep SPA routes keep working as entry
+   * points: the redirect strips the token but preserves the pathname); a
+   * valid cookie lets the caller serve the index; every other request
+   * receives the same minimal 401 response.
    * @param req - incoming root or configured-index request.
    * @param res - response owned when this method returns false.
    * @returns true only when the caller may serve index.html.
@@ -243,7 +245,7 @@ export class BrowserAuth {
     const tokens = url.searchParams.getAll(TOKEN_QUERY)
     if (tokens.length > 0) {
       const authority = requestAuthority(req.headers)
-      if (req.method === 'GET' && url.pathname === '/' && tokens.length === 1
+      if (req.method === 'GET' && tokens.length === 1
         && authority !== undefined && tokenMatches(tokens.join(''), this.launchToken)) {
         const issuedAt = Date.now()
         const expiresAt = issuedAt + this.maxAgeMilliseconds
@@ -255,7 +257,7 @@ export class BrowserAuth {
         }, this.secret)
         res.writeHead(303, {
           'cache-control': 'no-store',
-          'location': '/',
+          'location': url.pathname,
           'referrer-policy': 'no-referrer',
           'set-cookie': sessionCookie(
             cookieName(authority), value, expiresAt, Math.floor(this.maxAgeMilliseconds / 1000),
