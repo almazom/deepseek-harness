@@ -1,6 +1,8 @@
 - banner:
   - navigation "Session hierarchy":
     - 'button "Using ONE run_code program: run" [disabled]'
+  - button "Rename session":
+    - img
   - img
   - text: PTC mode
   - button "More actions":

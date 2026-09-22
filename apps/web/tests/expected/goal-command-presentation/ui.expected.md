@@ -1,6 +1,8 @@
 - banner:
   - navigation "Session hierarchy":
     - button "workspace" [disabled]
+  - button "Rename session":
+    - img
   - img
   - text: Standard mode
   - button "More actions":

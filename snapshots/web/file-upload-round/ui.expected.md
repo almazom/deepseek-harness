@@ -1,6 +1,10 @@
 - banner:
+  - button "Back to the conversation":
+    - img
   - navigation "Session hierarchy":
     - button "Read the attached file with" [disabled]
+  - button "Rename session":
+    - img
   - img
   - text: Standard mode
   - button "More actions":

@@ -1,6 +1,8 @@
 - banner:
   - navigation "Session hierarchy":
     - button "Reference order target" [disabled]
+  - button "Rename session":
+    - img
   - button "More actions":
     - img
   - button "Open right sidebar":

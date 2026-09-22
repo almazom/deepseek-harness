@@ -2,6 +2,7 @@
   - treeitem "{{workspace}}" [expanded]:
     - img
     - text: {{workspace}}
+  - text: Today
   - treeitem "Review deepseek-harness/deepseek-harness#314 Session actions for Review deepseek-harness/deepseek-harness#314" [selected]:
     - text: Review deepseek-harness/deepseek-harness#314
     - button "Session actions for Review deepseek-harness/deepseek-harness#314":
@@ -12,6 +13,8 @@
 - banner:
   - navigation "Session hierarchy":
     - button "Review deepseek-harness/deepseek-harness#314" [disabled]
+  - button "Rename session":
+    - img
   - img
   - text: Standard mode
   - button "More actions":

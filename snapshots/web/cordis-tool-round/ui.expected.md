@@ -1,6 +1,8 @@
 - banner:
   - navigation "Session hierarchy":
     - button "Use only Cordis tools. First" [disabled]
+  - button "Rename session":
+    - img
   - img
   - text: Standard mode
   - button "More actions":

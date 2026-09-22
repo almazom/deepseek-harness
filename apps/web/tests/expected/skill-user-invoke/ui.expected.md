@@ -1,6 +1,8 @@
 - banner:
   - navigation "Session hierarchy":
     - button "/user-invoke-demo @\"meeting notes.md\" an" [disabled]
+  - button "Rename session":
+    - img
   - img
   - text: Standard mode
   - button "More actions":

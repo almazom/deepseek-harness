@@ -1,6 +1,8 @@
 - banner:
   - navigation "Session hierarchy":
     - button "{{workspace}}" [disabled]
+  - button "Rename session":
+    - img
   - button "More actions":
     - img
   - button "Open right sidebar":

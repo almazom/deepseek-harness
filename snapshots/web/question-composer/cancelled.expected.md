@@ -1,6 +1,8 @@
 - banner:
   - navigation "Session hierarchy":
     - button "Use the ask_user_question tool to" [disabled]
+  - button "Rename session":
+    - img
   - button "More actions":
     - img
   - button "Open right sidebar":

@@ -4,6 +4,8 @@
 - button "New session":
   - img
   - text: New Session
+- navigation "Global panels":
+  - button "Sessions"
 - text: Workspaces
 - button "Search sessions":
   - img
@@ -16,6 +18,7 @@
   - treeitem "workspace" [expanded]:
     - img
     - text: workspace
+  - text: Today
   - treeitem "New Session" [selected]
 - button "Settings":
   - img

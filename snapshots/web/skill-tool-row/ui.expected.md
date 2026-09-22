@@ -1,6 +1,8 @@
 - banner:
   - navigation "Session hierarchy":
     - button "Load the editing-cordis-compositions ski" [disabled]
+  - button "Rename session":
+    - img
   - button "More actions":
     - img
   - button "Open right sidebar":

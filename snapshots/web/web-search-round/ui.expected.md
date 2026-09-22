@@ -1,6 +1,8 @@
 - banner:
   - navigation "Session hierarchy":
     - button "Use web_search once with queries" [disabled]
+  - button "Rename session":
+    - img
   - img
   - text: Standard mode
   - button "More actions":

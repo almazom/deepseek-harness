@@ -1,6 +1,8 @@
 - banner:
   - navigation "Session hierarchy":
     - button "Use the read tool twice" [disabled]
+  - button "Rename session":
+    - img
   - button "More actions":
     - img
   - button "Open right sidebar":

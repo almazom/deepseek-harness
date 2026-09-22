@@ -4,6 +4,8 @@
   - button "1 subagent":
     - text: 1 subagent
     - img
+- button "Rename session":
+  - img
 - img
 - text: Minimal mode
 - button "More actions":

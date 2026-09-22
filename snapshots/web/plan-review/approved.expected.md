@@ -1,6 +1,8 @@
 - banner:
   - navigation "Session hierarchy":
     - 'button "Plan a small change: add" [disabled]'
+  - button "Rename session":
+    - img
   - img
   - text: Standard mode
   - button "More actions":

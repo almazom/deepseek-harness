@@ -1,6 +1,8 @@
 - banner:
   - navigation "Session hierarchy":
     - 'button "Run two shell commands: wait" [disabled]'
+  - button "Rename session":
+    - img
   - button "More actions":
     - img
   - button "Open right sidebar":

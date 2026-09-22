@@ -1,6 +1,8 @@
 - banner:
   - navigation "Session hierarchy":
     - button "Begin your reply with the" [disabled]
+  - button "Rename session":
+    - img
   - img
   - text: Standard mode
   - button "More actions":

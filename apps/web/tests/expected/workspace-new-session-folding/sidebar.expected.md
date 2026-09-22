@@ -6,6 +6,7 @@
       - img
     - button "New session in {{workspace}}":
       - img
+  - text: Today
   - treeitem "New Session" [selected]
   - treeitem "{{workspace}} 1min"
   - treeitem "{{workspace}} 1min"

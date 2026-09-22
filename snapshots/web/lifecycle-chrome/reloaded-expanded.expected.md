@@ -1,6 +1,8 @@
 - banner:
   - navigation "Session hierarchy":
     - button "Reply with the single word" [disabled]
+  - button "Rename session":
+    - img
   - img
   - text: Standard mode
   - button "More actions":
