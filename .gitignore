@@ -54,3 +54,13 @@ native/system/test/bin/
 .video-intake-*/
 /.zcodeignore
 .qoder/
+
+# Local operator scratch, evidence and tool state (untracked by design)
+.serena/
+/scratch/
+/tmp-p2i-banner/
+/media-reports/
+/media-review/
+/video-demux/
+/.goal-evidence-batch2/
+/dsh-login-recovered.png
