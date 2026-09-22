@@ -2,6 +2,7 @@
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { createPagePathBridge } from '../src/client/index.ts'
+import type { MainPanelId } from '../src/client/service.ts'
 
 beforeEach(() => { history.replaceState({}, '', '/') })
 afterEach(() => { history.replaceState({}, '', '/') })
@@ -10,7 +11,7 @@ describe('createPagePathBridge', () => {
   it('pushes the page path with the marker and preserves the query', () => {
     history.replaceState({}, '', '/?token=abc')
     const bridge = createPagePathBridge()
-    bridge.push('sessions')
+    bridge.push('sessions' as MainPanelId)
     expect(location.pathname).toBe('/sessions')
     expect(location.search).toBe('?token=abc')
     expect(history.state).toEqual({ dshPagePath: true })
@@ -18,7 +19,7 @@ describe('createPagePathBridge', () => {
 
   it('returns to base from a UI-nav entry', () => {
     const bridge = createPagePathBridge()
-    bridge.push('sessions')
+    bridge.push('sessions' as MainPanelId)
     bridge.returnToBase()
     expect(location.pathname).toBe('/')
     expect(history.state).toEqual({})
