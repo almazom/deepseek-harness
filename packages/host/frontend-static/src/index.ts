@@ -85,6 +85,7 @@ export async function serveStatic(
   }
   let body: string | Buffer
   let type: string
+  let cacheControl: string
   // History fallback: an extensionless miss is a client-side route (the
   // narrow frame's page paths, e.g. /sessions), not a missing asset, so it
   // renders the index shell like the dist root — the served <base href="/">
@@ -98,9 +99,16 @@ export async function serveStatic(
       if (!authorizeIndex()) return
       body = await renderIndex()
       type = HTML_MIME
+      // The shell must revalidate every load so a new deploy is picked up.
+      cacheControl = 'no-cache'
     } else {
       body = await readFile(target)
       type = MIME[extname(target)] ?? 'application/octet-stream'
+      // Vite emits content-hashed filenames under /assets: a URL change is
+      // the invalidation signal, so browsers may pin the bytes. Without this
+      // header Safari re-downloads the whole bundle on every restore, which
+      // reads as a 40–60 s freeze on a phone link.
+      cacheControl = 'public, max-age=31536000, immutable'
     }
   } catch (error) {
     // Absent targets answer 404 (a missing configured index misses its own
@@ -111,7 +119,7 @@ export async function serveStatic(
     res.end()
     return
   }
-  res.writeHead(200, { 'content-type': type })
+  res.writeHead(200, { 'content-type': type, 'cache-control': cacheControl })
   res.end(body)
 }
 

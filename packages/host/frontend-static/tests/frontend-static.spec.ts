@@ -84,12 +84,18 @@ async function loadComposition(): Promise<Context> {
   return context
 }
 
-/** GET (by default) one path against the running server; returns status, content-type, and the body. */
-async function request(port: number, path: string, init?: RequestInit): Promise<{ status: number; type: string | null; body: string }> {
+/** GET (by default) one path against the running server; returns status, content-type, the body, and cache policy. */
+async function request(port: number, path: string, init?: RequestInit): Promise<{
+  status: number
+  type: string | null
+  cache: string | null
+  body: string
+}> {
   const response = await fetch(`http://127.0.0.1:${String(port)}${path}`, init)
   return {
     status: response.status,
     type: response.headers.get('content-type'),
+    cache: response.headers.get('cache-control'),
     body: await response.text(),
   }
 }
@@ -123,7 +129,10 @@ describe('real Loader composition', () => {
     })
 
     // Real assets with their MIME types; a live rebuild is served on the next read.
-    expect(await request(port, '/app.js')).toMatchObject({ status: 200, type: 'text/javascript; charset=utf-8', body: 'export {}' })
+    // Vite content-hashed assets pin in browser caches; the shell revalidates.
+    expect(await request(port, '/app.js')).toMatchObject({
+      status: 200, type: 'text/javascript; charset=utf-8', cache: 'public, max-age=31536000, immutable', body: 'export {}',
+    })
     expect(await request(port, '/manifest.webmanifest')).toMatchObject({
       status: 200,
       type: 'application/manifest+json',
@@ -132,6 +141,7 @@ describe('real Loader composition', () => {
     expect(await request(port, '/app.js', { method: 'HEAD' })).toEqual({
       status: 200,
       type: 'text/javascript; charset=utf-8',
+      cache: 'public, max-age=31536000, immutable',
       body: '',
     })
     await writeFile(join(root!, 'dist', 'app.js'), 'export const rebuilt = true')
@@ -163,7 +173,7 @@ describe('real Loader composition', () => {
     for (const path of ['/', '/index.html']) {
       const get = await request(port, path, authenticated())
       const head = await request(port, path, authenticated({ method: 'HEAD' }))
-      expect(get).toEqual({ status: 404, type: null, body: '' })
+      expect(get).toEqual({ status: 404, type: null, cache: null, body: '' })
       expect(head).toEqual(get)
     }
     // The dist is whole again for the remaining sections (a live deployment
@@ -194,7 +204,7 @@ describe('real Loader composition', () => {
     for (const path of assetMisses) {
       const get = await request(port, path)
       const head = await request(port, path, { method: 'HEAD' })
-      expect(get).toEqual({ status: 404, type: null, body: '' })
+      expect(get).toEqual({ status: 404, type: null, cache: null, body: '' })
       expect(head).toEqual(get)
     }
     expect(await request(port, '/api/no/such/route', authenticated())).toEqual({
