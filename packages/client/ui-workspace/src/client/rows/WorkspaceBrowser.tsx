@@ -31,7 +31,7 @@ import css from './WorkspaceBrowser.module.css'
  */
 const EXPAND_SLIDE_MS = 300
 /** `session.search` wire bound, measured in JavaScript UTF-16 code units. */
-const SEARCH_QUERY_MAX_CODE_UNITS = 500
+export const SEARCH_QUERY_MAX_CODE_UNITS = 500
 
 /**
  * Keep a controlled search input and its `session.search` RPC payload inside
@@ -48,8 +48,10 @@ export function sanitizeSearchQuery(value: string): string {
   return withoutNul.slice(0, end)
 }
 
-/** Grouping and ordering menu; own open state so it resets with the wide chrome. */
-function ViewOptionsMenu({ groupBy, orderBy, onGroupPick, onOrderPick, t }: {
+/** Grouping and ordering menu; own open state so it resets with the wide chrome.
+ * Shared by the sidebar region header and the full-page Sessions header (the
+ * landing page mounts the same grouping/sorting contract). */
+export function ViewOptionsMenu({ groupBy, orderBy, onGroupPick, onOrderPick, t }: {
   groupBy: 'workspace' | 'flat'
   orderBy: SessionOrderBy
   onGroupPick: (mode: 'workspace' | 'flat') => void

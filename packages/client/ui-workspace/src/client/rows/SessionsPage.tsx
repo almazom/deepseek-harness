@@ -2,22 +2,23 @@
  * The full-page Sessions surface, the `main` slot's `sessions` key: a title
  * header row with the landing counts line, and the same browsing core the
  * sidebar region mounts (SessionBrowserCore — search results, grouped/flat
- * lists, workspace and session dialogs) at full width. The page owns the
+ * lists, workspace and session dialogs) at full width. The page owns its
+ * browsing chrome — the search field, the shared ViewOptionsMenu
+ * grouping/sorting menu, and the New Session pick flow — plus the
  * search-query state, its own directory-flow hole
- * (`sessions.page.directoryFlow`), and the counts line — workspaces and
- * sessions derived from the same framework data the core renders. A
- * composition with no hole occupant hides the header's add-workspace
- * affordance rather than rendering a dead one. The remaining chrome (search
- * field, view options) stays with the sidebar region; the landing surface
- * grows the title deliberately, not by mirroring the sidebar header.
+ * (`sessions.page.directoryFlow`), and the counts line; workspaces and
+ * sessions derive from the same framework data the core renders. New Session
+ * opens the pick flow over existing workspaces; creating a workspace inside
+ * the flow needs a directory-flow occupant.
  */
 import { useMemo, useRef, useState } from 'react'
 import {
-  IconListPenOutline16, IconProjectAddOutline16, Tooltip,
+  IconCloseFill14, IconListPenOutline16, IconProjectAddOutline16,
+  IconSearchOutline16, Tooltip,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type { SessionsPageProps } from '../contract/slots.ts'
-import { sanitizeSearchQuery } from './WorkspaceBrowser.tsx'
+import { sanitizeSearchQuery, SEARCH_QUERY_MAX_CODE_UNITS, ViewOptionsMenu } from './WorkspaceBrowser.tsx'
 import { deriveFlat } from '../tree.ts'
 import { WorkspacePickFlow } from '../WorkspacePicker.tsx'
 import { SessionBrowserCore } from './SessionBrowserCore.tsx'
@@ -116,23 +117,61 @@ export function SessionsPage({
             <span>{t('sessions.counts.sessions', { n: sessionCount })}</span>
           </p>
         </div>
-        {/* Adding is the button's one action, so a composition with no
-            picking affordance has nothing to offer here: the header hides the
-            button rather than leaving a dead one. */}
-        {directoryFlowAvailable && (
-          <Tooltip label={t('workspace.add')} side="bottom" delayMs={500}>
+        {/* The page owns its browsing chrome: an always-visible search field
+            and the same grouping/sorting menu the sidebar header mounts, so
+            the landing surface is self-sufficient at every frame width. */}
+        <div className={css.pageSearch}>
+          <IconSearchOutline16 size={14} />
+          <input
+            className={css.searchInput}
+            type="text"
+            placeholder={t('search.placeholder')}
+            aria-label={t('search.sessions.aria')}
+            maxLength={SEARCH_QUERY_MAX_CODE_UNITS}
+            value={query}
+            onChange={(e) => { setQuery(sanitizeSearchQuery(e.target.value)) }}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') setQuery('')
+            }}
+          />
+          {query !== '' && (
             <button
-              ref={wsPlusRef}
               type="button"
-              className={css.iconButton}
-              aria-label={t('workspace.add')}
-              onClick={() => { setWsPickerOpen(v => !v) }}
+              className={css.clearButton}
+              aria-label={t('search.clear')}
+              onClick={() => { setQuery('') }}
             >
-              <IconProjectAddOutline16 />
+              <IconCloseFill14 />
             </button>
-          </Tooltip>
-        )}
-        {/* Add flow + its error dialog (same package — direct composition). */}
+          )}
+        </div>
+        <div className={css.pageActions}>
+          <ViewOptionsMenu
+            groupBy={groupBy}
+            orderBy={orderBy}
+            onGroupPick={(mode) => { actions.setGroupBy(mode) }}
+            onOrderPick={(mode) => { actions.setOrderBy(mode) }}
+            t={t}
+          />
+          {/* New Session is the page's primary affordance: the picker lists
+              existing workspaces (creating needs a directory flow, so the
+              header shows the button whenever either path is available). */}
+          {(workspaceCount > 0 || directoryFlowAvailable) && (
+            <Tooltip label={t('session.new')} side="bottom" delayMs={500}>
+              <button
+                ref={wsPlusRef}
+                type="button"
+                className={css.newSessionButton}
+                aria-label={t('session.new')}
+                onClick={() => { setWsPickerOpen(v => !v) }}
+              >
+                <IconProjectAddOutline16 size={14} />
+                <span>{t('session.new')}</span>
+              </button>
+            </Tooltip>
+          )}
+        </div>
+        {/* Pick flow + its error dialog (same package — direct composition). */}
         <WorkspacePickFlow
           t={t}
           open={wsPickerOpen}
@@ -141,7 +180,6 @@ export function SessionsPage({
           createWorkspace={createWorkspace}
           useDirectoryFlow={useDirectoryFlow}
           renderDirectoryFlow={owner => renderSlot('sessions.page.directoryFlow', owner)}
-          addOnly
           side="bottom"
           onPick={(workspaceId) => {
             setWsPickerOpen(false)

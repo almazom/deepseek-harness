@@ -36,10 +36,28 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 8px;
   min-height: 36px;
   padding: 12px 20px 8px;
   box-sizing: border-box;
+}
+
+/* The search field keeps a usable floor; below it the header wraps it onto
+   its own row (the narrow landing surface). */
+.pageSearch {
+  flex: 1 1 180px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 30px;
+  min-width: 140px;
+  padding: 0 4px 0 8px;
+  box-sizing: border-box;
+  border: 0.5px solid var(--dsw-alias-border-l4);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--dsw-alias-label-caption);
 }
 
 .pageHeading {
@@ -84,6 +102,79 @@
 
 .iconButton:hover {
   background: var(--dsw-alias-interactive-bg-hover);
+}
+
+/* Always-visible page search: the landing surface owns its chrome at every
+   frame width, so the field renders expanded with no expand/collapse dance. */
+.searchInput {
+  flex: 1;
+  width: 0;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--dsw-alias-label-primary);
+}
+
+.searchInput::placeholder {
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.clearButton {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 50%;
+  corner-shape: round;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+  color: var(--dsw-alias-label-secondary);
+}
+
+.clearButton:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+/* Trailing header actions: the shared grouping/sorting menu and the primary
+   New Session button. */
+.pageActions {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.newSessionButton {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 12px;
+  border: none;
+  border-radius: 15px;
+  padding-block: 0;
+  background: var(--dsw-alias-interactive-bg-strong, var(--dsw-alias-interactive-bg-hover));
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--dsw-alias-label-primary);
+}
+
+.newSessionButton:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+  filter: brightness(1.06);
+}
+
+.newSessionButton span {
+  white-space: nowrap;
 }
 
 /* The browsing body fills the page frame below the header; the core owns its
