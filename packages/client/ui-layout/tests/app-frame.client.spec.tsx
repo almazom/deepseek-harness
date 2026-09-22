@@ -287,7 +287,7 @@ describe('AppFrame normal width concessions', () => {
     expect(instance.getSnapshot().layoutInfo).toMatchObject({ rightbarShown: true, rightbar: 864 })
     act(() => { instance.actions.closeRightbar() })
     resize(455)
-    expect(tracks(frame)).toEqual([420, 0])
+    expect(tracks(frame)).toEqual([56, 0])
     resize(1920)
     expect(tracks(frame)).toEqual([420, 0])
   })
@@ -309,32 +309,38 @@ describe('AppFrame normal width concessions', () => {
     expect(rightOwner()).toEqual({ width: rightbar, viewportWidth: width, canShow })
   })
 
-  it('does not anticipate another left collapse after the right panel is already shown', () => {
+  it('does not squeeze the right panel on a narrow frame because the left stays a rail', () => {
     frameWidth = 800
     const { instance, rightOwner } = mountFrame()
     act(() => { instance.actions.openRightbar(true, false); instance.actions.toggleSidebar() })
-    expect(rightOwner().canShow).toBe(false)
+    expect(rightOwner().canShow).toBe(true)
   })
 
   it('keeps the stored sidebar preference across the 1024px crossing', () => {
     const { frame, instance } = mountFrame()
     act(() => { instance.actions.setSidebar(400) })
     resize(1023)
-    expect(tracks(frame)[0]).toBe(400)
+    // The narrow view shows only the rail, but the stored preference is
+    // untouched and reappears verbatim on the wide side of the crossing.
+    expect(tracks(frame)[0]).toBe(56)
     resize(980)
-    expect(tracks(frame)[0]).toBe(400)
+    expect(tracks(frame)[0]).toBe(56)
     resize(1024)
     expect(tracks(frame)[0]).toBe(400)
     expect(instance.getSnapshot().layoutInfo.sidebar).toBe(400)
   })
 
-  it('re-opens a closed sidebar at the default width on either viewport class', () => {
+  it('keeps the rail on narrow toggles and restores the default width on wide', () => {
     const { frame, instance } = mountFrame()
     act(() => { instance.actions.toggleSidebar() })
     expect(tracks(frame)[0]).toBe(56)
     resize(980)
     expect(tracks(frame)[0]).toBe(56)
     act(() => { instance.actions.toggleSidebar() })
+    // The narrow frame never expands the column; the toggle only rewrites
+    // the stored preference, which the wide view picks up.
+    expect(tracks(frame)[0]).toBe(56)
+    resize(1280)
     expect(tracks(frame)[0]).toBe(280)
     expect(instance.getSnapshot().layoutInfo.sidebar).toBe(280)
   })
@@ -370,16 +376,18 @@ describe('AppFrame narrow page navigation', () => {
     expect(frame.dataset.sidebarCollapsed).toBeUndefined()
   })
 
-  it('collapses an expanded narrow sidebar only through page navigation, not resize', () => {
+  it('shows only the rail on a narrow frame and drops the track while a panel is active', () => {
     const { frame, instance } = mountFrame()
     act(() => { instance.actions.setSidebar(400) })
     resize(800)
-    expect(tracks(frame)).toEqual([400, 0])
+    // Resizing to narrow collapses the view to the rail without rewriting
+    // the stored preference; the fold controls navigate from there.
+    expect(tracks(frame)).toEqual([56, 0])
     expect(instance.getSnapshot().layoutInfo.sidebar).toBe(400)
     act(() => { instance.actions.selectPanel('panel-a' as MainPanelId) })
     expect(tracks(frame)).toEqual([0, 0])
     act(() => { instance.actions.selectPanel(null) })
-    expect(tracks(frame)).toEqual([400, 0])
+    expect(tracks(frame)).toEqual([56, 0])
   })
 })
 

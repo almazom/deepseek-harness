@@ -163,12 +163,13 @@ export function AppFrame({
 
   const narrow = viewport < SIDEBAR_AUTO_COLLAPSE
   const panelActive = usePanelInfo(info => info.activePanelId !== null)
-  // Page navigation replaces the drawer: with a main panel selected on a
-  // narrow frame the sidebar yields the whole left track, so the panel owns
-  // the frame. The closed rail stays the narrow no-panel geometry, keeping the
-  // toggle affordance reachable; a wide frame keeps plain sidebar === 0 rules.
+  // Page navigation replaces the drawer: a narrow frame never shows the
+  // expanded sidebar column — the shell renders only the rail, whose fold
+  // controls open the Sessions page — and with a main panel selected the
+  // sidebar track drops to zero so the panel owns the frame. A wide frame
+  // keeps plain sidebar === 0 rules.
   const pageNavigation = narrow && panelActive
-  const sidebarCollapsed = layoutInfo.sidebar === 0 || pageNavigation
+  const sidebarCollapsed = layoutInfo.sidebar === 0 || narrow
   const sidebarPreference = sidebarCollapsed
     ? 0
     : layoutInfo.sidebar === 0 ? SIDEBAR_DEFAULT : layoutInfo.sidebar
