@@ -100,13 +100,12 @@ describe('ui-layout client apply', () => {
     // the frame's back affordance keeps the narrow page paths in sync.
     const injected = (entry.inject as () => { selectPanel(panelId: MainPanelId | null): void })()
     expect(typeof injected.selectPanel).toBe('function')
-    injected.selectPanel(null)
-    // The verb is the service face: an unregistered panel throws (fail loud),
-    // and null returns to the Conversation.
+    // The verb is the service face: an unregistered panel throws (fail loud).
     expect(() => injected.selectPanel('sessions' as MainPanelId)).toThrow('not registered')
-    expect(instance.getSnapshot().panelInfo.activePanelId).toBe(null)
     const handle = entry.store as ReturnType<typeof createLayoutStore>
     const instance = handle.create()
+    injected.selectPanel(null)
+    expect(instance.getSnapshot().panelInfo.activePanelId).toBe(null)
     expect(handle.create()).toBe(instance)
     const layout = ctx.get('layout') as LayoutController
     expect(() => { layout.selectPanel('missing' as MainPanelId) }).toThrow('main panel "missing" is not registered')
