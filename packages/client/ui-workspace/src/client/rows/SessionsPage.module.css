@@ -83,6 +83,27 @@
   color: var(--dsw-alias-label-secondary);
 }
 
+.pageCounts span {
+  white-space: nowrap;
+}
+
+/* Narrow landing header: the heading, the action row, and the full-width
+   search stack instead of sharing one cramped row. */
+@media (max-width: 519px) {
+  .pageHeader {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .pageActions {
+    justify-content: space-between;
+  }
+
+  .pageSearch {
+    flex-basis: auto;
+  }
+}
+
 /* Same 28px circular control as the browser's header actions. */
 .iconButton {
   flex: none;
