@@ -142,7 +142,7 @@ const PANEL_PAGE_SUFFIXES: Readonly<Record<string, string>> = {
  * token URLs survive a page navigation.
  * @returns the bridge passed to the layout controller.
  */
-function createPagePathBridge(): PanelPathBridge {
+export function createPagePathBridge(): PanelPathBridge {
   const baseWith = (suffix: string | null): string => {
     const url = new URL(location.href)
     let pathname = url.pathname

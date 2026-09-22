@@ -66,6 +66,11 @@ function header(
   return typeof value === 'string' ? value : undefined
 }
 
+/** True when the request reached the server over TLS per the forwarding proxy. */
+function requestIsTls(headers: ConnectionTrustRequest['headers']): boolean {
+  return (header(headers, 'x-forwarded-proto') ?? '').split(',')[0]?.trim().toLowerCase() === 'https'
+}
+
 /** Canonical request authority used as the cookie name and signed audience. */
 function requestAuthority(headers: ConnectionTrustRequest['headers']): string | undefined {
   const host = header(headers, 'host')
@@ -118,8 +123,10 @@ function cookieValue(headerValue: string, name: string): string | undefined {
 }
 
 /** Serialize the fixed browser-session attributes; generated names and values are cookie-safe base64url. */
-function sessionCookie(name: string, value: string, expiresAt: number, maxAgeSeconds: number): string {
-  return `${name}=${value}; Max-Age=${String(maxAgeSeconds)}; Path=/; Expires=${new Date(expiresAt).toUTCString()}; HttpOnly; SameSite=Strict`
+function sessionCookie(
+  name: string, value: string, expiresAt: number, maxAgeSeconds: number, secure: boolean,
+): string {
+  return `${name}=${value}; Max-Age=${String(maxAgeSeconds)}; Path=/; Expires=${new Date(expiresAt).toUTCString()}; HttpOnly; SameSite=Strict${secure ? '; Secure' : ''}`
 }
 
 function signature(secret: Buffer, body: string): Buffer {
@@ -261,6 +268,7 @@ export class BrowserAuth {
           'referrer-policy': 'no-referrer',
           'set-cookie': sessionCookie(
             cookieName(authority), value, expiresAt, Math.floor(this.maxAgeMilliseconds / 1000),
+            requestIsTls(req.headers),
           ),
         })
         res.end()

@@ -62,6 +62,7 @@ function createAuth(
 function request(url: string, authority = '127.0.0.1:3080', init?: {
   cookie?: string
   method?: string
+  proto?: string
 }): ConnectionIndexRequest {
   return {
     method: init?.method ?? 'GET',
@@ -69,6 +70,7 @@ function request(url: string, authority = '127.0.0.1:3080', init?: {
     headers: {
       host: authority,
       ...init?.cookie === undefined ? {} : { cookie: init.cookie },
+      ...init?.proto === undefined ? {} : { 'x-forwarded-proto': init.proto },
     },
   }
 }
@@ -150,6 +152,27 @@ describe('BrowserAuth', () => {
     expect(res.state.headers?.['set-cookie']).toMatch(/; HttpOnly; SameSite=Strict$/u)
     const cookie = (res.state.headers?.['set-cookie'] as string).split(';', 1)[0]!
     expect(auth.isAuthenticated(request('/sessions', '127.0.0.1:3080', { cookie }))).toBe(true)
+  })
+
+  it('marks the minted cookie Secure only for TLS-forwarded requests', async () => {
+    const auth = await createAuth(new RecordCredentials())
+    const token = new URL(auth.authenticatedUrl('http://127.0.0.1:3080')).searchParams.get('token')
+
+    const plain = response()
+    expect(auth.authorizeIndex(request(`/sessions?token=${token}`, '127.0.0.1:3080'), plain.value)).toBe(false)
+    expect(plain.state.headers?.['set-cookie']).not.toContain('Secure')
+
+    const tls = response()
+    expect(auth.authorizeIndex(request(`/sessions?token=${token}`, '127.0.0.1:3080', {
+      proto: 'https',
+    }), tls.value)).toBe(false)
+    expect(tls.state.headers?.['set-cookie']).toMatch(/; Secure$/u)
+
+    const chained = response()
+    expect(auth.authorizeIndex(request(`/sessions?token=${token}`, '127.0.0.1:3080', {
+      proto: 'https, http',
+    }), chained.value)).toBe(false)
+    expect(chained.state.headers?.['set-cookie']).toMatch(/; Secure$/u)
   })
 
   it('accepts the cookie for index serving and gives every unauthenticated request one response', async () => {
