@@ -162,8 +162,10 @@ function createPagePathBridge(): PanelPathBridge {
       history.pushState({ dshPagePath: true }, '', baseWith(suffix))
     },
     returnToBase(): void {
-      if (history.state?.dshPagePath === true) history.back()
-      else history.pushState({}, '', baseWith(null))
+      // Replace, never history.back(): the entry behind the page path may be
+      // the deep-link token URL that redirected to the same page, so back()
+      // would land on the page again instead of leaving it.
+      history.replaceState({}, '', baseWith(null))
     },
     panelFromPath(): MainPanelId | null {
       const pathname = location.pathname
