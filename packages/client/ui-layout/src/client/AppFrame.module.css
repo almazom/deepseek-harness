@@ -36,6 +36,38 @@
   overflow: hidden;
 }
 
+/* Narrow page navigation: solid top bar above the panel page. The occupant
+   page keeps its own title; the bar carries only the back control. */
+.pageBar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 4px 8px;
+  padding-top: calc(4px + env(safe-area-inset-top));
+  background: var(--dsw-specific-sidebar-fill);
+  border-bottom: 0.5px solid var(--dsw-alias-border-l3);
+}
+
+.pageBarBack {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 8px;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.pageBarBack:hover {
+  background: var(--dsw-alias-fill-l2);
+}
+
 /* Drag handles are frame children (columns clip overflow): an 8px hit strip
    centered on the column border via inline left, above column content. No
    handle draws a visible pill: the details column was the only one that did,

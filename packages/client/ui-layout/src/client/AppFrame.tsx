@@ -25,19 +25,65 @@ import type {
 } from '@deepseek-ai/dsh-client-ui-slots'
 import { computeColumns, RIGHTBAR_DEFAULT_RATIO, SIDEBAR_AUTO_COLLAPSE, SIDEBAR_DEFAULT } from './columns.ts'
 import { DocumentTitle } from './DocumentTitle.tsx'
+import type { MainPanelId } from './service.ts'
 import type { createLayoutStore } from './stores.ts'
 import css from './AppFrame.module.css'
 
-/** Full composed props: runtime share + child-slot render share + store share. */
+/** Injected verbs (assembled in apply): panel selection rides the layout
+ * service so the narrow URL bridge stays the single owner of page paths. */
+export interface AppFrameInjected {
+  /**
+   * Select a global panel, or null to show the Conversation.
+   * @param panelId - registered main key, or null.
+   */
+  selectPanel(panelId: MainPanelId | null): void
+}
+
+/** Full composed props: runtime share + child-slot render share + store share + injected verbs. */
 export type AppFrameProps =
   & PropsRuntime<'root'>
   & PropsRenderSlots<'sidebar' | 'main' | 'rightbar' | 'shell.overlay'>
   & PropsStore<ReturnType<typeof createLayoutStore>>
   & PropsLocale<'common'>
+  & AppFrameInjected
 
-/** Center column grid item (session-body building block). */
-function CenterColumn(props: { children?: ReactNode }) {
-  return <div className={css.centerCol}>{props.children}</div>
+/** Center column grid item (session-body building block); a narrow page bar rides above the occupant. */
+function CenterColumn(props: { children?: ReactNode; pageBar?: ReactNode }) {
+  return (
+    <div className={css.centerCol}>
+      {props.pageBar}
+      {props.children}
+    </div>
+  )
+}
+
+/**
+ * Narrow page-navigation bar: the panel page's in-page back affordance. The
+ * occupant page keeps its own title; the bar carries only the back control.
+ */
+function PageBar(props: { onBack: () => void; backLabel: string }) {
+  return (
+    <div className={css.pageBar}>
+      <button
+        type="button"
+        className={css.pageBarBack}
+        aria-label={props.backLabel}
+        title={props.backLabel}
+        onClick={props.onBack}
+      >
+        <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+          <path
+            d="M10.5 2.5 5 8l5.5 5.5"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </button>
+    </div>
+  )
 }
 
 /** Subscribe to the main key without subscribing the column frame to each panel id. */
@@ -128,6 +174,7 @@ export function AppFrame({
   usePanelInfo,
   actions,
   renderSlot,
+  selectPanel,
   t,
 }: AppFrameProps) {
   const layoutInfo = useStore(state => state.layoutInfo)
@@ -213,6 +260,7 @@ export function AppFrame({
     <MainPanel usePanelInfo={usePanelInfo} renderSlot={renderSlot} />
   ), [usePanelInfo, renderSlot])
   const overlays = useMemo(() => renderSlot('shell.overlay', {}), [renderSlot])
+  const onPanelBack = useCallback(() => { selectPanel(null) }, [selectPanel])
 
   return (
     <div
@@ -237,7 +285,9 @@ export function AppFrame({
         {sidebar}
       </div>
       <>
-        <CenterColumn>{main}</CenterColumn>
+        <CenterColumn pageBar={pageNavigation ? <PageBar onBack={onPanelBack} backLabel={t('back')} /> : undefined}>
+          {main}
+        </CenterColumn>
         <RightbarColumn>
           {renderSlot('rightbar', { width: normal.rightbar, viewportWidth: viewport, canShow: normal.rightbar > 0 })}
         </RightbarColumn>

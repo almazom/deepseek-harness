@@ -13,7 +13,8 @@ import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-client-ui-session/client'
 import type {} from '@deepseek-ai/dsh-client-ui-theme/client'
 import type { HostObservable, SnapshotSelectorHook } from '@deepseek-ai/dsh-client-ui-slots'
-import type { PanelInfo } from './service.ts'
+import type { PanelInfo, PanelPathBridge } from './service.ts'
+import type { MainPanelId } from './service.ts'
 import { SIDEBAR_AUTO_COLLAPSE } from './columns.ts'
 import { AppFrame } from './AppFrame.tsx'
 import { createLayoutStore } from './stores.ts'
@@ -126,6 +127,61 @@ export interface RightbarOwnerProps {
 export const inject = ['slots', 'theme', 'locale']
 
 /**
+ * Panel page-path suffixes for narrow-frame navigation: selecting the panel
+ * reads as its own clean page (`<base>/<suffix>`) rather than an unfolded
+ * sidebar. Wide frames keep the sidebar model and never touch the path.
+ */
+const PANEL_PAGE_SUFFIXES: Readonly<Record<string, string>> = {
+  sessions: 'sessions',
+}
+
+/**
+ * Build the narrow-frame URL bridge over the browser history API. The bridge
+ * is pure routing glue: it never touches layout state (the controller and the
+ * popstate/boot handlers own that) and preserves the query string so auth
+ * token URLs survive a page navigation.
+ * @returns the bridge passed to the layout controller.
+ */
+function createPagePathBridge(): PanelPathBridge {
+  const baseWith = (suffix: string | null): string => {
+    const url = new URL(location.href)
+    let pathname = url.pathname
+    for (const pathSuffix of Object.values(PANEL_PAGE_SUFFIXES)) {
+      const withSlash = `/${pathSuffix}`
+      if (pathname === withSlash) pathname = '/'
+      else if (pathname.endsWith(withSlash)) pathname = pathname.slice(0, pathname.length - withSlash.length)
+    }
+    if (suffix !== null) pathname = pathname === '/' ? `/${suffix}` : `${pathname}/${suffix}`
+    url.pathname = pathname
+    return url.toString()
+  }
+  return {
+    push(panelId): void {
+      const suffix = PANEL_PAGE_SUFFIXES[panelId as string]
+      if (suffix === undefined) return
+      history.pushState({ dshPagePath: true }, '', baseWith(suffix))
+    },
+    returnToBase(): void {
+      if (history.state?.dshPagePath === true) history.back()
+      else history.pushState({}, '', baseWith(null))
+    },
+    panelFromPath(): MainPanelId | null {
+      const pathname = location.pathname
+      for (const [panelId, pathSuffix] of Object.entries(PANEL_PAGE_SUFFIXES)) {
+        if (pathname === `/${pathSuffix}` || pathname.endsWith(`/${pathSuffix}`)) {
+          return panelId as MainPanelId
+        }
+      }
+      return null
+    },
+    enabled(): boolean {
+      // Narrow frames only: the wide layout keeps the sidebar page model.
+      return window.innerWidth < SIDEBAR_AUTO_COLLAPSE
+    },
+  }
+}
+
+/**
  * Client plugin body: provide ctx.layout, then one register() call — AppFrame
  * into 'root' with the four child-slot declarations, the layout store seat,
  * and the shared root instance supplying commands and the panel-info source.
@@ -136,6 +192,7 @@ export function apply(ctx: ClientContext): void {
     const handle = createLayoutStore()
     const instance = handle.create()
     const store: typeof handle = { ...handle, create: () => instance }
+    const pagePaths = createPagePathBridge()
     const layout = new LayoutController(
       instance.actions,
       id => ctx.slots.entries('main').some(entry => entry.options.key === id),
@@ -145,10 +202,25 @@ export function apply(ctx: ClientContext): void {
         getSnapshot: () => instance.getSnapshot().layoutInfo.viewportWidth < SIDEBAR_AUTO_COLLAPSE,
         subscribe: listener => instance.subscribe(listener),
       },
+      pagePaths,
     )
+    // Narrow deep link / browser back: the path is the source. Runs on every
+    // main-slot mutation too — a page path that names a panel not yet
+    // registered resolves on the registration pass (idempotent).
+    const applyPanelFromPath = (): void => {
+      if (!pagePaths.enabled()) return
+      const active = instance.getSnapshot().panelInfo.activePanelId
+      const fromPath = pagePaths.panelFromPath()
+      if (fromPath === active) return
+      if (fromPath !== null && !ctx.slots.entries('main').some(entry => entry.options.key === fromPath)) return
+      instance.actions.selectPanel(fromPath)
+    }
+    const onPopState = (): void => { applyPanelFromPath() }
+    window.addEventListener('popstate', onPopState)
     const retainMainPanels = (): void => {
       instance.actions.retainMainPanels(ctx.slots.entries('main').flatMap(entry =>
         entry.options.key === undefined ? [] : [entry.options.key]))
+      applyPanelFromPath()
     }
     const panelInfo: HostObservable<PanelInfo> = {
       getSnapshot: () => instance.getSnapshot().panelInfo,
@@ -166,10 +238,15 @@ export function apply(ctx: ClientContext): void {
         'shell.overlay': { kind: 'list', scope: 'root' },
       },
       store,
+      inject: {
+        selectPanel: (panelId: MainPanelId | null): void => { ctx.layout.selectPanel(panelId) },
+      },
     }, AppFrame)
     const disposePanels = ctx.slots.subscribe('main', retainMainPanels)
     retainMainPanels()
+    applyPanelFromPath()
     return () => {
+      window.removeEventListener('popstate', onPopState)
       layout.dispose()
       disposePanels()
       disposeRegistration()
