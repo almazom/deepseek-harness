@@ -238,9 +238,9 @@ export function apply(ctx: ClientContext): void {
         'shell.overlay': { kind: 'list', scope: 'root' },
       },
       store,
-      inject: {
+      inject: () => ({
         selectPanel: (panelId: MainPanelId | null): void => { ctx.layout.selectPanel(panelId) },
-      },
+      }),
     }, AppFrame)
     const disposePanels = ctx.slots.subscribe('main', retainMainPanels)
     retainMainPanels()

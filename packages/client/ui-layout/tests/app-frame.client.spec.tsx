@@ -87,6 +87,7 @@ function mountFrame(windowWidth = frameWidth) {
     ...(workspacesReady ? {} : { state: 'loading' as const, phase: 'pending' as const }),
   }
   const useStore = bindSnapshotSelector(instance)
+  const selectPanel = vi.fn()
   const usePanelInfo = bindSnapshotSelector({
     getSnapshot: () => instance.getSnapshot().panelInfo,
     subscribe: listener => instance.subscribe(listener),
@@ -101,13 +102,14 @@ function mountFrame(windowWidth = frameWidth) {
       useSessionPendingInteraction={useSessionPendingInteraction}
       useResource={useResource}
       useWorkspaces={sel => sel(workspaceState)}
+      selectPanel={selectPanel}
       t={key => key === 'brand.localBuild' ? 'DSH Local Build' : key}
     />
   )
   const utils = render(element())
   const frame = utils.container.firstElementChild as HTMLElement
   return {
-    ...utils, instance, frame, slotCalls,
+    ...utils, instance, frame, slotCalls, selectPanel,
     rerenderFrame: () => { utils.rerender(element()) },
     rightOwner: () => slotCalls.findLast(c => c.key === 'rightbar')!.props as RightbarOwnerProps,
     sidebarOwner: () => slotCalls.findLast(c => c.key === 'sidebar')!.props as SidebarOwnerProps,
@@ -367,6 +369,22 @@ describe('AppFrame narrow page navigation', () => {
     act(() => { instance.actions.selectPanel(null) })
     expect(tracks(frame)).toEqual([56, 0])
     expect(getByTestId('main-content').getAttribute('data-entry-key')).toBe('conversation')
+  })
+
+  it('renders the page back bar at narrow page navigation and routes back through the service', () => {
+    frameWidth = 800
+    const { instance, selectPanel, getByLabelText } = mountFrame()
+    act(() => { instance.actions.selectPanel('panel-a' as MainPanelId) })
+    const back = getByLabelText('back')
+    expect(back).toBeTruthy()
+    act(() => { (back as HTMLElement).click() })
+    expect(selectPanel).toHaveBeenCalledWith(null)
+  })
+
+  it('keeps the page back bar off the wide sidebar model', () => {
+    const { instance, queryByLabelText } = mountFrame()
+    act(() => { instance.actions.selectPanel('panel-a' as MainPanelId) })
+    expect(queryByLabelText('back')).toBeNull()
   })
 
   it('keeps the wide sidebar track while a panel is active on a wide frame', () => {
