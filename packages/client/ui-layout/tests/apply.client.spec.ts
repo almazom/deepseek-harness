@@ -96,7 +96,15 @@ describe('ui-layout client apply', () => {
     const fiber = ctx.plugin({ inject: [...inject], apply })
     await fiber.await()
     const entry = slots.entries('root')[0]!
-    expect(entry.inject).toBeUndefined()
+    // The root inject face routes panel verbs through the layout service so
+    // the frame's back affordance keeps the narrow page paths in sync.
+    const injected = (entry.inject as () => { selectPanel(panelId: MainPanelId | null): void })()
+    expect(typeof injected.selectPanel).toBe('function')
+    injected.selectPanel(null)
+    // The verb is the service face: an unregistered panel throws (fail loud),
+    // and null returns to the Conversation.
+    expect(() => injected.selectPanel('sessions' as MainPanelId)).toThrow('not registered')
+    expect(instance.getSnapshot().panelInfo.activePanelId).toBe(null)
     const handle = entry.store as ReturnType<typeof createLayoutStore>
     const instance = handle.create()
     expect(handle.create()).toBe(instance)
