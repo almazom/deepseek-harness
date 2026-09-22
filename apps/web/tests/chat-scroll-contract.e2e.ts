@@ -290,6 +290,38 @@ async function openSeed(page: Page, fixture: ChatScrollFixture, tailMarker?: str
   await nextPaint(page)
 }
 
+async function openSeedViaPage(page: Page, fixture: ChatScrollFixture, tailMarker?: string): Promise<void> {
+  // The Sessions page mounts the browsing core with its search field always
+  // expanded, so the page round trip drives the textbox directly; the
+  // conversation's own search stays collapsed behind its header action and
+  // the page covers it while a panel is active.
+  const search = page.getByRole('textbox', { name: 'Search sessions...', exact: true })
+  // Under load the page shell can render well before the core's search field
+  // settles; the long window absorbs that mount lag without weakening the
+  // later result assertions.
+  await search.fill(fixture.markers.user(1), { timeout: 60_000 })
+  // The results list still shows the previous query's single row until the
+  // search settles, so a bare count poll would click that stale row; wait for
+  // the row that carries this query's marker instead.
+  const results = page.getByRole('tree', { name: 'Search results' })
+    .getByRole('treeitem')
+    .filter({ hasText: fixture.markers.user(1) })
+  await expect.poll(() => results.count(), { timeout: 60_000 }).toBe(1)
+  await results.click()
+  const chatTab = page.getByRole('tab', { name: 'Chat', exact: true })
+  await chatTab.waitFor({ timeout: 30_000 })
+  // Reopening a session restores its persisted View preference, so the Chat
+  // tab can come back unselected after a previous visit left Trajectory
+  // active; the anchored transcript is the Chat flow, so re-select it before
+  // any Chat-side wait or geometry assertion (mirrors openSeed's expanded
+  // check for the search action).
+  if (await chatTab.getAttribute('aria-selected') !== 'true') await chatTab.click()
+  if (tailMarker !== undefined) {
+    await page.getByText(tailMarker, { exact: false }).last().waitFor({ timeout: 30_000 })
+  }
+  await nextPaint(page)
+}
+
 async function wheelTranscript(page: Page, deltaY: number): Promise<void> {
   const box = await page.locator('[data-conversation-scroll]').boundingBox()
   if (box === null) throw new Error('conversation scrollport has no layout box')
@@ -774,20 +806,27 @@ describe('web e2e: long Chat scroll contract', () => {
       await world.page.getByRole('tab', { name: 'Trajectory', exact: true }).click()
       await world.page.getByLabel('Trajectory timeline').waitFor({ timeout: 30_000 })
       await world.page.setViewportSize({ width: 700, height: 900 })
-      // The narrow breakpoint auto-collapses the sidebar. Re-open it because
-      // this scenario switches sessions while pinning the narrow Chat scroll owner.
+      // Narrow frames navigate by page: the shell toggle opens the Sessions
+      // page (the sidebar column yields the frame), the page's search drives
+      // the session switch, and opening a row returns to the conversation
+      // with the narrow Chat scroll owner intact.
       await world.page.getByRole('button', { name: 'Open sidebar', exact: true }).click()
-      await world.page.getByRole('tab', { name: 'Chat', exact: true }).click()
-      await nextPaint(world.page)
+      await openSeedViaPage(
+        world.page,
+        RESTORE_FIXTURE_A,
+        RESTORE_FIXTURE_A.markers.assistant(RESTORE_FIXTURE_A.turns),
+      )
       await expectSameFlowTop(world.page, sessionAnchor, RESPONSIVE_REFLOW_TOLERANCE)
       const narrowSessionAnchor = await visibleFlowAnchor(world.page)
 
-      await openSeed(
+      await world.page.getByRole('button', { name: 'Open sidebar', exact: true }).click()
+      await openSeedViaPage(
         world.page,
         RESTORE_FIXTURE_B,
         RESTORE_FIXTURE_B.markers.assistant(RESTORE_FIXTURE_B.turns),
       )
-      await openSeed(
+      await world.page.getByRole('button', { name: 'Open sidebar', exact: true }).click()
+      await openSeedViaPage(
         world.page,
         RESTORE_FIXTURE_A,
       )
