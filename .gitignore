@@ -64,3 +64,6 @@ native/system/test/bin/
 /video-demux/
 /.goal-evidence-batch2/
 /dsh-login-recovered.png
+
+# ZCode session scratch dumps
+/session-ses_*.md
