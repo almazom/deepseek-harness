@@ -19,7 +19,7 @@ import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { WorkspaceBrowserProps } from '../contract/slots.ts'
 import type { SessionNode, SessionOrderBy } from '../tree.ts'
 import {
-  deriveFlat, deriveGroups, deriveSearchResults, owningGroupKey, UNGROUPED_KEY,
+  deriveDayGroups, deriveFlat, deriveGroups, deriveSearchResults, owningGroupKey, UNGROUPED_KEY,
 } from '../tree.ts'
 import { ProjectRowItem, SearchResultItem, SessionNodeItem } from './Rows.tsx'
 import { FLAT_SESSION_ORDER_KEY, todayBucket, type SessionDayBucket } from '../stores.ts'
@@ -238,6 +238,11 @@ type SessionTreeProps = Pick<
   revealSessionId?: SessionId | undefined
   /** Acknowledge that the chosen Session row has been revealed. */
   onSessionRevealed: (sessionId: SessionId) => void
+  /**
+   * Paging window (the landing surface): rows outside the set stay unrendered.
+   * `undefined` renders every derived row (the sidebar region).
+   */
+  visibleIds?: ReadonlySet<SessionNode['id']> | undefined
 }
 
 /** The scrolling session tree; unmounting drops the sessions subscription and expand-all state. */
@@ -248,7 +253,7 @@ function SessionTree({
   insertWorkspaceBefore, insertSessionBefore, orderBy, pinnedIds, onPinToggle,
   groupExpansion, setGroupExpanded,
   sessionOrderByAccount, sessionUpdatedAtByAccount, syncSessionOrderAccount, setSessionOrder, home, t,
-  revealSessionId, onSessionRevealed,
+  revealSessionId, onSessionRevealed, visibleIds,
 }: SessionTreeProps) {
   const panelActive = usePanelInfo(info => info.activePanelId !== null)
   const list = useSessions(s => s)
@@ -327,6 +332,15 @@ function SessionTree({
         : { ungroupedOrder: sessionOrderByAccount[UNGROUPED_KEY] }),
     }),
     [list, orderedWorkspaces, archivedSessionIds, pendingInteractions, expandedGroups, sessionOrderByAccount],
+  )
+  const shownGroups = useMemo(
+    () => visibleIds === undefined
+      ? groups
+      : groups.flatMap((group) => {
+        const sessions = group.sessions.filter(node => visibleIds.has(node.id))
+        return sessions.length === 0 ? [] : [{ ...group, sessions }]
+      }),
+    [groups, visibleIds],
   )
   useEffect(() => {
     if (revealGroup === undefined || groupExpansion[revealGroup] === true) return
@@ -425,13 +439,17 @@ function SessionTree({
         role="tree"
         aria-label={t('section.sessions')}
       >
-        {groups.length === 0 && (
+        {shownGroups.length === 0 && (
           <div className={css.empty}>{t('empty.none')}</div>
         )}
-        {groups.map((group) => {
+        {shownGroups.map((group) => {
           const workspaceId = group.workspaceId
           const collapsed = collapsedSessionRows(group.sessions, pinnedIds)
           const sessionsExpanded = expandedSessionGroups.includes(group.key)
+          // The pager window already bounds a paged group's rows, so the
+          // five-row overflow gate stays a sidebar-only behavior.
+          const renderedSessions = visibleIds === undefined ? collapsed.rows : group.sessions
+          const hiddenCount = visibleIds === undefined ? collapsed.hiddenCount : 0
           const workspaceMarker = workspaceId !== undefined && workspaceDrag?.over?.id === workspaceId
             ? workspaceDrag.over.half
             : null
@@ -519,7 +537,7 @@ function SessionTree({
               />
               {sectionsOf(sessionsExpanded
                 ? group.sessions
-                : collapsed.rows, pinnedIds, now).map(section => (
+                : renderedSessions, pinnedIds, now).map(section => (
                 <Fragment key={section.bucket}>
                   {section.rows.length > 0 && (
                     <div
@@ -581,7 +599,7 @@ function SessionTree({
                   })}
                 </Fragment>
               ))}
-              {collapsed.hiddenCount > 0 && (
+              {hiddenCount > 0 && (
                 <button
                   type="button"
                   className={css.sessionOverflowButton}
@@ -590,7 +608,7 @@ function SessionTree({
                 >
                   {sessionsExpanded
                     ? t('sessions.collapse')
-                    : t('sessions.expand', { n: collapsed.hiddenCount })}
+                    : t('sessions.expand', { n: hiddenCount })}
                 </button>
               )}
             </div>
@@ -607,7 +625,7 @@ function FlatList({
   useSessions, useSessionPendingInteraction, open, forkSession, onSessionRename, onSessionArchive,
   archivedSessionIds, usePanelInfo,
   orderBy, sessionOrderByAccount, sessionUpdatedAtByAccount, syncSessionOrderAccount, setSessionOrder,
-  revealSessionId, onSessionRevealed, t,
+  revealSessionId, onSessionRevealed, visibleIds, t,
 }: Pick<
   SessionTreeProps,
   | 'useSessions'
@@ -625,6 +643,7 @@ function FlatList({
   | 'setSessionOrder'
   | 'revealSessionId'
   | 'onSessionRevealed'
+  | 'visibleIds'
   | 't'
 >) {
   const panelActive = usePanelInfo(info => info.activePanelId !== null)
@@ -662,6 +681,11 @@ function FlatList({
         return row === undefined ? [] : [row]
       })
   }, [baseRows, sessionOrderByAccount, sessionIds])
+  // Drag/order bookkeeping keeps the full `rows`; only the render window shrinks.
+  const shownRows = useMemo(
+    () => visibleIds === undefined ? rows : rows.filter(row => visibleIds.has(row.id)),
+    [rows, visibleIds],
+  )
   const [drag, setDrag] = useState<DragState | null>(null)
   const dropCommitted = useRef(false)
   useNativeDragAcceptance(drag !== null)
@@ -685,10 +709,10 @@ function FlatList({
   return (
     <div className={clsx(css.treeBody, css.wide)}>
       <div className={clsx(css.list, css.flatList)} role="tree" aria-label={t('section.sessions')}>
-        {rows.length === 0 && (
+        {shownRows.length === 0 && (
           <div className={css.empty}>{t('empty.none')}</div>
         )}
-        {rows.map((node) => {
+        {shownRows.map((node) => {
           const active = drag !== null
           return (
             <SessionNodeItem
@@ -727,6 +751,90 @@ function FlatList({
             />
           )
         })}
+      </div>
+      <span className={css.fade} />
+    </div>
+  )
+}
+
+/** Day-group header text: localized timeline names, then the month label. */
+function dayGroupLabel(dayKey: string | undefined, t: WorkspaceBrowserProps['t']): string {
+  if (dayKey === 'today') return t('day.today')
+  if (dayKey === 'yesterday') return t('day.yesterday')
+  if (dayKey === 'twoDaysAgo') return t('day.twoDaysAgo')
+  if (dayKey === 'threeDaysAgo') return t('day.threeDaysAgo')
+  if (dayKey === 'lastWeek') return t('day.lastWeek')
+  if (dayKey === 'lastMonth') return t('day.lastMonth')
+  if (dayKey === undefined || !dayKey.startsWith('month:')) return ''
+  const [year = 0, month = 1] = dayKey.slice('month:'.length).split('-').map(Number)
+  return new Intl.DateTimeFormat(undefined, { month: 'long', year: 'numeric' })
+    .format(new Date(year, month - 1, 1))
+}
+
+/**
+ * The "By day" body: visible top-level sessions bucketed under their local
+ * calendar day (Today, Yesterday, then dated days), always expanded, newest
+ * first per day. Rows are read-order (no drag) and show the topic alone: the
+ * day is the grouping, and Workspace identity belongs to the Workspace mode.
+ */
+function DayList({
+  useSessions, useSessionPendingInteraction, open, forkSession, onSessionRename, onSessionArchive,
+  archivedSessionIds, usePanelInfo, visibleIds, t,
+}: Pick<
+  SessionTreeProps,
+  | 'useSessions'
+  | 'useSessionPendingInteraction'
+  | 'open'
+  | 'forkSession'
+  | 'onSessionRename'
+  | 'onSessionArchive'
+  | 'archivedSessionIds'
+  | 'usePanelInfo'
+  | 'visibleIds'
+  | 't'
+>) {
+  const panelActive = usePanelInfo(info => info.activePanelId !== null)
+  const list = useSessions(s => s)
+  const pendingInteractions = useSessionPendingInteraction(s => s)
+  const groups = useMemo(
+    () => deriveDayGroups(list, archivedSessionIds, pendingInteractions, Date.now()),
+    [list, archivedSessionIds, pendingInteractions],
+  )
+  const shownGroups = useMemo(
+    () => visibleIds === undefined
+      ? groups
+      : groups.flatMap((group) => {
+        const sessions = group.sessions.filter(node => visibleIds.has(node.id))
+        return sessions.length === 0 ? [] : [{ ...group, sessions }]
+      }),
+    [groups, visibleIds],
+  )
+  const now = Date.now()
+  return (
+    <div className={clsx(css.treeBody, css.wide)}>
+      <div className={clsx(css.list, css.flatList)} role="tree" aria-label={t('section.sessions')}>
+        {shownGroups.length === 0 && (
+          <div className={css.empty}>{t('empty.none')}</div>
+        )}
+        {shownGroups.map(group => (
+          <Fragment key={group.key}>
+            <div className={css.dayHeader}>{dayGroupLabel(group.dayKey, t)}</div>
+            {group.sessions.map(node => (
+              <SessionNodeItem
+                key={node.id}
+                node={node}
+                currentId={panelActive ? undefined : list.current}
+                now={now}
+                onOpen={open}
+                onRename={onSessionRename}
+                onFork={forkSession}
+                onArchive={onSessionArchive}
+                flat
+                t={t}
+              />
+            ))}
+          </Fragment>
+        ))}
       </div>
       <span className={css.fade} />
     </div>
@@ -832,6 +940,12 @@ type SessionBrowserCoreProps =
   & {
     /** Wide shell state: the list bodies render only wide, the dialogs always. */
     wide: boolean
+    /**
+     * Page the non-search bodies through a recency-ordered window of
+     * `pageSize` session rows (the full-page landing surface). Absent keeps
+     * the unbounded render (the sidebar region relies on its own group caps).
+     */
+    paging?: { readonly pageSize: number }
     /** Sanitized, trimmed search query; '' selects the non-search bodies. */
     normalizedQuery: string
     /** Replace the search query (a search-result selection clears it). */
@@ -848,7 +962,7 @@ type SessionBrowserCoreProps =
     /** Registry-global archive set (hidden rows). */
     archivedSessionIds: readonly SessionNode['id'][]
     /** Viewing-store grouping mode shared with the section-header label. */
-    groupBy: 'workspace' | 'flat'
+    groupBy: 'workspace' | 'day' | 'flat'
     /** Session order behavior shared with the view-options menu. */
     orderBy: SessionOrderBy
     /** Explicit persisted zero-or-five-session state by Workspace group. */
@@ -870,6 +984,7 @@ type SessionBrowserCoreProps =
  */
 export function SessionBrowserCore({
   wide,
+  paging,
   normalizedQuery,
   onQueryChange,
   onSearchExpandedChange,
@@ -943,6 +1058,34 @@ export function SessionBrowserCore({
   })
   const [revealSessionId, setRevealSessionId] = useState<SessionId | undefined>(undefined)
   const composingRef = useRef(false)
+
+  // Recency paging: the landing surface bounds its row render to one window
+  // of the recency-ordered top-level rows; every non-search body then shows
+  // only that window, so grouping stays purely presentational.
+  const pagingActive = wide && paging !== undefined && normalizedQuery === ''
+  const pageSize = paging?.pageSize ?? 12
+  const [page, setPage] = useState(0)
+  const pagingList = useSessions(s => s)
+  const pagingPending = useSessionPendingInteraction(s => s)
+  const pagingIds = useMemo(
+    () => pagingActive
+      ? deriveFlat(pagingList, archivedSessionIds, pagingPending).map(node => node.id)
+      : [],
+    [pagingActive, pagingList, archivedSessionIds, pagingPending],
+  )
+  const pageCount = Math.max(1, Math.ceil(pagingIds.length / pageSize))
+  const safePage = Math.min(page, pageCount - 1)
+  const visibleIds = useMemo(
+    () => pagingActive
+      ? new Set(pagingIds.slice(safePage * pageSize, (safePage + 1) * pageSize))
+      : undefined,
+    [pagingActive, pagingIds, safePage, pageSize],
+  )
+  useEffect(() => {
+    if (!pagingActive || revealSessionId === undefined) return
+    const index = pagingIds.indexOf(revealSessionId)
+    if (index >= 0) setPage(Math.floor(index / pageSize))
+  }, [pagingActive, revealSessionId, pagingIds, pageSize])
 
   const openSearchResult = (sessionId: SessionId): void => {
     setRevealSessionId(sessionId)
@@ -1125,6 +1268,7 @@ export function SessionBrowserCore({
               open={open} forkSession={forkSession}
               onSessionRename={onSessionRename} onSessionArchive={onSessionArchive}
               archivedSessionIds={archivedSessionIds}
+              visibleIds={visibleIds}
               orderBy={orderBy}
               sessionOrderByAccount={sessionOrderByAccount}
               sessionUpdatedAtByAccount={sessionUpdatedAtByAccount}
@@ -1135,48 +1279,87 @@ export function SessionBrowserCore({
               t={t}
             />
           )
-          : (
-            <SessionTree
-              usePanelInfo={usePanelInfo}
-              useSessions={useSessions}
-              useSessionPendingInteraction={useSessionPendingInteraction}
-              onSessionRename={onSessionRename}
-              onSessionArchive={onSessionArchive}
-              forkSession={forkSession}
-              workspaces={workspaces}
-              workspaceReady={workspacePhase === 'ready' && workspaceStreamState !== 'loading'}
-              groupExpansion={groupExpansion}
-              setGroupExpanded={actions.setGroupExpanded}
-              sessionOrderByAccount={sessionOrderByAccount}
-              sessionUpdatedAtByAccount={sessionUpdatedAtByAccount}
-              syncSessionOrderAccount={actions.syncSessionOrderAccount}
-              setSessionOrder={actions.setSessionOrder}
-              pinnedIds={pinnedIds}
-              onPinToggle={(sessionId, pinned) => {
-                if (pinned) actions.pinSession(sessionId)
-                else actions.unpinSession(sessionId)
-              }}
-              archivedSessionIds={archivedSessionIds}
-              startSession={startSession}
-              open={open}
-              insertWorkspaceBefore={insertWorkspaceBefore}
-              insertSessionBefore={insertSessionBefore}
-              orderBy={orderBy}
-              revealSessionId={revealSessionId}
-              onSessionRevealed={acknowledgeSessionReveal}
-              home={home}
-              t={t}
-              onRenameRequest={(workspaceId, currentTitle) => {
-                setRenameTarget({ workspaceId, currentTitle })
-                setRenameDraft(currentTitle)
-                setRenameError(null)
-              }}
-              onDeleteRequest={(workspaceId, title) => {
-                setDeleteTarget({ workspaceId, title })
-                setDeleteError(null)
-              }}
-            />
-          ))}
+          : groupBy === 'day'
+            ? (
+              <DayList
+                usePanelInfo={usePanelInfo}
+                useSessions={useSessions} useSessionPendingInteraction={useSessionPendingInteraction}
+                open={open} forkSession={forkSession}
+                onSessionRename={onSessionRename} onSessionArchive={onSessionArchive}
+                archivedSessionIds={archivedSessionIds}
+                visibleIds={visibleIds}
+                t={t}
+              />
+            )
+            : (
+              <SessionTree
+                usePanelInfo={usePanelInfo}
+                useSessions={useSessions}
+                useSessionPendingInteraction={useSessionPendingInteraction}
+                onSessionRename={onSessionRename}
+                onSessionArchive={onSessionArchive}
+                forkSession={forkSession}
+                workspaces={workspaces}
+                visibleIds={visibleIds}
+                workspaceReady={workspacePhase === 'ready' && workspaceStreamState !== 'loading'}
+                groupExpansion={groupExpansion}
+                setGroupExpanded={actions.setGroupExpanded}
+                sessionOrderByAccount={sessionOrderByAccount}
+                sessionUpdatedAtByAccount={sessionUpdatedAtByAccount}
+                syncSessionOrderAccount={actions.syncSessionOrderAccount}
+                setSessionOrder={actions.setSessionOrder}
+                pinnedIds={pinnedIds}
+                onPinToggle={(sessionId, pinned) => {
+                  if (pinned) actions.pinSession(sessionId)
+                  else actions.unpinSession(sessionId)
+                }}
+                archivedSessionIds={archivedSessionIds}
+                startSession={startSession}
+                open={open}
+                insertWorkspaceBefore={insertWorkspaceBefore}
+                insertSessionBefore={insertSessionBefore}
+                orderBy={orderBy}
+                revealSessionId={revealSessionId}
+                onSessionRevealed={acknowledgeSessionReveal}
+                home={home}
+                t={t}
+                onRenameRequest={(workspaceId, currentTitle) => {
+                  setRenameTarget({ workspaceId, currentTitle })
+                  setRenameDraft(currentTitle)
+                  setRenameError(null)
+                }}
+                onDeleteRequest={(workspaceId, title) => {
+                  setDeleteTarget({ workspaceId, title })
+                  setDeleteError(null)
+                }}
+              />
+            ))}
+
+      {pagingActive && pageCount > 1 && (
+        <nav className={css.sessionsPager} aria-label={t('sessions.pager.aria')}>
+          <button
+            type="button"
+            className={css.pagerStep}
+            disabled={safePage === 0}
+            aria-label={t('sessions.pager.prev')}
+            onClick={() => { setPage(safePage - 1) }}
+          >‹</button>
+          <span className={css.pagerStatus} role="status">
+            {t('sessions.pager.status', {
+              from: safePage * pageSize + 1,
+              to: Math.min((safePage + 1) * pageSize, pagingIds.length),
+              total: pagingIds.length,
+            })}
+          </span>
+          <button
+            type="button"
+            className={css.pagerStep}
+            disabled={safePage >= pageCount - 1}
+            aria-label={t('sessions.pager.next')}
+            onClick={() => { setPage(safePage + 1) }}
+          >›</button>
+        </nav>
+      )}
 
       <Modal
         open={renameTarget !== null}

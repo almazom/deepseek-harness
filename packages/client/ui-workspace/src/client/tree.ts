@@ -55,6 +55,8 @@ export interface SessionNode {
   /** The current list projection contains at least one active Schedule record. */
   hasActiveSchedule: boolean
   updatedAt: number
+  /** Owning Workspace display label; set only for day-grouped rows whose group is not a Workspace. */
+  workspaceLabel?: string
 }
 
 /** Session order selected by the Workspace browser. */
@@ -75,6 +77,8 @@ export interface GroupNode {
   expanded: boolean
   /** The group contains the selected session (active folder tint; supplied here so the renderer never scans). */
   containsCurrent: boolean
+  /** Stable day-bucket key ('today' | 'yesterday' | 'YYYY-MM-DD'); set only for day groups. */
+  dayKey?: string
   /** Visible session rows (empty while the group is folded). */
   sessions: readonly SessionNode[]
 }
@@ -115,6 +119,8 @@ interface Group {
   cwd: string | undefined
   createdAt: number | undefined
   label: string
+  /** Stable day-bucket key ('today' | 'yesterday' | 'YYYY-MM-DD'); set only for day groups. */
+  dayKey?: string
   sessions: SessionSummary[]
 }
 
@@ -259,6 +265,7 @@ function sessionNode(
   s: SessionSummary,
   descendants: ReadonlyMap<SessionId, SubagentDescendantSummary>,
   pendingInteractions: SessionPendingInteractions,
+  workspaceLabel?: string,
 ): SessionNode {
   const pendingInteraction = visiblePendingKind(pendingInteractions.get(s.id)?.kind)
   return {
@@ -270,6 +277,7 @@ function sessionNode(
     completed: s.completed === true,
     hasActiveSchedule: hasActiveSchedule(s),
     updatedAt: s.updatedAt,
+    ...(workspaceLabel === undefined ? {} : { workspaceLabel }),
     ...(pendingInteraction === undefined ? {} : { pendingInteraction }),
   }
 }
@@ -320,6 +328,99 @@ export function deriveGroups(
     })
   }
   return groups
+}
+
+/**
+ * Timeline bucket of an instant relative to `now`, in local calendar days:
+ * Today, Yesterday, two and three days ago, then Last week (4–13 days ago),
+ * Last month (14–60 days ago), and one `month:YYYY-MM` bucket per older
+ * calendar month. The named set mirrors the remote-landing timeline idiom.
+ */
+export function dayBucketKey(at: number, now: number): string {
+  const startOfDay = (instant: number): number => {
+    const date = new Date(instant)
+    date.setHours(0, 0, 0, 0)
+    return date.getTime()
+  }
+  const daysAgo = Math.round((startOfDay(now) - startOfDay(at)) / 86_400_000)
+  if (daysAgo <= 0) return 'today'
+  if (daysAgo === 1) return 'yesterday'
+  if (daysAgo === 2) return 'twoDaysAgo'
+  if (daysAgo === 3) return 'threeDaysAgo'
+  if (daysAgo <= 13) return 'lastWeek'
+  if (daysAgo <= 60) return 'lastMonth'
+  const date = new Date(at)
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  return `month:${date.getFullYear()}-${month}`
+}
+
+/** Render order rank of the named (non-month) timeline buckets. */
+const DAY_BUCKET_RANKS = {
+  today: 0, yesterday: 1, twoDaysAgo: 2, threeDaysAgo: 3, lastWeek: 4, lastMonth: 5,
+} as const
+
+/** Absolute month number of a `month:YYYY-MM` bucket key (zero-padded, so numeric order is chronological). */
+function monthBucketNumber(key: string): number {
+  return Number(key.slice('month:'.length).replace('-', ''))
+}
+
+/**
+ * Timeline-grouped browser rows: every visible top-level Session buckets under
+ * its timeline bucket (Today, Yesterday, two/three days ago, Last week,
+ * Last month, then per calendar month), newest first inside each group. Rows
+ * show the Session topic and its time only: the day header names the bucket,
+ * and Workspace identity stays the Workspace-grouped mode's job.
+ * @param list - sessions list snapshot.
+ * @param archivedSessionIds - registry-global archive set.
+ * @param pendingInteractions - pending UI interactions by Session.
+ * @param now - reference instant for the local calendar timeline.
+ * @returns timeline groups in render order, always expanded.
+ */
+export function deriveDayGroups(
+  list: SessionListState,
+  archivedSessionIds: readonly SessionId[],
+  pendingInteractions: SessionPendingInteractions,
+  now: number,
+): GroupNode[] {
+  const archived = new Set(archivedSessionIds)
+  const descendants = indexSubagentDescendants(list.byId)
+  const buckets = new Map<string, SessionSummary[]>()
+  for (const id of list.ids) {
+    const summary = list.byId[id]
+    if (summary === undefined || !sessionVisible(summary, list.current, archived)) continue
+    const key = dayBucketKey(summary.updatedAt, now)
+    const bucket = buckets.get(key)
+    if (bucket === undefined) buckets.set(key, [summary])
+    else bucket.push(summary)
+  }
+  // Named buckets rank by their fixed order; month buckets follow, newest
+  // month first (larger absolute month number = newer = earlier in the list).
+  const named = [...buckets]
+    .filter(([key]) => key in DAY_BUCKET_RANKS)
+    .sort((a, b) => DAY_BUCKET_RANKS[a[0] as keyof typeof DAY_BUCKET_RANKS]
+      - DAY_BUCKET_RANKS[b[0] as keyof typeof DAY_BUCKET_RANKS])
+  const months = [...buckets]
+    .filter(([key]) => key.startsWith('month:'))
+    .sort((a, b) => monthBucketNumber(b[0]) - monthBucketNumber(a[0]))
+  return [...named, ...months]
+    .map(([key, members]) => {
+      members.sort((a, b) => b.updatedAt - a.updatedAt)
+      return {
+        key,
+        workspaceId: undefined,
+        cwd: undefined,
+        createdAt: undefined,
+        label: '',
+        dayKey: key,
+        sessionCount: members.length,
+        expanded: true,
+        containsCurrent: members.some(session => session.id === list.current),
+        // Day rows carry no Workspace label: the day header already names the
+        // bucket, and the operator reads the topic alone here. Workspace
+        // identity belongs to the Workspace-grouped mode (operator 2026-09-23).
+        sessions: members.map(session => sessionNode(session, descendants, pendingInteractions)),
+      }
+    })
 }
 
 /**
