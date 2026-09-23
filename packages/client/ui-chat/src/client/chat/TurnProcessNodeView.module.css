@@ -1,21 +1,19 @@
+/* The summary row is spaced by the column's flow token alone: its own vertical
+   padding and margin used to add 16px to that token, so a closed process read
+   25px from the next row while every other pair read 16px. */
 .root {
   box-sizing: border-box;
   display: flex;
   align-items: center;
   width: 100%;
   min-width: 0;
-  height: 33px;
-  padding: 0 0 8px;
+  padding: 0;
   border: none;
   border-bottom: 0.5px solid var(--dsw-alias-border-l2);
   background: none;
   color: var(--dsw-alias-label-secondary);
   cursor: pointer;
   text-align: left;
-}
-
-.root:not([data-open]) {
-  margin-bottom: 8px;
 }
 
 .chevron {

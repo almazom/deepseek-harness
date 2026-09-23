@@ -57,12 +57,6 @@
   min-width: 0;
 }
 
-/* A closed process reads as one summary immediately followed by its answer.
-   Expanded process rows return to the ordinary 16px rhythm. */
-.flowItem[data-turn-process-answer] {
-  --dsh-chat-flow-gap: 8px;
-}
-
 /* A keyed renderer may intentionally decline its row after dispatch (the
    completed-turn tail does this when it owns neither actions nor extensions).
    An empty flex item must not consume the column gap. */
