@@ -75,3 +75,24 @@ declare module '@deepseek-ai/dsh-session/types' {
     'session/semantic-map': SemanticMapState
   }
 }
+
+/**
+ * The manual refresh service this plugin installs as `ctx.semanticMap` —
+ * operator-button driven only (no auto-refresh anywhere).
+ */
+export interface SemanticMapService {
+  /**
+   * Re-scan the session tail after the projection watermark and append the
+   * refreshed `session/semantic-map` payload. Idempotent: an empty tail is a
+   * no-op that leaves `logVersion` untouched.
+   * @param sessionId - the live session to refresh.
+   */
+  refresh(sessionId: string): Promise<void>
+}
+
+declare module '@deepseek-ai/cordis' {
+  interface Context {
+    /** Manual semantic-map refresh service (this plugin's `apply` installs it). */
+    semanticMap: SemanticMapService
+  }
+}

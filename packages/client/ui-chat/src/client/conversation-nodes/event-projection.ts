@@ -4,6 +4,10 @@ import type { ContentBlock, StreamChunk } from '@deepseek-ai/dsh-llm/types'
 import type {
   AssistantBlock, ContextProvenanceView, KnownContextForm,
 } from '@deepseek-ai/dsh-client-ui-conversation/client'
+// Single home of the `hook/invoked` / `hook/result` SessionEventMap members is
+// hook-protocol (the origin of the shapes); this type-only load pulls that
+// augmentation into the program — no value reaches the client bundle.
+import type {} from '@deepseek-ai/dsh-hook-protocol'
 
 /* jscpd:ignore-start -- Chat and Trajectory own independent event-to-view projections. */
 
@@ -212,18 +216,6 @@ export interface HookResultData {
   readonly decision: string
   readonly exitCode?: number
   readonly durationMs: number
-}
-
-// Client-face declaration of the two log-only hook events: this program does
-// not compile packages/hooks/hook-protocol, where the shapes originate, so the
-// wire face mirrors them here (keep both in sync).
-declare module '@deepseek-ai/dsh-session/types' {
-  interface SessionEventMap {
-    /** Mirrors `hook-protocol`'s `hook/invoked`: one logged hook invocation inside an open turn. */
-    'hook/invoked': { turn: number } & HookInvokedData
-    /** Mirrors `hook-protocol`'s `hook/result`: the outcome paired by `handlerId`. */
-    'hook/result': { turn: number } & HookResultData
-  }
 }
 
 /**
