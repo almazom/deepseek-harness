@@ -469,7 +469,7 @@ describe('session.history projections block', () => {
 })
 
 describe('session.list projections column', () => {
-  it('serves every already-materialized wire value from the live registry without folding', async () => {
+  it('serves only Session-list-owned keys from the live registry without folding', async () => {
     const { ctx, session } = await harness(true)
     ctx.sessionProjections.register(lastUserUnit())
     const gateway = remote(ctx)
@@ -479,7 +479,7 @@ describe('session.list projections column', () => {
     const response = await gateway.list(request({}))
     if (!response.ok) throw new Error('unreachable')
     const row = response.value.items.find(item => item.sessionId === session.id)
-    expect(row?.projections?.values['test/last-user']).toEqual({ text: 'm0' })
+    expect('test/last-user' in (row?.projections?.values ?? {})).toBe(false)
     expect(row?.projections?.values.sessionListMetadata).toEqual({
       blank: false,
       lastPromptAt: session.eventAt(SessionSeq(session.seq - 1))?.time,
@@ -487,7 +487,7 @@ describe('session.list projections column', () => {
     expect(row?.projections?.asOfSeq).toBe(session.seq - 1)
   })
 
-  it('lists the latest preset selected by a blank Session instead of its creation preset', async () => {
+  it('keeps non-list-owned keys like agentPreset out of listing rows', async () => {
     const { ctx } = await harness(true)
     const session = ctx.sessions.create(SessionId('preset-list'), {
       meta: { cwd: '/workspace', agentPreset: 'standard' },
@@ -500,7 +500,7 @@ describe('session.list projections column', () => {
     const response = await gateway.list(request({}))
     if (!response.ok) throw new Error('unreachable')
     const row = response.value.items.find(item => item.sessionId === session.id)
-    expect(row?.projections?.values.agentPreset).toBe('minimal')
+    expect('agentPreset' in (row?.projections?.values ?? {})).toBe(false)
   })
 
   it('omits an unmaterialized live projection instead of folding history for listing', async () => {
@@ -528,7 +528,7 @@ describe('session.list projections column', () => {
     expect(row !== undefined && 'projections' in row).toBe(false)
   })
 
-  it('serves every available cold projection hint from the cache with zero log loads', async () => {
+  it('serves Session-list-owned cold projection hints from the cache with zero log loads', async () => {
     const { ctx } = await harness(true)
     const coldId = SessionId('session-cold-listing')
     const load = () => { throw new Error('list must not load event logs') }
@@ -558,7 +558,6 @@ describe('session.list projections column', () => {
     expect(row?.projections).toEqual({
       asOfSeq: 7,
       values: {
-        'test/last-user': { text: 'cached' },
         sessionListMetadata: { blank: false, lastPromptAt: 6 },
         title: 'Cached title',
       },

@@ -6,6 +6,7 @@ import type { ImageAttachmentLimits } from '@deepseek-ai/dsh-attachment'
 import { SessionLogOffset } from '@deepseek-ai/dsh-session'
 import type { Session, SessionEvent, SessionHeader, SessionId } from '@deepseek-ai/dsh-session'
 import type {} from '@deepseek-ai/dsh-session-projection'
+import type { SessionProjectionMap } from '@deepseek-ai/dsh-session-projection/types'
 import type {} from '@deepseek-ai/dsh-session-projection-cache'
 import { SessionQueryError, type SessionSearchCursor } from '@deepseek-ai/dsh-session-query'
 import { RemoteError } from '@deepseek-ai/dsh-typert-protocol'
@@ -15,8 +16,8 @@ import {
   SESSION_SEARCH_SNIPPET_MAX_CODE_POINTS,
 } from './types.ts'
 import type {
-  SessionListMetadata, SessionProjectionHints, SessionProjectionValues, SessionSearchItem,
-  SessionSearchValue, SessionSummary,
+  SessionListMetadata, SessionProjectionHints, SessionProjectionValue, SessionProjectionValues,
+  SessionSearchItem, SessionSearchValue, SessionSummary,
 } from './types.ts'
 
 const SEARCH_PROVIDER_CALL_LIMIT = 100
@@ -139,7 +140,10 @@ export class ApiSessionList {
       cold.push(record.header)
     }
     for (const header of cold) items.push(this.summarizeCold(header))
-    items.sort((left, right) => right.updatedAt - left.updatedAt)
+    items.sort((left, right) => {
+      if (left.running !== right.running) return left.running ? -1 : 1
+      return right.updatedAt - left.updatedAt
+    })
     return items
   }
 
@@ -277,12 +281,15 @@ export class ApiSessionList {
           : cache?.cachedSnapshot(header, SessionLogOffset(0))
             ?? cache?.cachedPredecessorTitle(header, SessionLogOffset(0))
         : this.ctx.sessionProjections.cachedSnapshot(session)
-      return block !== undefined && Object.keys(block.values).length > 0
+      const values = listProjectionValues(block?.values)
+      return block !== undefined && values !== undefined
         ? {
           asOfSeq: block.asOfSeq,
-          // Listing hints contain every currently cached wire value but remain
-          // partial: missing cells and cache rows are never materialized here.
-          values: block.values as SessionProjectionValues,
+          // Listing hints stay partial: only Session-list-owned keys ship (the
+          // complete per-Session baseline arrives with the Session page and the
+          // control stream), and missing cells or cache rows are never
+          // materialized here.
+          values,
         }
         : undefined
     } catch (error) {
@@ -310,6 +317,39 @@ function normalizeSearchQuery(query: string): string {
     throw new RemoteError('gateway/bad-request', 'session search query must not contain NUL', {})
   }
   return normalized
+}
+
+/**
+ * Projection keys owned by the Session list: the browser derives row labels
+ * (`title`), blank/new-session handling and cold `updatedAt` ordering
+ * (`sessionListMetadata`), and the best-effort active-Schedule indicator
+ * (`schedule`) from list-carried hints alone. Every other key stays out of the
+ * listing payload; the complete per-Session baseline still ships through the
+ * Session page, the follow snapshot, and the control stream.
+ */
+const LIST_PROJECTION_KEYS = new Set(['title', 'sessionListMetadata', 'schedule'])
+
+/**
+ * Pick the Session-list-owned projection values from one cached block.
+ * @param values - cached wire values, or `undefined` without a block.
+ * @returns the filtered values, or `undefined` when no list-owned key survives.
+ */
+function listProjectionValues(
+  values: Partial<SessionProjectionMap> | undefined,
+): SessionProjectionValues | undefined {
+  if (values === undefined) return undefined
+  // The Readonly<Record<…>> half of SessionProjectionValues rejects writes, and
+  // Partial<SessionProjectionMap> carries no string index signature — so read
+  // through a widened view and build a plain mutable record, casting once.
+  const source = values as unknown as Record<string, SessionProjectionValue | undefined>
+  const picked: Record<string, SessionProjectionValue> = Object.create(null)
+  for (const key of LIST_PROJECTION_KEYS) {
+    const value = source[key]
+    if (value !== undefined) picked[key] = value
+  }
+  return Object.keys(picked).length > 0
+    ? (picked as unknown as SessionProjectionValues)
+    : undefined
 }
 
 function updatedAt(header: SessionHeader, metadata: SessionListMetadata | undefined): number {
