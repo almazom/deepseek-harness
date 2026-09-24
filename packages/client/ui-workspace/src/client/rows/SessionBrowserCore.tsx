@@ -230,6 +230,8 @@ type SessionTreeProps = Pick<
   onSessionArchive: (sessionId: SessionNode['id']) => void
   /** Session order behavior: fixed after edits, or additionally promoted by user activity. */
   orderBy: SessionOrderBy
+  /** When true, only sessions with running === true are shown. */
+  filterActive: boolean
   /** Pinned session ids rendered in the Pinned section above the time buckets. */
   pinnedIds: readonly SessionNode['id'][]
   /** Toggle one session's pinned membership (row menu action). */
@@ -250,7 +252,7 @@ function SessionTree({
   useSessions, useSessionPendingInteraction, startSession, open, forkSession, workspaces, archivedSessionIds,
   workspaceReady, usePanelInfo,
   onRenameRequest, onDeleteRequest, onSessionRename, onSessionArchive,
-  insertWorkspaceBefore, insertSessionBefore, orderBy, pinnedIds, onPinToggle,
+  insertWorkspaceBefore, insertSessionBefore, orderBy, filterActive, pinnedIds, onPinToggle,
   groupExpansion, setGroupExpanded,
   sessionOrderByAccount, sessionUpdatedAtByAccount, syncSessionOrderAccount, setSessionOrder, home, t,
   revealSessionId, onSessionRevealed, visibleIds,
@@ -330,8 +332,8 @@ function SessionTree({
       ...(sessionOrderByAccount[UNGROUPED_KEY] === undefined
         ? {}
         : { ungroupedOrder: sessionOrderByAccount[UNGROUPED_KEY] }),
-    }),
-    [list, orderedWorkspaces, archivedSessionIds, pendingInteractions, expandedGroups, sessionOrderByAccount],
+    }, filterActive),
+    [list, orderedWorkspaces, archivedSessionIds, pendingInteractions, expandedGroups, sessionOrderByAccount, filterActive],
   )
   const shownGroups = useMemo(
     () => visibleIds === undefined
@@ -624,7 +626,7 @@ function SessionTree({
 function FlatList({
   useSessions, useSessionPendingInteraction, open, forkSession, onSessionRename, onSessionArchive,
   archivedSessionIds, usePanelInfo,
-  orderBy, sessionOrderByAccount, sessionUpdatedAtByAccount, syncSessionOrderAccount, setSessionOrder,
+  orderBy, filterActive, sessionOrderByAccount, sessionUpdatedAtByAccount, syncSessionOrderAccount, setSessionOrder,
   revealSessionId, onSessionRevealed, visibleIds, t,
 }: Pick<
   SessionTreeProps,
@@ -637,6 +639,7 @@ function FlatList({
   | 'archivedSessionIds'
   | 'usePanelInfo'
   | 'orderBy'
+  | 'filterActive'
   | 'sessionOrderByAccount'
   | 'sessionUpdatedAtByAccount'
   | 'syncSessionOrderAccount'
@@ -650,8 +653,8 @@ function FlatList({
   const list = useSessions(s => s)
   const pendingInteractions = useSessionPendingInteraction(s => s)
   const baseRows = useMemo(
-    () => deriveFlat(list, archivedSessionIds, pendingInteractions),
-    [list, archivedSessionIds, pendingInteractions],
+    () => deriveFlat(list, archivedSessionIds, pendingInteractions, filterActive),
+    [list, archivedSessionIds, pendingInteractions, filterActive],
   )
   const sessionIds = useMemo(() => baseRows.map(row => row.id), [baseRows])
   const previousOrderBy = useRef(orderBy)
@@ -779,7 +782,7 @@ function dayGroupLabel(dayKey: string | undefined, t: WorkspaceBrowserProps['t']
  */
 function DayList({
   useSessions, useSessionPendingInteraction, open, forkSession, onSessionRename, onSessionArchive,
-  archivedSessionIds, usePanelInfo, visibleIds, t,
+  archivedSessionIds, usePanelInfo, visibleIds, workspaces, filterActive, t,
 }: Pick<
   SessionTreeProps,
   | 'useSessions'
@@ -791,14 +794,16 @@ function DayList({
   | 'archivedSessionIds'
   | 'usePanelInfo'
   | 'visibleIds'
+  | 'workspaces'
+  | 'filterActive'
   | 't'
 >) {
   const panelActive = usePanelInfo(info => info.activePanelId !== null)
   const list = useSessions(s => s)
   const pendingInteractions = useSessionPendingInteraction(s => s)
   const groups = useMemo(
-    () => deriveDayGroups(list, archivedSessionIds, pendingInteractions, Date.now()),
-    [list, archivedSessionIds, pendingInteractions],
+    () => deriveDayGroups(list, workspaces, archivedSessionIds, pendingInteractions, Date.now(), filterActive),
+    [list, workspaces, archivedSessionIds, pendingInteractions, filterActive],
   )
   const shownGroups = useMemo(
     () => visibleIds === undefined
@@ -965,6 +970,8 @@ type SessionBrowserCoreProps =
     groupBy: 'workspace' | 'day' | 'flat'
     /** Session order behavior shared with the view-options menu. */
     orderBy: SessionOrderBy
+    /** When true, only sessions with running === true are shown. */
+    filterActive: boolean
     /** Explicit persisted zero-or-five-session state by Workspace group. */
     groupExpansion: Readonly<Record<string, boolean>>
     /** Shared editable orders used by Workspace groups and the flat-list account. */
@@ -999,6 +1006,7 @@ export function SessionBrowserCore({
   archivedSessionIds,
   groupBy,
   orderBy,
+  filterActive,
   groupExpansion,
   sessionOrderByAccount,
   sessionUpdatedAtByAccount,
@@ -1270,6 +1278,7 @@ export function SessionBrowserCore({
               archivedSessionIds={archivedSessionIds}
               visibleIds={visibleIds}
               orderBy={orderBy}
+              filterActive={filterActive}
               sessionOrderByAccount={sessionOrderByAccount}
               sessionUpdatedAtByAccount={sessionUpdatedAtByAccount}
               syncSessionOrderAccount={actions.syncSessionOrderAccount}
@@ -1288,6 +1297,8 @@ export function SessionBrowserCore({
                 onSessionRename={onSessionRename} onSessionArchive={onSessionArchive}
                 archivedSessionIds={archivedSessionIds}
                 visibleIds={visibleIds}
+                workspaces={workspaces}
+                filterActive={filterActive}
                 t={t}
               />
             )
@@ -1319,6 +1330,7 @@ export function SessionBrowserCore({
                 insertWorkspaceBefore={insertWorkspaceBefore}
                 insertSessionBefore={insertSessionBefore}
                 orderBy={orderBy}
+                filterActive={filterActive}
                 revealSessionId={revealSessionId}
                 onSessionRevealed={acknowledgeSessionReveal}
                 home={home}

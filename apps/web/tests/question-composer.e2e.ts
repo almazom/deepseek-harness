@@ -350,6 +350,122 @@ describe('web e2e: resident question composer round trip', () => {
     await expect.poll(() => page.locator('[data-question-key]').count(), { timeout: 10_000 }).toBe(0)
   }, 60_000)
 
+  // The 390x664 seat is the phone shape the countdown exists for: the card has
+  // to keep every option row inside the visible area, and the figure on the
+  // collective-decision row has to actually move. Asked straight through the
+  // seam (as the optionless case does) so the option list can carry an
+  // `autoDecide` row without a model round.
+  it.skipIf(MODE === 'record')('counts down on the collective option inside a phone seat', async () => {
+    onTestFailed(() => saveFailureShot(page, 'web-e2e-question-countdown'))
+    const sessionId = answeredSession
+    expect(sessionId).toBeDefined()
+    const agent = scaffold.ctx.agents.get(sessionId as SessionId)
+    expect(agent).toBeDefined()
+    const asked = scaffold.ctx.userQuestions.ask({
+      agent: agent as NonNullable<typeof agent>,
+      questions: [{
+        id: 'seat',
+        header: 'Seat',
+        question: 'Which seat shape should the card use?',
+        options: [
+          { label: 'Desktop card', recommended: true },
+          { label: 'Collective decision (brainstorm)', autoDecide: true },
+        ],
+      }],
+    })
+
+    const original = page.viewportSize() ?? { width: 1680, height: 1000 }
+    await page.setViewportSize({ width: 390, height: 664 })
+    const composer = page.locator('[data-question-key]')
+    await composer.waitFor({ timeout: 30_000 })
+
+    const timer = composer.locator('[data-countdown]')
+    await timer.waitFor({ timeout: 10_000 })
+    const first = await timer.textContent()
+    expect(first).toMatch(/^\d+s$/)
+    await expect.poll(async () => timer.textContent(), { timeout: 10_000 }).not.toBe(first)
+
+    // No control may paint below the visible area: the seat is the whole point of
+    // the dynamic cap. The sweep covers every button of the CARD, not only the
+    // option rows inside the scrollport — the footer's Skip/Submit pair lives
+    // outside that scrollport and was the clipped element the fix targets.
+    const seat = await composer.evaluate((root) => {
+      const card = root.querySelector<HTMLElement>('[data-question-card]') ?? root
+      const buttons = [...card.querySelectorAll<HTMLElement>('button')]
+      const footerButtons = card.querySelector('footer') === null
+        ? []
+        : [...(card.querySelector('footer') as HTMLElement).querySelectorAll<HTMLElement>('button')]
+      const label = (button: HTMLElement): string =>
+        (button.getAttribute('aria-label') ?? button.textContent ?? '').trim().slice(0, 40)
+      return {
+        buttons: buttons.length,
+        footerButtons: footerButtons.length,
+        below: buttons
+          .filter(button => button.getBoundingClientRect().bottom > window.innerHeight + 0.5)
+          .map(label),
+        footerBelow: footerButtons
+          .filter(button => button.getBoundingClientRect().bottom > window.innerHeight + 0.5)
+          .map(label),
+      }
+    })
+    expect(seat.buttons).toBeGreaterThan(0)
+    // Both footer actions must exist for the containment claim to mean anything.
+    expect(seat.footerButtons).toBeGreaterThanOrEqual(2)
+    expect(seat.below).toEqual([])
+    expect(seat.footerBelow).toEqual([])
+
+    await page.setViewportSize(original)
+    const collective = composer.getByRole('radio', { name: 'Collective decision (brainstorm)' })
+    await collective.click()
+    // A manual pick disarms the timer; Enter on the row submits the batch.
+    expect(await composer.locator('[data-countdown]').count()).toBe(0)
+    await collective.press('Enter')
+    expect(await asked).toEqual({
+      answers: [{ id: 'seat', selected: ['Collective decision (brainstorm)'] }],
+    })
+    await expect.poll(() => page.locator('[data-question-key]').count(), { timeout: 10_000 }).toBe(0)
+  }, 60_000)
+
+  // TC-005's expiry proof: left untouched, the card answers itself with the
+  // collective-decision option and the marker the brainstorm fallback reads.
+  // Gated because it costs the full countdown in wall clock; the lane runs the
+  // decrement case above instead. Run it with DSH_COUNTDOWN_PROOF=1.
+  it.skipIf(MODE === 'record' || process.env['DSH_COUNTDOWN_PROOF'] !== '1')(
+    'answers itself with the collective option when the countdown expires',
+    async () => {
+      onTestFailed(() => saveFailureShot(page, 'web-e2e-question-expiry'))
+      const sessionId = answeredSession
+      expect(sessionId).toBeDefined()
+      const agent = scaffold.ctx.agents.get(sessionId as SessionId)
+      expect(agent).toBeDefined()
+      const asked = scaffold.ctx.userQuestions.ask({
+        agent: agent as NonNullable<typeof agent>,
+        questions: [{
+          id: 'expire',
+          header: 'Expiry',
+          question: 'Should this card answer itself?',
+          options: [
+            { label: 'Wait for me', recommended: true },
+            { label: 'Collective decision (brainstorm)', autoDecide: true },
+          ],
+        }],
+      })
+
+      const original = page.viewportSize() ?? { width: 1680, height: 1000 }
+      await page.setViewportSize({ width: 390, height: 664 })
+      const composer = page.locator('[data-question-key]')
+      await composer.waitFor({ timeout: 30_000 })
+      const timer = composer.locator('[data-countdown]')
+      await timer.waitFor({ timeout: 10_000 })
+      await expect.poll(async () => timer.textContent(), { timeout: 15_000 }).not.toBe('60s')
+      // Untouched from here on: nothing clicks, nothing types.
+      await expect.poll(() => page.locator('[data-question-key]').count(), { timeout: 90_000 }).toBe(0)
+      expect(await asked).toEqual({
+        answers: [{ id: 'expire', selected: ['Collective decision (brainstorm)'], timedOut: true }],
+      })
+      await page.setViewportSize(original)
+    }, 180_000)
+
 })
 
 describe.skipIf(MODE === 'record')('web e2e: cancelled question transcript', () => {

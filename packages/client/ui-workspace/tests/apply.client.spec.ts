@@ -1,5 +1,6 @@
 import { Context } from '@deepseek-ai/cordis'
 import { describe, expect, it, vi } from 'vitest'
+import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
 import { SlotRegistry } from '@deepseek-ai/dsh-client-ui-renderer/client'
 import { RemoteError, TestRemote } from '@deepseek-ai/dsh-client-test-runtime'
 import { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
@@ -22,7 +23,11 @@ async function bench() {
   const open = vi.fn()
   const clear = vi.fn()
   const selectPanel = vi.fn()
-  ctx.provide('layout', { selectPanel, beginNavigation: () => new AbortController().signal })
+  ctx.provide('layout', {
+    selectPanel,
+    beginNavigation: () => new AbortController().signal,
+    narrow: createSnapshotStore(false),
+  })
   const search = vi.fn(async () => ({
     ok: true as const,
     value: { items: [{ sessionId: 'session' as never, snippet: 'match' }], hasMore: false },

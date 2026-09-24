@@ -155,6 +155,14 @@ function sessionVisible(session: SessionSummary, current: SessionId | undefined,
 }
 
 /**
+ * Check whether a session passes the active filter.
+ * When filterActive is true, only sessions with running === true are visible.
+ */
+function sessionPassesActiveFilter(session: SessionSummary, filterActive: boolean): boolean {
+  return !filterActive || session.running
+}
+
+/**
  * A blank session is the selected Workspace's provisional New Session row;
  * its canonical title never enters search (blank rows are query-excluded)
  * and the renderer localizes its display label.
@@ -214,6 +222,7 @@ function groupByWorkspace(
   workspaces: readonly WorkspaceView[],
   archived: ReadonlySet<SessionId>,
   ungroupedOrder: readonly string[] | undefined,
+  filterActive = false,
 ): Group[] {
   const groups: Group[] = []
   const accounted = new Set<SessionId>()
@@ -224,6 +233,7 @@ function groupByWorkspace(
       if (summary === undefined) continue // account may lead the list pull; the row appears when the summary lands
       accounted.add(id)
       if (!sessionVisible(summary, list.current, archived)) continue
+      if (!sessionPassesActiveFilter(summary, filterActive)) continue
       members.push(summary)
     }
     groups.push(buildGroup(
@@ -234,7 +244,8 @@ function groupByWorkspace(
   const stray = list.ids
     .map(id => list.byId[id])
     .filter((s): s is SessionSummary =>
-      s !== undefined && !accounted.has(s.id) && sessionVisible(s, list.current, archived))
+      s !== undefined && !accounted.has(s.id) && sessionVisible(s, list.current, archived)
+        && sessionPassesActiveFilter(s, filterActive))
   if (stray.length > 0) {
     groups.push(buildGroup(
       UNGROUPED_KEY,
@@ -303,6 +314,7 @@ export function deriveGroups(
   archivedSessionIds: readonly SessionId[],
   pendingInteractions: SessionPendingInteractions,
   view: TreeView,
+  filterActive = false,
 ): GroupNode[] {
   const archived = new Set(archivedSessionIds)
   const expandedGroups = new Set(view.expandedGroups)
@@ -311,7 +323,7 @@ export function deriveGroups(
     ? undefined
     : owningGroupKey(workspaces, list.current)
   const groups: GroupNode[] = []
-  for (const g of groupByWorkspace(list, workspaces, archived, view.ungroupedOrder)) {
+  for (const g of groupByWorkspace(list, workspaces, archived, view.ungroupedOrder, filterActive)) {
     const expanded = expandedGroups.has(g.key)
     groups.push({
       key: g.key,
@@ -368,9 +380,11 @@ function monthBucketNumber(key: string): number {
  * Timeline-grouped browser rows: every visible top-level Session buckets under
  * its timeline bucket (Today, Yesterday, two/three days ago, Last week,
  * Last month, then per calendar month), newest first inside each group. Rows
- * show the Session topic and its time only: the day header names the bucket,
- * and Workspace identity stays the Workspace-grouped mode's job.
+ * show the Session topic, its Workspace label (membership title, cwd basename
+ * for ungrouped, undefined when neither exists) and its time: the day header
+ * names the bucket, and the row names the Workspace the day header cannot.
  * @param list - sessions list snapshot.
+ * @param workspaces - real workspaces, read for session→Workspace membership labels.
  * @param archivedSessionIds - registry-global archive set.
  * @param pendingInteractions - pending UI interactions by Session.
  * @param now - reference instant for the local calendar timeline.
@@ -378,16 +392,25 @@ function monthBucketNumber(key: string): number {
  */
 export function deriveDayGroups(
   list: SessionListState,
+  workspaces: readonly WorkspaceView[],
   archivedSessionIds: readonly SessionId[],
   pendingInteractions: SessionPendingInteractions,
   now: number,
+  filterActive = false,
 ): GroupNode[] {
   const archived = new Set(archivedSessionIds)
   const descendants = indexSubagentDescendants(list.byId)
+  const workspaceBySession = new Map<SessionId, string>()
+  for (const workspace of workspaces) {
+    for (const sessionId of workspace.sessionIds) {
+      if (!workspaceBySession.has(sessionId)) workspaceBySession.set(sessionId, workspace.title)
+    }
+  }
   const buckets = new Map<string, SessionSummary[]>()
   for (const id of list.ids) {
     const summary = list.byId[id]
     if (summary === undefined || !sessionVisible(summary, list.current, archived)) continue
+    if (!sessionPassesActiveFilter(summary, filterActive)) continue
     const key = dayBucketKey(summary.updatedAt, now)
     const bucket = buckets.get(key)
     if (bucket === undefined) buckets.set(key, [summary])
@@ -415,10 +438,15 @@ export function deriveDayGroups(
         sessionCount: members.length,
         expanded: true,
         containsCurrent: members.some(session => session.id === list.current),
-        // Day rows carry no Workspace label: the day header already names the
-        // bucket, and the operator reads the topic alone here. Workspace
-        // identity belongs to the Workspace-grouped mode (operator 2026-09-23).
-        sessions: members.map(session => sessionNode(session, descendants, pendingInteractions)),
+        // Day rows sit under a day header instead of a Workspace group, so a
+        // day row names its Workspace before the time: membership title first,
+        // cwd basename for ungrouped sessions; no label stays undefined so the
+        // row renders the time alone (workspace-browser timeline contract).
+        sessions: members.map((session) => {
+          const mapped = workspaceBySession.get(session.id)
+          const label = mapped ?? workspaceLabel(session.cwd)
+          return sessionNode(session, descendants, pendingInteractions, label === '' ? undefined : label)
+        }),
       }
     })
 }
@@ -431,12 +459,14 @@ export function deriveDayGroups(
  * @param list - sessions list snapshot.
  * @param archivedSessionIds - registry-global archive set.
  * @param pendingInteractions - pending UI interactions by Session.
+ * @param filterActive - when true, only sessions with running === true are shown.
  * @returns flat rows in render order.
  */
 export function deriveFlat(
   list: SessionListState,
   archivedSessionIds: readonly SessionId[],
   pendingInteractions: SessionPendingInteractions,
+  filterActive = false,
 ): SessionNode[] {
   const archived = new Set(archivedSessionIds)
   const descendants = indexSubagentDescendants(list.byId)
@@ -444,6 +474,7 @@ export function deriveFlat(
   for (const id of list.ids) {
     const s = list.byId[id]
     if (s === undefined || !sessionVisible(s, list.current, archived)) continue
+    if (!sessionPassesActiveFilter(s, filterActive)) continue
     rows.push(s)
   }
   rows.sort(byRecency)

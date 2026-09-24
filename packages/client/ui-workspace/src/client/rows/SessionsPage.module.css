@@ -65,24 +65,17 @@
   min-width: 0;
 }
 
+/* The page title holds the 20px rung (--dsw-font-l-20, 20px/28px weight 500)
+   at every frame width so the header keeps outranking the 16px row titles it
+   heads. It used to step up only on wide frames, when rows were 14px; with
+   the session titles at 16px a narrow 16px header would tie with its own
+   list. */
 .pageTitle {
   margin: 0;
   overflow: hidden;
   white-space: nowrap;
-  font-size: 16px;
-  line-height: 24px;
-  font-weight: 500;
+  font: var(--dsw-font-l-20);
   color: var(--dsw-alias-label-primary);
-}
-
-/* Wide landing: the title steps up one token rung (--dsw-font-l-20,
-   20px/28px weight 500) so the header outranks the 14px row titles it
-   heads. Narrow frames keep 16px — vertical space is scarce there and
-   mobile reading is linear-vertical, not hierarchical scanning. */
-@media (min-width: 1024px) {
-  .pageTitle {
-    font: var(--dsw-font-l-20);
-  }
 }
 
 /* The counts line: two localized unit spans around a plain ' · ' separator,

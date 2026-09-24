@@ -139,9 +139,24 @@ function TurnErrorItem({ node, t }: {
 }
 
 /** Persistent, turn-positioned notice for a turn ended at the output-token cap. */
-function TurnMaxTokensItem({ t }: {
+function TurnMaxTokensItem({ hasContent, t }: {
+  hasContent?: boolean | undefined
   t: ChatViewSlotProps['t']
 }) {
+  if (hasContent !== undefined) {
+    return (
+      <div className={css.turnErrorRow} role="status">
+        <StateDot state="warning" className={css.turnErrorDot} />
+        <div className={css.turnErrorCopy}>
+          <span className={css.maxTokensTitle}>
+            {hasContent
+              ? t('message.turnMaxTokensMidWork')
+              : t('message.turnMaxTokensEmpty')}
+          </span>
+        </div>
+      </div>
+    )
+  }
   return (
     <div className={css.turnErrorRow} role="status">
       <StateDot state="warning" className={css.turnErrorDot} />
@@ -368,8 +383,8 @@ export const TurnErrorNodeView = memo(function TurnErrorNodeView({ node, t }: Ch
 })
 
 /** Max-tokens turn-end notice keyed Chat renderer. */
-export const TurnMaxTokensNodeView = memo(function TurnMaxTokensNodeView({ t }: ChatNodeViewProps<'turn-max-tokens'>) {
-  return <TurnMaxTokensItem t={t} />
+export const TurnMaxTokensNodeView = memo(function TurnMaxTokensNodeView({ node, t }: ChatNodeViewProps<'turn-max-tokens'>) {
+  return <TurnMaxTokensItem hasContent={node.data.hasContent} t={t} />
 })
 
 /** Explicit unknown-surface keyed Chat renderer. */

@@ -82,12 +82,22 @@ describe('deriveDayGroups', () => {
       summary('yesterday', now - DAY - 3_600_000),
       summary('last-week', now - 5 * DAY),
     )
-    const groups = deriveDayGroups(sessions, noArchive, noAttention, now)
+    const groups = deriveDayGroups(sessions, [], noArchive, noAttention, now)
     expect(groups.map(group => group.dayKey)).toEqual(['today', 'yesterday', 'lastWeek'])
     expect(groups[0]!.sessions.map(row => row.id)).toEqual([sid('today-late'), sid('today-early')])
-    // A day row shows its topic only: the day header is not a Workspace, and
-    // the operator reads folder identity in the Workspace-grouped mode.
+    // No Workspace membership and no cwd: the day row stays topic-only — the
+    // label stays undefined so the row renders the time alone.
     expect(groups[0]!.sessions[0]!.workspaceLabel).toBeUndefined()
+  })
+  it('labels day rows with their Workspace membership title', () => {
+    const now = Date.now()
+    const sessions = list(summary('today-one', now - 1_000), summary('loose', now - 2_000))
+    const workspaces = [workspace('alpha', ['today-one'])]
+    const groups = deriveDayGroups(sessions, workspaces, noArchive, noAttention, now)
+    const rows = new Map(groups[0]!.sessions.map(row => [row.id, row]))
+    expect(rows.get(sid('today-one'))!.workspaceLabel).toBe('alpha')
+    // An ungrouped session with no cwd gets no label rather than an empty one.
+    expect(rows.get(sid('loose'))!.workspaceLabel).toBeUndefined()
   })
   it('hides archived sessions and orders month buckets newest-first', () => {
     const now = Date.now()
@@ -97,7 +107,7 @@ describe('deriveDayGroups', () => {
       summary('june', new Date('2026-06-20T12:00:00').getTime()),
       summary('may', new Date('2026-05-20T12:00:00').getTime()),
     )
-    const groups = deriveDayGroups(sessions, archived('hidden'), noAttention, now)
+    const groups = deriveDayGroups(sessions, [], archived('hidden'), noAttention, now)
     expect(groups.map(group => group.dayKey)).toEqual(['today', 'month:2026-06', 'month:2026-05'])
   })
 })

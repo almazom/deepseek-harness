@@ -11,15 +11,19 @@ import type { SessionId } from '@deepseek-ai/dsh-session/types'
 /** Browser-local order account for the hierarchy-free flat Session list. */
 export const FLAT_SESSION_ORDER_KEY = '__flat_session_order__'
 
-/** Session-list grouping mode: workspace sections or one flat recency list. */
-export type SessionGroupBy = 'workspace' | 'flat'
+/** Session-list grouping mode: Workspace sections, local calendar days, or one flat recency list. */
+export type SessionGroupBy = 'workspace' | 'day' | 'flat'
 /** Session order: user-arranged only, or user-arranged plus activity promotion. */
 export type SessionOrderBy = 'manual' | 'updated'
+/** Session filter: show all sessions or only active (running) ones. */
+export type SessionFilterActive = boolean
 
 /** Workspace browser viewing state persisted across surface remounts and reloads. */
 type WorkspaceViewState = {
   groupBy: SessionGroupBy
   orderBy: SessionOrderBy
+  /** When true, only sessions with `running === true` are shown. */
+  filterActive: boolean
   /** Explicit zero-or-five-session state keyed by Workspace group identity. */
   groupExpansion: Record<string, boolean>
   /** Shared editable order per Workspace group plus the browser-local flat-list account. */
@@ -37,6 +41,7 @@ type WorkspaceViewState = {
 type WorkspaceViewActions = {
   setGroupBy: (draft: WorkspaceViewState, mode: SessionGroupBy) => void
   setOrderBy: (draft: WorkspaceViewState, mode: SessionOrderBy) => void
+  setFilterActive: (draft: WorkspaceViewState, active: boolean) => void
   setGroupExpanded: (draft: WorkspaceViewState, key: string, expanded: boolean) => void
   retainAccountKeys: (draft: WorkspaceViewState, workspaceKeys: readonly string[]) => void
   syncSessionOrderAccount: (
@@ -77,15 +82,17 @@ export function createWorkspaceViewStore(): EngineStoreHandle<WorkspaceViewState
     init: (): WorkspaceViewState => ({
       groupBy: 'workspace',
       orderBy: 'updated',
+      filterActive: false,
       groupExpansion: {},
       sessionOrderByAccount: {},
       sessionUpdatedAtByAccount: {},
       pinnedIds: [],
     }),
-    persist: 'dsh.workspace.view.v6',
+    persist: 'dsh.workspace.view.v7',
     actions: {
       setGroupBy: (d, mode: SessionGroupBy) => { d.groupBy = mode },
       setOrderBy: (d, mode: SessionOrderBy) => { d.orderBy = mode },
+      setFilterActive: (d, active: boolean) => { d.filterActive = active },
       setGroupExpanded: (d, key: string, expanded: boolean) => { d.groupExpansion[key] = expanded },
       retainAccountKeys: (d, workspaceKeys: readonly string[]) => {
         const retained = new Set(workspaceKeys)

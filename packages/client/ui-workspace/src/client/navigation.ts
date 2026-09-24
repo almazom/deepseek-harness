@@ -10,7 +10,10 @@ import type {
   IWorkspaces, WorkspaceId, WorkspaceView,
 } from '@deepseek-ai/dsh-api-workspace-controller/client'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
-import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
+import type { MainPanelId } from '@deepseek-ai/dsh-client-ui-layout/client'
+
+/** Key of the Sessions-page main-slot entry this package registers (index.ts). */
+const SESSIONS_PANEL = 'sessions' as MainPanelId
 
 /** Workspace archive and directory operations consumed by Client UI domains. */
 export interface UiWorkspace {
@@ -203,8 +206,21 @@ class UiWorkspaceService extends Service implements UiWorkspace {
       const workspace = this.workspaces.list.getSnapshot()
       const sessions = this.sessions.list.getSnapshot()
       if (workspace.phase !== 'ready' || sessions.phase !== 'ready') return
-      if (sessions.current !== undefined) {
+      const narrow = this.ctx.layout.narrow.getSnapshot()
+      if (sessions.current !== undefined
+        && !(narrow && sessions.byId[sessions.current]?.blank === true)) {
         initial = 'done'
+        return
+      }
+      if (narrow) {
+        // Narrow boot: no Session, or only a blank one restored. The Sessions
+        // page is the landing — auto-connecting would mint or reopen a blank
+        // Session, and the narrow frame's only session switcher is that page
+        // itself (operator video 2026-09-22). Registration of the Sessions
+        // main entry happens in this plugin's own synchronous apply, strictly
+        // before a remote projection can mark the lists ready.
+        initial = 'done'
+        this.ctx.layout.selectPanel(SESSIONS_PANEL)
         return
       }
       const target = recentWorkspace(workspace.items, sessions.byId)

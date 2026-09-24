@@ -297,8 +297,9 @@ export interface ConversationSessionHeaderInjected {
   /** Select and activate one registered Conversation View. */
   selectView: (view: string) => void
   /**
-   * Leave the selected main panel and show the Conversation; the narrow
-   * header's back affordance routes through it.
+   * Navigate main panels: pass a panel id to show its page, or null to show
+   * the Conversation. The narrow header's back affordance routes to the
+   * Sessions page — the frame's session switcher.
    */
   selectPanel: (panelId: MainPanelId | null) => void
 }

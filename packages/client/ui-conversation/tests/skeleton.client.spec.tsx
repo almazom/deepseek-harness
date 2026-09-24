@@ -11,6 +11,7 @@ import {
   bindSnapshotSelector, makeTranslate, RemoteError, sessionSnapshot as sessionFixture,
 } from '@deepseek-ai/dsh-client-test-runtime'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
+import type { MainPanelId } from '@deepseek-ai/dsh-client-ui-layout/client'
 import type { SessionPendingInteractionSnapshot } from '@deepseek-ai/dsh-client-ui-session/client'
 import type { WorkspaceId } from '@deepseek-ai/dsh-workspace/types'
 import type { ConversationRootProps } from '../src/client/skeleton/ConversationRoot.tsx'
@@ -424,13 +425,13 @@ describe('ConversationRoot resident composer', () => {
     expect(b.open).toHaveBeenCalledWith(sid('root'))
   })
 
-  it('narrow frames gain the header back affordance, and it routes through selectPanel', () => {
+  it('narrow frames gain the header back affordance, and it opens the Sessions page', () => {
     const b = mount(sessionSnapshotOf())
     // Wide frames keep the plain header: page navigation is narrow-only chrome.
     expect(b.view.queryByRole('button', { name: t('session.back.aria') })).toBeNull()
     act(() => { b.narrow.set(true) })
     fireEvent.click(b.view.getByRole('button', { name: t('session.back.aria') }))
-    expect(b.selectPanel).toHaveBeenCalledWith(null)
+    expect(b.selectPanel).toHaveBeenCalledWith('sessions' as MainPanelId)
   })
 
   it('keeps intermediate subagent breadcrumbs at the compact title size', () => {

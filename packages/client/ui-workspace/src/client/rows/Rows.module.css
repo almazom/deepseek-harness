@@ -19,6 +19,72 @@
   background: var(--dsw-alias-interactive-bg-hover);
 }
 
+/* A live session earns VOLUME through ink and size on every surface. The
+   painted card surface is the PHONE's business only.
+
+   Operator red pen 2026-09-23 (desktop screenshot of the warm paper theme):
+   «на десктопной версии у активной сессии инвертированная фоновая подсветка…
+   надо это убрать, она здесь мешает». Measured on the deployed app
+   (probes/desktop-sidebar-live.mjs): the fill resolves LIGHTER than whatever
+   carries it — #ffffff on the light sidebar's neutral-50, #2c2c2e on the dark
+   sidebar's neutral-900, #f0ebdf on the warm paper panel — while EVERY other
+   interactive surface in the app darkens on hover/selection
+   (--dsw-alias-interactive-bg-hover). So on the desktop side list the live row
+   was the only inverted surface in the product; and in the full-page landing
+   the fill was already a measured no-op (the group card paints the very same
+   --dsw-alias-button-floating-fill, delta luminance 0).
+   The card vocabulary itself is BORROWED, not invented (operator: «это уже прям
+   существующие элементы интерфейса… может их как-то использовать»): the
+   delivered-file card from ui-deliverables — its neutral fill, its hover fill,
+   and its radius rung (18px belongs to the card's 60px box, 10px to its 40px
+   icon tile and 28px chip; the 32px row takes the tile rung). It stays on the
+   phone, where the list is not dense and where the operator tuned it.
+   Painted as the row's OWN background, for two measured reasons:
+   - a ::after frame sat ABOVE the text and an opaque surface at 55% washed the
+     title out (live titles read lighter than idle ones);
+   - `z-index: -1` + `isolation` is not available here because the row's Menu
+     renders inline (no portal), so trapping the row's stacking context would
+     bury the menu under the next row. */
+.sessionRowLive {
+  --dsh-live-inset: var(--dsh-session-list-edge-inset, 20px);
+  /* The card's own surface family, taken from the alias layer so it follows
+     the active theme (the plain static neutrals are identical in both themes). */
+  --dsh-live-fill: var(--dsw-alias-button-floating-fill);
+  --dsh-live-hover: var(--dsw-alias-interactive-bg-hover);
+}
+
+/* Phone only: the card surface, inset on the leading side by the list's own
+   edge inset (measured on the phone: the block used to run 0 → 340 CSS px,
+   i.e. glued to the left edge with 20px of air on the right), so the air left
+   and right reads the same. Hover and selection lift the SAME inset frame
+   instead of painting a second, full-bleed tint underneath it. */
+@media (max-width: 768px) {
+  .sessionRowLive {
+    border-radius: 10px;
+    background: linear-gradient(var(--dsh-live-fill), var(--dsh-live-fill))
+      var(--dsh-live-inset) 1px / calc(100% - var(--dsh-live-inset)) calc(100% - 2px) no-repeat;
+  }
+
+  .sessionRowLive:hover,
+  .sessionRowLive.selected,
+  .sessionRowLive.menuOpen {
+    background: linear-gradient(var(--dsh-live-hover), var(--dsh-live-hover))
+      var(--dsh-live-inset) 1px / calc(100% - var(--dsh-live-inset)) calc(100% - 2px) no-repeat;
+  }
+}
+
+/* Every settled session steps down one rung in size and ink, and its
+   timestamp follows — the focus belongs to what is running. The row you are
+   in (selected) keeps the bright ink and the full size. */
+.sessionRow:not(.sessionRowLive):not(.selected) .title {
+  font-size: 15px;
+  color: var(--dsw-alias-label-secondary);
+}
+
+.sessionRowLive .time {
+  color: var(--dsw-alias-label-secondary);
+}
+
 .searchResultRow {
   display: flex;
   flex-direction: column;
@@ -56,8 +122,8 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 14px;
-  line-height: 20px;
+  font-size: 16px;
+  line-height: 22px;
 }
 
 .searchResultMeta {
@@ -113,8 +179,14 @@
   margin: 0 6px 0 4px;
 }
 
+/* A status-less flat row keeps the status COLUMN: its title starts where a
+   slotted row's title starts (8px row pad + 16px slot + 4px gap = 28px), so
+   the list reads as one left edge instead of a ragged one — the earlier
+   margin-left: 0 pulled these titles 20px left of their neighbours whenever
+   a status dot appeared in the same list (operator red pen 2026-09-23,
+   sessions landing). */
 .flatSessionRowWithoutStatus .title {
-  margin-left: 0;
+  margin-left: 20px;
 }
 
 @keyframes row-in {
@@ -167,19 +239,22 @@
   gap: 2px;
 }
 
+/* Operator directive 2026-09-23: the session title leads its row — one rung
+   above the 12px meta/time it sits beside (16px/22px). The row keeps its 32px
+   height: a 22px line box still fits with breathing room. */
 .title {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 14px;
-  line-height: 20px;
+  font-size: 16px;
+  line-height: 22px;
 }
 
 .renameInput {
   min-width: 0;
-  font-size: 14px;
-  line-height: 20px;
+  font-size: 16px;
+  line-height: 22px;
   padding: 0 2px;
   border: 0.5px solid var(--dsw-alias-border-l4);
   border-radius: 4px;
@@ -190,6 +265,15 @@
 
 .sessionRow .title {
   flex: 1;
+}
+
+/* Operator directive 2026-09-23 ("each first word in sentence caps"): every
+   session row opens with a capital letter. Painted in CSS so the stored title
+   stays byte-identical — rename, search, and copy keep acting on the real
+   string, and digit-led titles ("1+2") are left as typed. */
+.sessionRow .title::first-letter,
+.searchResultTitle::first-letter {
+  text-transform: uppercase;
 }
 
 .meta {
@@ -207,6 +291,13 @@
   line-height: 20px;
   font-variant-numeric: tabular-nums;
   color: var(--dsw-alias-label-tertiary);
+}
+
+/* Day-group rows read "Workspace · time"; the separator lives here so the
+   row markup stays literal-free. */
+.workspaceMeta::after {
+  content: '·';
+  margin: 0 4px;
 }
 
 .scheduleIndicator {

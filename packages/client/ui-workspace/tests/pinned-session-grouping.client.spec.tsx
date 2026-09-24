@@ -7,6 +7,7 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, within } from '@testing-library/react'
+import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
 import type { WorkspaceId } from '@deepseek-ai/dsh-api-workspace-controller/client'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { PropsRenderSlots } from '@deepseek-ai/dsh-client-ui-slots'
@@ -25,7 +26,7 @@ beforeEach(() => { localStorage.clear() })
 
 async function createRuntime(): Promise<SlotTestRuntime> {
   const runtime = await SlotTestRuntime.create()
-  runtime.ctx.provide('layout', { selectPanel: vi.fn() })
+  runtime.ctx.provide('layout', { selectPanel: vi.fn(), narrow: createSnapshotStore(false) })
   runtime.releaseWorkspaceSource()
   Object.assign(new TestRemote(runtime.ctx), { directoryPicker: {} })
   runtime.ctx.provide('remote.directoryPicker', {} as never)
@@ -117,7 +118,7 @@ describe('pinned session grouping', () => {
     await view.findByText('已置顶')
 
     // Reload proof 1: the persisted seam carries the pinned id.
-    const persisted = JSON.parse(localStorage.getItem('dsh.workspace.view.v6')!) as { pinnedIds: string[] }
+    const persisted = JSON.parse(localStorage.getItem('dsh.workspace.view.v7')!) as { pinnedIds: string[] }
     expect(persisted.pinnedIds).toContain(OLD_PINNED)
 
     // Reload proof 2: a second browser instance (own runtime, same jsdom
@@ -153,7 +154,7 @@ describe('pinned session grouping', () => {
     // No current session in the group, so the row collapse applies; s-deep-6
     // sits past the five-row cut. The pinned set is seeded the way a previous
     // run would have persisted it (whole-value v6 payload).
-    localStorage.setItem('dsh.workspace.view.v6', JSON.stringify({
+    localStorage.setItem('dsh.workspace.view.v7', JSON.stringify({
       groupBy: 'workspace',
       orderBy: 'updated',
       groupExpansion: {},

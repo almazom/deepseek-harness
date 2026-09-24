@@ -121,6 +121,9 @@ export function SidebarRoot({
     return () => { window.clearTimeout(timer) }
   }, [collapsed])
   const wide = !collapsed || !settled
+  // When the sidebar is wide (expanded), the workspace browser already shows
+  // the session list — the "Sessions" nav row is redundant and hidden.
+  const visiblePanels = wide ? panels.filter(p => p.id !== SESSIONS_PANEL) : panels
 
   // Freeze the content at its expanded width while it fades out (collapsed
   // && wide): the sliding column then clips it instead of reflowing it. The
@@ -254,9 +257,9 @@ export function SidebarRoot({
         </button>
       </Tooltip>
 
-      {panels.length > 0 && (
+      {visiblePanels.length > 0 && (
         <nav className={css.panelList} aria-label={t('panels.label')}>
-          {panels.map(({ id, label }) => (
+          {visiblePanels.map(({ id, label }) => (
             <PanelRow
               key={id}
               id={id}

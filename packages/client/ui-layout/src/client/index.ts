@@ -165,7 +165,13 @@ export function createPagePathBridge(): PanelPathBridge {
       // Replace, never history.back(): the entry behind the page path may be
       // the deep-link token URL that redirected to the same page, so back()
       // would land on the page again instead of leaving it.
-      history.replaceState({}, '', baseWith(null))
+      // Leaving the page also scrubs the query: a cold deep link enters on
+      // `/sessions?token=abc`, and the one-shot token must not stay in the
+      // address bar after the bridge walks back to base (push() keeps the
+      // query so mid-session navigation cannot strand an auth token).
+      const target = new URL(baseWith(null))
+      target.search = ''
+      history.replaceState({}, '', target.toString())
     },
     panelFromPath(): MainPanelId | null {
       const pathname = location.pathname

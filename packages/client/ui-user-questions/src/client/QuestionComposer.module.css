@@ -4,7 +4,8 @@
 .frame {
   display: flex;
   justify-content: center;
-  padding: 6px calc(var(--dsh-composer-side-clearance) + 16px) 10px;
+  /* The bottom inset keeps the card clear of a phone's home indicator. */
+  padding: 6px calc(var(--dsh-composer-side-clearance) + 16px) calc(10px + env(safe-area-inset-bottom));
 }
 
 /* Figma Input 973:36348 body over the 1019:36938 header: no banner strip —
@@ -18,6 +19,10 @@
      hidden): cap the card against the viewport and scroll the option list
      so header and footer actions stay reachable on long batches. */
   max-height: min(60vh, 520px);
+  /* The dynamic unit is what a phone actually shows: `vh` against a shrinking
+     browser chrome can leave the footer actions below the visible edge, so the
+     `vh` line above stays only as the fallback for engines without `dvh`. */
+  max-height: min(60dvh, 520px);
   padding: 0 0 10px;
   border: 0;
   --dsw-elevation-stroke-color: var(--dsw-alias-border-l2-darkmode-thin);
@@ -293,6 +298,39 @@
   font-weight: 400;
 }
 
+/* Countdown on the always-present collective-decision row: a pill pushed to
+   the end of the row whose bar empties as the deadline approaches, so an
+   unattended card shows what it is about to do without a second control. */
+.countdown {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  margin-left: auto;
+  padding: 0 6px;
+  overflow: hidden;
+  border-radius: 6px;
+  background: var(--dsw-alias-bg-overlay);
+  color: var(--dsw-alias-label-secondary);
+  font-size: 11px;
+  line-height: 18px;
+  font-variant-numeric: tabular-nums;
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+/* Behind the figure, so the digits never reflow as the bar shrinks. */
+.countdownBar {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  background: var(--dsw-specific-sidebar-nav-item-active-accent);
+  transition: width 250ms linear;
+}
+
+.countdownText {
+  position: relative;
+}
+
 /* Custom answer row (figma 973:36427): an option-shaped row whose copy is an
    inline text input; focus or a typed draft lifts it to the selected look. */
 .customRow {
@@ -422,6 +460,8 @@
 @media (max-width: 720px) {
   .card {
     border-radius: 16px;
+    /* Repeated here so the phone cap is explicit rather than inherited. */
+    max-height: min(60dvh, 520px);
   }
 
   .header {
@@ -430,6 +470,9 @@
 
   .options {
     padding: 4px 8px;
+    /* The list scrolls inside the card; a cap here would clip the extra
+       collective-decision row instead of letting .body absorb it. */
+    max-height: none;
   }
 
   .title {
@@ -440,11 +483,19 @@
   .option,
   .customRow {
     padding: 8px 6px;
+    /* Conventional minimum touch target on a phone. */
+    min-height: 44px;
+  }
+
+  .countdown {
+    font-size: 11px;
+    line-height: 18px;
+    flex: 0 0 auto;
   }
 
   .footer {
     align-items: flex-end;
-    padding: 0 10px;
+    padding: 0 10px calc(4px + env(safe-area-inset-bottom));
   }
 
   .footerActions {

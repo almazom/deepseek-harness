@@ -9,6 +9,67 @@
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      /* p2i auto-pin pre-seed (TC-003, plan D1): runs BEFORE the deferred
+         module boot so the store hydrates with the frozen session already in
+         pinnedIds (native Pinned block renders it first, above Today).
+         Fail-closed by contract: corrupt store / stale record / foreign id
+         => leave the sidebar untouched (a broken sidebar beats an un-pin).
+         Feed: window.__DSH_P2I_FROZEN__ (set by the injected status layer)
+         or the dsh.p2i.frozen.v1 localStorage cache it writes each poll. */
+      (function () {
+        try {
+          var KEY = "dsh.workspace.view.v6",
+              OWN = "dsh.p2i.autopin.v1",
+              FEED_CACHE = "dsh.p2i.frozen.v1",
+              STALE_MS = 600000; /* 10*60*1000 — parity with injected STALE_MS */
+          var fresh = window.__DSH_P2I_FROZEN__ || [];
+          if (!Array.isArray(fresh) || fresh.length === 0) {
+            try { fresh = JSON.parse(localStorage.getItem(FEED_CACHE) || "[]"); }
+            catch (e) { fresh = []; }
+          }
+          if (!Array.isArray(fresh)) return;
+          /* FULL default shape — parity with stores.ts createWorkspaceViewStore
+             init(). The store engine hydrates by WHOLE-VALUE REPLACE
+             (store/src/index.ts:154 setState(parsed, true)), so a PARTIAL
+             object here would wipe groupExpansion etc. and crash SessionTree
+             (Object.entries(groupExpansion)). Never write a partial shape. */
+          var DEFAULTS = {
+            groupBy: "workspace", orderBy: "updated",
+            groupExpansion: {}, sessionOrderByAccount: {},
+            sessionUpdatedAtByAccount: {}, pinnedIds: []
+          };
+          var raw = localStorage.getItem(KEY);
+          var store = raw ? JSON.parse(raw) : {};
+          if (!store || typeof store !== "object" || Array.isArray(store)) return; /* corrupt => untouched — fail-closed */
+          var healed = {};
+          Object.keys(DEFAULTS).forEach(function (k) {
+            healed[k] = (k in store && store[k] !== undefined) ? store[k] : DEFAULTS[k];
+          });
+          store = healed;
+          var manual = Array.isArray(store.pinnedIds) ? store.pinnedIds.slice() : [];
+          var prevOwn = [];
+          try { prevOwn = JSON.parse(localStorage.getItem(OWN) || "[]"); } catch (e) {}
+          if (!Array.isArray(prevOwn)) prevOwn = [];
+          /* unpin what WE pinned before, unless the operator pinned it manually
+             meanwhile (manual survival: ids present in `manual` but not ours). */
+          var survivors = manual.filter(function (id) { return prevOwn.indexOf(id) === -1; });
+          var now = Date.now(), mine = [], seen = {};
+          fresh.forEach(function (f) {
+            if (!f || typeof f.id !== "string" || seen[f.id]) return;
+            var body = f.id.indexOf("session-") === 0 ? f.id.slice(8) : f.id;
+            if (!/^[0-9a-f][0-9a-f-]{34,36}$/.test(body)) return; /* exact uuid only (writer ids are session-+uuid) — D4 */
+            seen[f.id] = 1;
+            var at = Date.parse(f.frozen_at);
+            if (!isFinite(at) || now - at >= STALE_MS) return;      /* stale => no pin */
+            if (survivors.indexOf(f.id) === -1) { survivors.push(f.id); mine.push(f.id); }
+          });
+          store.pinnedIds = survivors;
+          localStorage.setItem(KEY, JSON.stringify(store));
+          localStorage.setItem(OWN, JSON.stringify(mine));
+        } catch (e) { /* fail-closed: corrupt store => untouched sidebar */ }
+      })();
+    </script>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

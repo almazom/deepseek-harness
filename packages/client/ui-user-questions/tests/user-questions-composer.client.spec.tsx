@@ -2,7 +2,7 @@
 import type { GlobalStandardProps } from '@deepseek-ai/dsh-client-ui-slots'
 import { useSyncExternalStore } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import { PendingQuestion, type QuestionComposerProps } from '../src/client/contract/slots.ts'
 import { createQuestionDraftStore } from '../src/client/draft-store.ts'
@@ -21,7 +21,12 @@ afterEach(cleanup)
 const SID = 's1' as SessionId
 
 const seatOver = (dict: Record<string, string>, common: Record<string, string>): QuestionComposerProps['t'] =>
-  (key => dict[key] ?? common[key] ?? key)
+  ((key, params) => {
+    const template = dict[key] ?? common[key] ?? key
+    if (params === undefined) return template
+    return template.replace(/\{(\w+)\}/g, (match, name: string) =>
+      params[name] === undefined ? match : String(params[name]))
+  })
 
 type SessionState = Parameters<Parameters<QuestionComposerProps['useSession']>[0]>[0]
 type ConversationState = Parameters<Parameters<QuestionComposerProps['useConversation']>[0]>[0]
@@ -483,5 +488,119 @@ describe('parseRecommendedLabel', () => {
     expect(parseRecommendedLabel('稳妥（推荐）')).toEqual({ label: '稳妥', recommended: true })
     expect(parseRecommendedLabel('稳妥 (推荐)')).toEqual({ label: '稳妥', recommended: true })
     expect(parseRecommendedLabel('Plain')).toEqual({ label: 'Plain', recommended: false })
+  })
+})
+
+describe('countdown auto-answer', () => {
+  beforeEach(() => { vi.useFakeTimers() })
+
+  afterEach(() => { vi.useRealTimers() })
+
+  const COLLECTIVE = 'Collective decision (brainstorm)'
+
+  /** Single option-bearing question carrying the host's collective-decision row. */
+  const timed: PendingQuestion['questions'] = [
+    {
+      id: 'ship',
+      question: '现在发布这个版本吗？',
+      options: [
+        { label: '立即发布', description: '推荐方案', recommended: true },
+        { label: COLLECTIVE, description: '交给 brainstorm 技能决策', autoDecide: true },
+      ],
+    },
+  ]
+
+  /** Advance the mocked clock inside act() so the interval's renders flush. */
+  const tick = async (ms: number) => { await act(async () => { await vi.advanceTimersByTimeAsync(ms) }) }
+
+  it('counts down on the collective-decision row and leaves the recommendation alone', async () => {
+    const { carrier } = wait(timed)
+    render(<QuestionComposer matched={carrier} {...kit} />)
+
+    expect(screen.getByText('60s')).toBeTruthy()
+    expect(screen.getByText(zh['countdown.hint'])).toBeTruthy()
+    expect(screen.getByText(zh['option.recommended'])).toBeTruthy()
+
+    await tick(1250)
+    expect(screen.getByText('59s')).toBeTruthy()
+  })
+
+  it('submits the collective-decision option once, marked as automatic', async () => {
+    const { carrier, answer } = wait(timed)
+    render(<QuestionComposer matched={carrier} {...kit} />)
+
+    await tick(60_000)
+
+    expect(answer).toHaveBeenCalledTimes(1)
+    expect(answer).toHaveBeenCalledWith({ answers: [{ id: 'ship', selected: [COLLECTIVE], timedOut: true }] })
+  })
+
+  it('stays unarmed without an autoDecide option', async () => {
+    const { carrier, answer } = wait([
+      { id: 'ship', question: '现在发布这个版本吗？', options: [{ label: '立即发布', recommended: true }] },
+    ])
+    render(<QuestionComposer matched={carrier} {...kit} />)
+
+    expect(screen.getByText(zh['option.recommended'])).toBeTruthy()
+    await tick(120_000)
+    expect(answer).not.toHaveBeenCalled()
+  })
+
+  it('stays unarmed for a question without options', async () => {
+    const { carrier, answer } = wait([{ id: 'detail', question: '补充你的要求' }])
+    render(<QuestionComposer matched={carrier} {...kit} />)
+
+    await tick(120_000)
+    expect(answer).not.toHaveBeenCalled()
+  })
+
+  it('stays unarmed for a plan review', async () => {
+    const { carrier, answer } = wait([
+      {
+        id: 'plan',
+        question: '执行该计划？',
+        detail: '计划正文',
+        intent: { kind: 'plan-review', approve: '同意' },
+        options: [{ label: '同意', autoDecide: true }, { label: '拒绝' }, { label: '再改改' }],
+      },
+    ])
+    render(<QuestionComposer matched={carrier} {...kit} />)
+
+    expect(screen.queryByText('60s')).toBeNull()
+    await tick(120_000)
+    expect(answer).not.toHaveBeenCalled()
+  })
+
+  it('lets a manual answer win over the countdown', async () => {
+    const { carrier, answer } = wait(timed)
+    render(<QuestionComposer matched={carrier} {...kit} />)
+
+    fireEvent.click(screen.getByRole('radio', { name: '立即发布' }))
+    expect(screen.queryByText('60s')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: '提交' }))
+
+    expect(answer).toHaveBeenCalledTimes(1)
+    expect(answer).toHaveBeenCalledWith({ answers: [{ id: 'ship', selected: ['立即发布'] }] })
+    await tick(120_000)
+    expect(answer).toHaveBeenCalledTimes(1)
+  })
+
+  it('never fires once a human answer is in flight', async () => {
+    const { carrier, answer } = wait(timed)
+    render(<QuestionComposer matched={carrier} {...kit} />)
+
+    // Stop one tick short of expiry, then let the human selection and the final
+    // countdown tick land in the same flush: the expiry callback must observe the
+    // disarmed state instead of racing the human's answer.
+    await tick(59_750)
+    await act(async () => {
+      fireEvent.click(screen.getByRole('radio', { name: '立即发布' }))
+      await vi.advanceTimersByTimeAsync(250)
+    })
+
+    expect(answer).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: '提交' }))
+    expect(answer).toHaveBeenCalledTimes(1)
+    expect(answer).toHaveBeenCalledWith({ answers: [{ id: 'ship', selected: ['立即发布'] }] })
   })
 })

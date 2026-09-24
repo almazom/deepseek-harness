@@ -5,12 +5,16 @@ import clsx from 'clsx'
 import { IconChevronLeftOutline14, IconEditOutline16 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { SessionListState, SessionSummary } from '@deepseek-ai/dsh-api-session-controller/client'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
+import type { MainPanelId } from '@deepseek-ai/dsh-client-ui-layout/client'
 import type {
   ConversationSessionHeaderSlotProps, ConversationSessionSlotProps,
 } from '../contract/slots.ts'
 import { conversationPhase } from '../contract/snapshot.ts'
 import { resolveActiveView } from '../view-selection.ts'
 import css from './ConversationRoot.module.css'
+
+/** Key of the Sessions-page main-slot entry registered by ui-workspace. */
+const SESSIONS_PANEL = 'sessions' as MainPanelId
 
 /** Full props composed from the strict session body contract. */
 export type ConversationSessionProps = ConversationSessionSlotProps
@@ -117,14 +121,16 @@ export function ConversationSessionHeader({
       {!hideChrome && (
         <>
           <div className={css.titleRow}>
-            {/* Narrow frames navigate by page: the back affordance leaves the
-                selected main panel and returns to the Conversation. */}
+            {/* Narrow frames navigate by page: the header back affordance is
+                the up-level step to the Sessions page — the frame's session
+                switcher. A selectPanel(null) here is a no-op (the Conversation
+                renders only when no panel is selected) and dead-ends the frame. */}
             {narrow && (
               <button
                 type="button"
                 className={css.backBtn}
                 aria-label={t('session.back.aria')}
-                onClick={() => { selectPanel(null) }}
+                onClick={() => { selectPanel(SESSIONS_PANEL) }}
               >
                 <IconChevronLeftOutline14 size={16} />
               </button>

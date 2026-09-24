@@ -421,6 +421,11 @@ export function SessionNodeItem({
   const statuses = sessionStatuses(node, t)
   const primaryStatus = statuses[0]
   const showStatus = primaryStatus.state !== 'done' || row.completed
+  /* A session that is moving right now (its own run, or a user it is waiting
+     on) is the list's focal row: it carries the block thread and the bright
+     ink, while every settled row steps down one rung in size and ink so the
+     eye lands on what is actually working (operator 2026-09-23). */
+  const live = row.running || row.pendingInteraction !== undefined
   const [menuOpen, setMenuOpen] = useState(false)
   const rowRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
@@ -450,9 +455,14 @@ export function SessionNodeItem({
       ref={rowRef}
       className={clsx(
         css.sessionRow, selected && css.selected, menuOpen && css.menuOpen,
+        live && css.sessionRowLive,
         flat && !showStatus && css.flatSessionRowWithoutStatus,
         drag?.marker === 'before' && css.dropBefore, drag?.marker === 'after' && css.dropAfter,
       )}
+      data-live={live ? 'true' : undefined}
+      /* tc-p2i-est TC-004: stable id anchor — the injected flake/EST layer
+         matches the frozen home row by EXACT id (never by title, D4). */
+      data-session-id={row.id}
       role="treeitem"
       aria-selected={selected}
       onClick={() => { onOpen(node.id) }}
@@ -495,7 +505,15 @@ export function SessionNodeItem({
           happened in it yet, so a "now" timestamp and the row verbs
           (rename/fork/archive) would all act on content that does not
           exist — both trailing cells stay off until the first prompt. */}
-      {!row.blank && <span className={css.time}>{timeLabel(row.updatedAt, now, t)}</span>}
+      {/* Day-group rows sit under a day header instead of a Workspace
+          group, so the row names its Workspace before the time. */}
+      {!row.blank && (
+        <span className={css.time}>
+          {row.workspaceLabel !== undefined
+            && <span className={css.workspaceMeta}>{row.workspaceLabel}</span>}
+          {timeLabel(row.updatedAt, now, t)}
+        </span>
+      )}
       {!row.blank && (
         <span className={css.rowActions}>
           <Menu

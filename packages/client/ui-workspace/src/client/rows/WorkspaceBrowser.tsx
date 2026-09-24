@@ -51,11 +51,13 @@ export function sanitizeSearchQuery(value: string): string {
 /** Grouping and ordering menu; own open state so it resets with the wide chrome.
  * Shared by the sidebar region header and the full-page Sessions header (the
  * landing page mounts the same grouping/sorting contract). */
-export function ViewOptionsMenu({ groupBy, orderBy, onGroupPick, onOrderPick, t }: {
-  groupBy: 'workspace' | 'flat'
+export function ViewOptionsMenu({ groupBy, orderBy, filterActive, onGroupPick, onOrderPick, onFilterActiveToggle, t }: {
+  groupBy: 'workspace' | 'day' | 'flat'
   orderBy: SessionOrderBy
-  onGroupPick: (mode: 'workspace' | 'flat') => void
+  filterActive: boolean
+  onGroupPick: (mode: 'workspace' | 'day' | 'flat') => void
   onOrderPick: (mode: SessionOrderBy) => void
+  onFilterActiveToggle: () => void
   t: WorkspaceBrowserProps['t']
 }) {
   const [open, setOpen] = useState(false)
@@ -66,16 +68,20 @@ export function ViewOptionsMenu({ groupBy, orderBy, onGroupPick, onOrderPick, t 
       items={[
         { type: 'label' as const, id: 'group-by', text: t('groupBy.label') },
         { id: 'workspace', label: t('groupBy.workspace') },
+        { id: 'day', label: t('groupBy.day') },
         { id: 'flat', label: t('groupBy.flat') },
         { type: 'separator' as const, id: 'order-by-separator' },
         { type: 'label' as const, id: 'order-by', text: t('orderBy.label') },
         { id: 'manual', label: t('orderBy.manual') },
         { id: 'updated', label: t('orderBy.updated') },
+        { type: 'separator' as const, id: 'filter-separator' },
+        { id: 'filter-active', label: t('filter.active'), checked: filterActive },
       ]}
       selectedIds={[groupBy, orderBy]}
       onSelect={(id) => {
-        if (id === 'workspace' || id === 'flat') onGroupPick(id)
+        if (id === 'workspace' || id === 'day' || id === 'flat') onGroupPick(id)
         else if (id === 'manual' || id === 'updated') onOrderPick(id)
+        else if (id === 'filter-active') onFilterActiveToggle()
         setOpen(false)
       }}
       align="end"
@@ -140,6 +146,7 @@ export function WorkspaceBrowser({
   const directoryFlowAvailable = useDirectoryFlow(occupied => occupied)
   const groupBy = useStore(s => s.groupBy)
   const orderBy = useStore(s => s.orderBy)
+  const filterActive = useStore(s => s.filterActive)
   const groupExpansion = useStore(s => s.groupExpansion)
   const sessionOrderByAccount = useStore(s => s.sessionOrderByAccount)
   const sessionUpdatedAtByAccount = useStore(s => s.sessionUpdatedAtByAccount)
@@ -196,7 +203,7 @@ export function WorkspaceBrowser({
       <div className={css.sectionHeader}>
         {wide && (
           <span className={clsx(css.sectionLabel, css.wide, searchExpanded && css.sectionLabelHidden)}>
-            {groupBy === 'flat' ? t('section.sessions') : t('section.workspaces')}
+            {groupBy === 'workspace' ? t('section.workspaces') : t('section.sessions')}
           </span>
         )}
         {wide && (
@@ -261,8 +268,10 @@ export function WorkspaceBrowser({
             <ViewOptionsMenu
               groupBy={groupBy}
               orderBy={orderBy}
+              filterActive={filterActive}
               onGroupPick={(mode) => { actions.setGroupBy(mode) }}
               onOrderPick={(mode) => { actions.setOrderBy(mode) }}
+              onFilterActiveToggle={() => { actions.setFilterActive(!filterActive) }}
               t={t}
             />
           )}
@@ -341,6 +350,7 @@ export function WorkspaceBrowser({
           archivedSessionIds={archivedSessionIds}
           groupBy={groupBy}
           orderBy={orderBy}
+          filterActive={filterActive}
           groupExpansion={groupExpansion}
           sessionOrderByAccount={sessionOrderByAccount}
           sessionUpdatedAtByAccount={sessionUpdatedAtByAccount}

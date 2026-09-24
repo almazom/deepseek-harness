@@ -149,6 +149,12 @@ export interface TurnMaxTokensNode {
   time: number
   turn: number
   step: number
+  /**
+   * Whether the capped turn produced final reply text: true = the reply was
+   * cut off mid-turn, false = no text was produced at all. Absent on older
+   * session logs, where the renderer keeps the original combined notice.
+   */
+  hasContent?: boolean
 }
 
 /** A tool result paired (when in-window) with its call head. */

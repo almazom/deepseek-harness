@@ -9,6 +9,7 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, waitFor } from '@testing-library/react'
+import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
 import type { WorkspaceId } from '@deepseek-ai/dsh-api-workspace-controller/client'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import { resolveSlotLabel } from '@deepseek-ai/dsh-client-ui-slots'
@@ -34,6 +35,7 @@ async function createRuntime(): Promise<{ runtime: SlotTestRuntime; layout: { se
     selectPanel: vi.fn(),
     openRightbar: vi.fn(),
     closeRightbar: vi.fn(),
+    narrow: createSnapshotStore(false),
   }
   runtime.ctx.provide('layout', layout)
   runtime.releaseWorkspaceSource()
@@ -150,6 +152,56 @@ describe('sessions page entry', () => {
     expect(view.queryByRole('button', { name: '添加工作区' })).toBeNull()
     const page = runtime.slots.entries('main')[0]!.inject as () => WorkspaceBrowserInjected
     expect(page().hooks.directoryFlow.getSnapshot()).toBe(false)
+    await runtime.dispose()
+  })
+
+  it('pages the landing rows twelve per page in recency order', async () => {
+    const { runtime } = await createRuntime()
+    // Twenty-five recency-ordered rows overflow one 12-row page; every row
+    // shares one workspace so the grouped body renders one bounded section.
+    const now = Date.now()
+    for (let index = 1; index <= 25; index++) {
+      const id = `s-${String(index).padStart(2, '0')}` as SessionId
+      await runtime.sessions.add({
+        id,
+        summary: {
+          title: id, displayTitle: id, cwd: '/w/alpha',
+          updatedAt: now - index * 60_000,
+        },
+      }, { current: index === 1 })
+    }
+    await runtime.workspaces.update((draft) => {
+      draft.items = [{
+        workspaceId: 'w1' as WorkspaceId, title: 'alpha', path: '/w/alpha',
+        sessionIds: Array.from({ length: 25 }, (_, index) => `s-${String(index + 1).padStart(2, '0')}` as SessionId),
+        createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z',
+      }] as never
+    })
+    const view = await mountPage(runtime)
+    // Page one: the twelve newest rows and the pager status, not the oldest row.
+    expect(view.queryByText('s-01')).toBeTruthy()
+    expect(view.queryByText('s-12')).toBeTruthy()
+    expect(view.queryByText('s-13')).toBeNull()
+    expect(view.queryByText('s-25')).toBeNull()
+    expect(view.getByRole('navigation', { name: '会话分页' })).toBeTruthy()
+    expect(view.getByText((_, element) => element?.textContent === '会话 1–12，共 25 个')).toBeTruthy()
+    expect(view.getByRole('button', { name: '下一页' })).toBeTruthy()
+    // The previous step is disabled on the first page.
+    expect((view.getByRole('button', { name: '上一页' }) as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.click(view.getByRole('button', { name: '下一页' }))
+    // Page two of three: rows 13–24, newest still leading.
+    await waitFor(() => {
+      expect(view.queryByText('s-01')).toBeNull()
+      expect(view.queryByText('s-13')).toBeTruthy()
+      expect(view.queryByText('s-24')).toBeTruthy()
+      expect(view.queryByText('s-25')).toBeNull()
+    })
+    fireEvent.click(view.getByRole('button', { name: '下一页' }))
+    // The last page holds the remainder and disables the next step.
+    await waitFor(() => {
+      expect(view.queryByText('s-25')).toBeTruthy()
+    })
+    expect((view.getByRole('button', { name: '下一页' }) as HTMLButtonElement).disabled).toBe(true)
     await runtime.dispose()
   })
 })

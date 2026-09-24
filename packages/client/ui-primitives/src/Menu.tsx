@@ -17,6 +17,8 @@ export interface MenuItem {
   danger?: boolean
   /** Nested card opened to the right on hover/focus. */
   submenu?: readonly MenuItem[]
+  /** Explicit check state (independent of selectedIds). */
+  checked?: boolean
 }
 
 /** Hairline between item groups (not selectable). */
@@ -231,7 +233,7 @@ export function Menu({ open, anchor, items, selectedId, selectedIds, onSelect, o
     }
     const hasSub = entry.submenu !== undefined && entry.submenu.length > 0
     const subOpen = hasSub && openSubmenuId === entry.id
-    const selected = entry.id === selectedId || selectedIds?.includes(entry.id) === true
+    const selected = entry.id === selectedId || selectedIds?.includes(entry.id) === true || entry.checked === true
     return (
       <div
         key={entry.id}

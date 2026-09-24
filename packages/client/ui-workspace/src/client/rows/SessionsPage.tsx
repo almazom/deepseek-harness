@@ -76,6 +76,7 @@ export function SessionsPage({
   const directoryFlowAvailable = useDirectoryFlow(occupied => occupied)
   const groupBy = useStore(s => s.groupBy)
   const orderBy = useStore(s => s.orderBy)
+  const filterActive = useStore(s => s.filterActive)
   const groupExpansion = useStore(s => s.groupExpansion)
   const sessionOrderByAccount = useStore(s => s.sessionOrderByAccount)
   const sessionUpdatedAtByAccount = useStore(s => s.sessionUpdatedAtByAccount)
@@ -149,8 +150,10 @@ export function SessionsPage({
           <ViewOptionsMenu
             groupBy={groupBy}
             orderBy={orderBy}
+            filterActive={filterActive}
             onGroupPick={(mode) => { actions.setGroupBy(mode) }}
             onOrderPick={(mode) => { actions.setOrderBy(mode) }}
+            onFilterActiveToggle={() => { actions.setFilterActive(!filterActive) }}
             t={t}
           />
           {/* New Session is the page's primary affordance: the picker lists
@@ -194,6 +197,7 @@ export function SessionsPage({
       <div className={css.pageBody}>
         <SessionBrowserCore
           wide
+          paging={{ pageSize: 12 }}
           normalizedQuery={normalizedQuery}
           onQueryChange={setQuery}
           onSearchExpandedChange={setSearchExpanded}
@@ -208,6 +212,7 @@ export function SessionsPage({
           archivedSessionIds={archivedSessionIds}
           groupBy={groupBy}
           orderBy={orderBy}
+          filterActive={filterActive}
           groupExpansion={groupExpansion}
           sessionOrderByAccount={sessionOrderByAccount}
           sessionUpdatedAtByAccount={sessionUpdatedAtByAccount}

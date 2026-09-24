@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type ChangeEvent, type KeyboardEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type KeyboardEvent } from 'react'
 import clsx from 'clsx'
 import {
   Button, IconCheckOutline14, IconChevronDownOutline14, IconChevronLeftOutline14,
@@ -32,6 +32,46 @@ export function parseRecommendedLabel(label: string): { label: string; recommend
   return suffix.test(label)
     ? { label: label.replace(suffix, ''), recommended: true }
     : { label, recommended: false }
+}
+
+/** Full countdown before an unattended card takes the collective decision, in seconds. */
+const COUNTDOWN_SECONDS = 60
+
+/**
+ * Seconds left before the automatic collective decision.
+ *
+ * Deadline-based, not decrement-based: a phone that throttles the 250 ms tick
+ * while its screen dims still expires on the real deadline instead of
+ * stretching the wait, and the interval only refreshes the displayed figure.
+ * Zero calls `onExpire` once per arming, and a fresh `resetKey` restarts it.
+ *
+ * @param seconds - Full countdown length.
+ * @param armed - Whether the deadline is live; unarmed restores the full figure.
+ * @param onExpire - Called once when the deadline passes.
+ * @param resetKey - Identity of the pending request a live deadline belongs to.
+ * @returns Seconds remaining, for display.
+ */
+function useCountdown(seconds: number, armed: boolean, onExpire: () => void, resetKey: string): number {
+  const [remaining, setRemaining] = useState(seconds)
+  const expire = useRef(onExpire)
+  expire.current = onExpire
+  useEffect(() => {
+    if (!armed) {
+      setRemaining(seconds)
+      return
+    }
+    const deadline = Date.now() + seconds * 1000
+    setRemaining(seconds)
+    const timer = window.setInterval(() => {
+      const left = Math.max(0, Math.ceil((deadline - Date.now()) / 1000))
+      setRemaining(left)
+      if (left > 0) return
+      window.clearInterval(timer)
+      expire.current()
+    }, 250)
+    return () => { window.clearInterval(timer) }
+  }, [armed, seconds, resetKey])
+  return remaining
 }
 
 /** Return whether a text-field key event belongs to an active IME composition. */
@@ -154,6 +194,10 @@ function QuestionFlow({ pending, t, useStore, actions }: QuestionFlowProps) {
   // collapsed question must not steal focus from the expand toggle back into
   // the input, so focus is granted once per question index.
   const focusedQuestions = useRef(new Set<number>())
+  // Human engagement recorded OUTSIDE React state: a selection and the final
+  // countdown tick can land in the same flush, so the render-scoped `counting`
+  // below is already stale by then and cannot be the only guard.
+  const taken = useRef(false)
   // Every navigation write stays in bounds and drafts mirrors questions 1:1.
   // oxlint-disable-next-line typescript/no-non-null-assertion
   const question = questions[index]!
@@ -166,6 +210,7 @@ function QuestionFlow({ pending, t, useStore, actions }: QuestionFlowProps) {
   }
 
   const cancelFlow = (): void => {
+    taken.current = true
     setBusy('cancel')
     setError(null)
     void pending.cancel()
@@ -180,6 +225,7 @@ function QuestionFlow({ pending, t, useStore, actions }: QuestionFlowProps) {
     update: (current: QuestionDraftAnswer) => QuestionDraftAnswer,
     nextIndex = index,
   ): void => {
+    taken.current = true
     const nextDrafts = drafts.map((item, itemIndex) => itemIndex === index ? update(item) : item)
     replaceProgress(nextIndex, nextDrafts)
     setError(null)
@@ -202,7 +248,37 @@ function QuestionFlow({ pending, t, useStore, actions }: QuestionFlowProps) {
 
   const completed = (item: QuestionDraftAnswer): boolean => answered(item) || item.skipped
 
+  // The option an unattended card hands the decision to: the always-present
+  // collective-decision option the host appends, never the caller's own
+  // recommendation. Absent on a hand-built payload, which keeps the countdown
+  // opt-in on the wire.
+  const autoOption = questions.length === 1
+    ? question.options?.find(option => option.autoDecide === true)
+    : undefined
+  // Armed for one option-bearing, non-plan-review question that carries the
+  // option and that the user has not already engaged: later questions of a
+  // batch have not been seen yet, an approval is never automatic, and any
+  // click or typed answer keeps the human in control.
+  const counting = !minimized && hasOptions && question.intent?.kind !== 'plan-review'
+    && autoOption !== undefined && !answered(draft) && busy === null
+  // One expiry, one answer: a rejected settle must not re-fire the countdown.
+  const expired = useRef(false)
+  const remaining = useCountdown(COUNTDOWN_SECONDS, counting, () => {
+    if (autoOption === undefined || expired.current || taken.current || !counting) return
+    expired.current = true
+    setBusy('answer')
+    setError(null)
+    // The RAW host label is submitted, localized display notwithstanding.
+    void pending.answer({ answers: [{ id: question.id, selected: [autoOption.label], timedOut: true }] })
+      .then(() => { actions.clear(pending.key) })
+      .catch((cause: unknown) => {
+        setBusy(null)
+        setError({ text: cause instanceof Error ? cause.message : String(cause) })
+      })
+  }, pending.key)
+
   const submitDrafts = (values: QuestionDraftAnswer[]): void => {
+    taken.current = true
     const missing = values.findIndex(item => !completed(item))
     if (missing >= 0) {
       replaceProgress(missing, values)
@@ -279,6 +355,7 @@ function QuestionFlow({ pending, t, useStore, actions }: QuestionFlowProps) {
     <div className={css.frame} data-question-key={pending.key}>
       <section
         className={clsx(css.card, minimized && css.cardMinimized)}
+        data-question-card
         aria-labelledby={`question-${pending.key}-${String(index)}`}
       >
         <header className={css.header}>
@@ -295,7 +372,7 @@ function QuestionFlow({ pending, t, useStore, actions }: QuestionFlowProps) {
               title={t(minimized ? 'nav.maximize' : 'nav.minimize')}
               aria-expanded={!minimized}
               disabled={busy !== null}
-              onClick={() => { setMinimized(current => !current) }}
+              onClick={() => { taken.current = true; setMinimized(current => !current) }}
             >
               {minimized ? <IconChevronUpOutline14 /> : <IconChevronDownOutline14 />}
             </button>
@@ -319,13 +396,17 @@ function QuestionFlow({ pending, t, useStore, actions }: QuestionFlowProps) {
                 {(question.options ?? []).map((option, optionIndex) => {
                   const selected = draft.selected.includes(option.label)
                   const display = parseRecommendedLabel(option.label)
+                  // The host's collective-decision row is named locally and the
+                  // raw label travels back, so display and answer differ here.
+                  const optionLabel = option.autoDecide === true ? t('option.autoDecide') : display.label
+                  const recommended = display.recommended || option.recommended === true
                   return (
                     <button
                       type="button" key={`${option.label}-${String(optionIndex)}`}
                       className={clsx(css.option, selected && question.multiSelect !== true && css.optionSelected)}
                       role={question.multiSelect === true ? 'checkbox' : 'radio'}
                       aria-checked={selected}
-                      aria-label={display.label}
+                      aria-label={optionLabel}
                       disabled={busy !== null}
                       onClick={() => { choose(option.label) }}
                       onKeyDown={(event) => {
@@ -343,9 +424,26 @@ function QuestionFlow({ pending, t, useStore, actions }: QuestionFlowProps) {
                         : <span className={css.number}>{optionIndex + 1}</span>}
                       <span className={css.optionCopy}>
                         <span className={css.optionLine}>
-                          <span className={css.optionLabel}>{display.label}</span>
-                          {display.recommended && (
+                          <span className={css.optionLabel}>{optionLabel}</span>
+                          {recommended && (
                             <span className={css.badge}>{t('option.recommended')}</span>
+                          )}
+                          {option.autoDecide === true && counting && (
+                            <span
+                              className={css.countdown}
+                              data-countdown={String(remaining)}
+                              role="timer"
+                              aria-label={t('countdown.label', { seconds: remaining })}
+                            >
+                              <span
+                                aria-hidden="true"
+                                className={css.countdownBar}
+                                style={{ width: `${String(Math.round(remaining / COUNTDOWN_SECONDS * 100))}%` }}
+                              />
+                              <span className={css.countdownText}>
+                                {t('countdown.label', { seconds: remaining })}
+                              </span>
+                            </span>
                           )}
                           {option.description !== undefined && (
                             <span className={css.description}>{option.description}</span>
@@ -417,7 +515,9 @@ function QuestionFlow({ pending, t, useStore, actions }: QuestionFlowProps) {
                 </button>
               </div>
               <div className={css.feedback} role="status">
-                {error === null ? null : 'key' in error ? t(error.key) : error.text}
+                {error === null
+                  ? counting ? t('countdown.hint') : null
+                  : 'key' in error ? t(error.key) : error.text}
               </div>
               <div className={css.footerActions}>
                 <Button variant="outline" disabled={busy !== null} onClick={skipQuestion}>
