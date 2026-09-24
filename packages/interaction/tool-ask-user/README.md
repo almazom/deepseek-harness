@@ -29,7 +29,7 @@ Compose this plugin wherever the model should be able to pause for a human decis
 
 ### When to call the tool
 
-The model calls `ask_user_question` when it needs confirmation, a choice, or missing information before proceeding. Send one or more questions, each with a stable `id` that is echoed in the answer; a recommended option goes first with `(Recommended)` appended to its label.
+The model calls `ask_user_question` when it needs confirmation, a choice, or missing information before proceeding. Send one or more questions, each with a stable `id` that is echoed in the answer; the recommended option goes first and carries `"recommended": true` (the legacy `(Recommended)` label suffix still parses). A question that offers options also offers the collective-decision option: the tool appends one carrying `"autoDecide": true` when the caller does not, so an expiring countdown always has somewhere to hand the answer, and the countdown takes that option rather than the recommended one.
 
 ```json
 {
@@ -39,7 +39,7 @@ The model calls `ask_user_question` when it needs confirmation, a choice, or mis
       "question": "Proceed with the destructive cleanup?",
       "header": "Confirm",
       "options": [
-        { "label": "Yes, delete them (Recommended)", "description": "Removes the three stale files." },
+        { "label": "Yes, delete them", "description": "Removes the three stale files.", "recommended": true },
         { "label": "No, keep them", "description": "Aborts the cleanup." }
       ]
     }
@@ -49,10 +49,10 @@ The model calls `ask_user_question` when it needs confirmation, a choice, or mis
 
 ### What the model gets back
 
-The tool returns one answer object per question: `selected` holds the chosen option labels, and `custom` carries a free-form answer — supplementing `selected` for a multi-select question and overriding it for a single-select question. The Native renderer preserves the compact JSON text shape.
+The tool returns one answer object per question: `selected` holds the chosen option labels, and `custom` carries a free-form answer — supplementing `selected` for a multi-select question and overriding it for a single-select question. The result also carries a top-level `timed_out` flag: it is `true` when the answer came from an expiring countdown instead of a person, and `selected` then names the collective-decision option. The Native renderer preserves the compact JSON text shape.
 
 ```json
-{ "answers": [{ "id": "cleanup", "selected": ["Yes, delete them (Recommended)"] }] }
+{ "answers": [{ "id": "cleanup", "selected": ["Yes, delete them"] }], "timed_out": false }
 ```
 
 ### When the call fails
@@ -121,7 +121,7 @@ Prefix-stable while the definition and visibility are unchanged. Plugin lifecycl
 
 #### What the model sees
 
-The model's full questions remain in the assistant tool-call arguments. After the human answers, the next step sees compact JSON in the exact shape `{"answers":[{"id":"<id>","selected":["<label>"],"custom":"<text>"}]}`; `custom` is omitted when unused and `selected` can contain zero, one, or several labels. UI interaction while the call is pending is not model context.
+The model's full questions remain in the assistant tool-call arguments. After the human answers, the next step sees compact JSON in the exact shape `{"answers":[{"id":"<id>","selected":["<label>"],"custom":"<text>"}],"timed_out":false}`; `custom` is omitted when unused, `selected` can contain zero, one, or several labels, and `timed_out` is `true` when the countdown expired and the collective-decision (`autoDecide`) option was taken automatically instead of by a person. UI interaction while the call is pending is not model context.
 
 #### Token effect
 

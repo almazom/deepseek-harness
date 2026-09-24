@@ -3672,7 +3672,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'AskUserQuestionAnswerItem',
-    declaration: 'export interface AskUserQuestionAnswerItem {\n    id: string;\n    selected: string[];\n    custom?: string;\n}',
+    declaration: 'export interface AskUserQuestionAnswerItem {\n    id: string;\n    selected: string[];\n    custom?: string;\n    readonly timedOut?: boolean;\n}',
   },
   {
     name: 'AskUserQuestionIntent',
@@ -3684,7 +3684,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'AskUserQuestionOption',
-    declaration: 'export interface AskUserQuestionOption {\n    label: string;\n    description?: string;\n}',
+    declaration: 'export interface AskUserQuestionOption {\n    label: string;\n    description?: string;\n    readonly recommended?: boolean;\n    readonly autoDecide?: boolean;\n}',
   },
   {
     name: 'AskUserQuestionRequest',
@@ -6144,7 +6144,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'TurnEndReasonMap',
-    declaration: 'export interface TurnEndReasonMap {\n    completed: {\n        kind: \'completed\';\n    };\n    aborted: {\n        kind: \'aborted\';\n        reason: TurnEndCancelCause;\n    };\n    blocked: {\n        kind: \'blocked\';\n    };\n    error: {\n        kind: \'error\';\n        error: LlmFailure;\n    };\n    \'max-tokens\': {\n        kind: \'max-tokens\';\n    };\n    interrupted: {\n        kind: \'interrupted\';\n    };\n}',
+    declaration: 'export interface TurnEndReasonMap {\n    completed: {\n        kind: \'completed\';\n    };\n    aborted: {\n        kind: \'aborted\';\n        reason: TurnEndCancelCause;\n    };\n    blocked: {\n        kind: \'blocked\';\n    };\n    error: {\n        kind: \'error\';\n        error: LlmFailure;\n    };\n    \'max-tokens\': {\n        kind: \'max-tokens\';\n    };\n    interrupted: {\n        kind: \'interrupted\';\n    };\n    \'rep-loop-detected\': {\n        kind: \'rep-loop-detected\';\n    };\n}',
   },
   {
     name: 'TypertCodec',

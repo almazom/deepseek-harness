@@ -9,6 +9,19 @@ export interface AskUserQuestionOption {
   label: string
   /** Optional extra context rendered by capable UIs. */
   description?: string
+  /**
+   * True for the option the caller suggests. It is rendered first-class and
+   * orders the list, but a countdown expiry does not take it — the countdown
+   * takes the `autoDecide` option.
+   */
+  readonly recommended?: boolean
+  /**
+   * True for the option a UI takes automatically when its countdown expires:
+   * the collective-decision option that hands the answer to the brainstorm
+   * skill. A question offering options always carries one — the host appends it
+   * when the caller does not — so a timeout always has somewhere to go.
+   */
+  readonly autoDecide?: boolean
 }
 
 /**
@@ -55,6 +68,8 @@ export interface AskUserQuestionAnswerItem {
   selected: string[]
   /** Optional free-text "Other" answer. */
   custom?: string
+  /** True when the composer countdown expired and the `autoDecide` option was taken automatically — the user did not answer. */
+  readonly timedOut?: boolean
 }
 
 /** The human's answer. */

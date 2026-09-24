@@ -29,7 +29,7 @@ kind: "package-reference"
 
 ### 何时调用该工具
 
-当模型需要确认、选择结果或缺失的信息才能继续时，调用 `ask_user_question`。发送一个或多个问题，每个问题携带稳定的 `id`（回答中会原样包含）；推荐选项放在首位，并在标签末尾追加 `(Recommended)`。
+当模型需要确认、选择结果或缺失的信息才能继续时，调用 `ask_user_question`。发送一个或多个问题，每个问题携带稳定的 `id`（回答中会原样包含）；推荐选项放在首位并携带 `"recommended": true`（旧式的 `(Recommended)` 标签后缀仍可解析）。凡是提供选项的问题也提供集体决策选项：调用方没有给出时，工具会追加一个携带 `"autoDecide": true` 的选项，因此倒计时到期时总能交出一个去处，而倒计时采纳的是该选项，而不是推荐选项。
 
 ```json
 {
@@ -39,7 +39,7 @@ kind: "package-reference"
       "question": "Proceed with the destructive cleanup?",
       "header": "Confirm",
       "options": [
-        { "label": "Yes, delete them (Recommended)", "description": "Removes the three stale files." },
+        { "label": "Yes, delete them", "description": "Removes the three stale files.", "recommended": true },
         { "label": "No, keep them", "description": "Aborts the cleanup." }
       ]
     }
@@ -49,10 +49,10 @@ kind: "package-reference"
 
 ### 模型得到什么
 
-工具为每个问题返回一个回答对象：`selected` 保存选中的选项标签，`custom` 携带自由填写的回答——对多选题补充 `selected`，对单选题覆盖它。Native 渲染器保留紧凑的 JSON 文本形式。
+工具为每个问题返回一个回答对象：`selected` 保存选中的选项标签，`custom` 携带自由填写的回答——对多选题补充 `selected`，对单选题覆盖它。结果还带有顶层 `timed_out` 标志：当回答来自倒计时到期而非人类时，该标志为 `true`，此时 `selected` 指的是集体决策选项。Native 渲染器保留紧凑的 JSON 文本形式。
 
 ```json
-{ "answers": [{ "id": "cleanup", "selected": ["Yes, delete them (Recommended)"] }] }
+{ "answers": [{ "id": "cleanup", "selected": ["Yes, delete them"] }], "timed_out": false }
 ```
 
 ### 调用何时失败
@@ -121,7 +121,7 @@ kind: "package-reference"
 
 #### 模型看到的内容
 
-模型提出的完整问题保留在 assistant 工具调用参数中。用户回答后，下一步会看到精确采用 `{"answers":[{"id":"<id>","selected":["<label>"],"custom":"<text>"}]}` 形式的紧凑 JSON；不使用 `custom` 时会省略该字段，`selected` 可以包含零个、一个或多个标签。调用等待期间的 UI 交互不属于模型上下文。
+模型提出的完整问题保留在 assistant 工具调用参数中。用户回答后，下一步会看到精确采用 `{"answers":[{"id":"<id>","selected":["<label>"],"custom":"<text>"}],"timed_out":false}` 形式的紧凑 JSON；不使用 `custom` 时会省略该字段，`selected` 可以包含零个、一个或多个标签，而当倒计时到期、集体决策（`autoDecide`）选项被自动采纳（而非由人给出）时 `timed_out` 为 `true`。调用等待期间的 UI 交互不属于模型上下文。
 
 #### Token 影响
 
