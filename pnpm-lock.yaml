@@ -2471,9 +2471,6 @@ importers:
       '@deepseek-ai/dsh-compaction':
         specifier: workspace:^
         version: link:../../compaction/compaction
-      '@deepseek-ai/dsh-hook-protocol':
-        specifier: workspace:^
-        version: link:../../hooks/hook-protocol
       '@deepseek-ai/dsh-llm':
         specifier: workspace:^
         version: link:../../llm/llm
