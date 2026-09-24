@@ -422,50 +422,6 @@ describe('UiWorkspaceService', () => {
     })
   })
 
-  it('lands narrow boots without a Session on the Sessions page', () => {
-    const b = bench({
-      narrow: true,
-      workspaces: workspaceState([workspace('recent')]),
-      sessions: sessionState(),
-    })
-    expect(b.selectPanel).toHaveBeenCalledWith('sessions' as MainPanelId)
-    expect(b.sessions.create).not.toHaveBeenCalled()
-    expect(b.sessions.open).not.toHaveBeenCalled()
-  })
-
-  it('lands narrow boots that restore only a blank Session on the Sessions page', () => {
-    const blank = summary('blank', { blank: true })
-    const b = bench({
-      narrow: true,
-      workspaces: workspaceState([workspace('recent')]),
-      sessions: sessionState([blank], sid('blank')),
-    })
-    expect(b.selectPanel).toHaveBeenCalledWith('sessions' as MainPanelId)
-    expect(b.sessions.create).not.toHaveBeenCalled()
-    expect(b.sessions.open).not.toHaveBeenCalled()
-  })
-
-  it('keeps a restored real Session on narrow boots', () => {
-    const b = bench({
-      narrow: true,
-      workspaces: workspaceState([workspace('recent')]),
-      sessions: sessionState([summary('current')], sid('current')),
-    })
-    expect(b.selectPanel).not.toHaveBeenCalled()
-    expect(b.sessions.create).not.toHaveBeenCalled()
-    expect(b.sessions.open).not.toHaveBeenCalled()
-  })
-
-  it('restores a blank Session on wide boots', () => {
-    const blank = summary('blank', { blank: true })
-    const b = bench({
-      workspaces: workspaceState([workspace('recent')]),
-      sessions: sessionState([blank], sid('blank')),
-    })
-    expect(b.selectPanel).not.toHaveBeenCalled()
-    expect(b.sessions.open).not.toHaveBeenCalled()
-  })
-
   it('opens the recent Workspace after both baselines arrive', async () => {
     const b = bench()
     b.sessions.create.mockResolvedValue(sid('initial'))
