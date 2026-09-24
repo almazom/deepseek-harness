@@ -1,7 +1,7 @@
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterAll, describe, expect, it, vi } from 'vitest'
+import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import { LocalBashExecutor } from '@deepseek-ai/dsh-bash-local'
 import LocalSubprocessRuntime from '@deepseek-ai/dsh-subprocess-local'
@@ -42,6 +42,10 @@ async function readUntil(proc: ShellProcess, expected: string, timeoutMs = 5_000
 }
 
 describe('LocalBashExecutor.run', () => {
+  // The ambient shell may export a symlinked PWD (dsh-latest → physical dir);
+  // spawned bash reports it, so pin the logical cwd for pwd assertions.
+  beforeEach(() => { vi.stubEnv('PWD', process.cwd()) })
+
   it('resolves with output and the effective timeout', async () => {
     const { bash } = await setup({ timeoutMs: 5_000 })
     const result = await bash.run(bash.resolve({ command: 'echo hi' }))

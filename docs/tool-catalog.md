@@ -75,7 +75,7 @@ Ask the user a concise question when you need confirmation, a choice, or missing
           },
           "options": {
             "type": "array",
-            "description": "Optional choices to show the user. If you recommend one, put it first and append \"(Recommended)\" to that label.",
+            "description": "Optional choices to show the user. Put the option you recommend first and set \"recommended\": true on it; the legacy \"(Recommended)\" label suffix is also accepted. The host appends an autoDecide option to every question that offers options, and a countdown takes that one — not your recommended one.",
             "items": {
               "type": "object",
               "additionalProperties": true,
@@ -87,6 +87,14 @@ Ask the user a concise question when you need confirmation, a choice, or missing
                 "description": {
                   "type": "string",
                   "description": "One sentence explaining the tradeoff or impact."
+                },
+                "recommended": {
+                  "type": "boolean",
+                  "description": "Set true on the option you suggest and put it first. It is not taken automatically when a countdown expires."
+                },
+                "autoDecide": {
+                  "type": "boolean",
+                  "description": "Set true on the option a countdown should take when the user does not answer; the host appends one such option if you omit it."
                 }
               },
               "required": [

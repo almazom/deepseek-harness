@@ -162,6 +162,7 @@ describe('real Loader composition', () => {
     expect(await request(port, '/', authenticated({ method: 'HEAD' }))).toEqual({
       status: 200,
       type: 'text/html; charset=utf-8',
+      cache: 'no-cache',
       body: '',
     })
     untap()
@@ -210,6 +211,7 @@ describe('real Loader composition', () => {
     expect(await request(port, '/api/no/such/route', authenticated())).toEqual({
       status: 404,
       type: 'text/plain;charset=UTF-8',
+      cache: null,
       body: 'not found',
     })
 

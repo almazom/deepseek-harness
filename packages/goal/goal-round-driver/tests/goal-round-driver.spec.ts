@@ -235,7 +235,7 @@ describe('same-session goal driving', () => {
   it.each([
     ['rate limit', new LlmError('slow down', 'RATE_LIMIT')],
     ['request error', new Error('provider broke')],
-    ['max tokens', maxTokensResponse('unfinished')],
+    ['max tokens', maxTokensResponse('')],
   ] as const)('disarms automatic continuation after a %s', async (_label, response) => {
     const test = await harness([response])
     test.ctx.goals.create(test.agent, { objective: 'stop safely', maxGoalRounds: 8 })

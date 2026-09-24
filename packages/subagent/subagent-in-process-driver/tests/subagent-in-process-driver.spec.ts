@@ -146,7 +146,11 @@ describe('startInProcessRun', () => {
     expect(ctx.sessions.list()).toHaveLength(beforeSessions)
   })
   it('reports the turn outcome when later metadata is appended during flush', async () => {
-    const { ctx, parent } = await setup([maxTokensResponse('partial answer')])
+    const { ctx, parent } = await setup([
+      maxTokensResponse('partial answer'),
+      maxTokensResponse('partial answer'),
+      maxTokensResponse('partial answer'),
+    ])
     let injected = false
     ctx.on('session/flush', (session) => {
       if (injected || session.header.parentSession === undefined) return

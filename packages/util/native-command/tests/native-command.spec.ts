@@ -1,9 +1,12 @@
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { runNativeCommand } from '@deepseek-ai/dsh-native-command'
 
 const node = process.execPath
 
 describe('runNativeCommand', () => {
+  // Scrub the ambient --trace-exit NODE_OPTIONS: child stderr is asserted
+  // verbatim below and trace-exit noise would pollute it.
+  beforeEach(() => { vi.stubEnv('NODE_OPTIONS', '') })
   it('captures utf8 stdout and stderr on exit 0', async () => {
     const result = await runNativeCommand(
       node,

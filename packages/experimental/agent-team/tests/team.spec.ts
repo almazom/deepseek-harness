@@ -22,10 +22,26 @@ import { TestSessionQuery } from './test-session-query.ts'
 
 const SIGNAL = new AbortController().signal
 const roots: string[] = []
+/** Contexts created per test; disposed before their roots so session locks close. */
+const contexts: Context[] = []
 
-afterEach(() => {
+afterEach(async () => {
   vi.useRealTimers()
-  for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true })
+  // Dispose every recorded Context before removing roots: an undisposed fiber
+  // leaves session.lock FileHandles open, and Windows rmSync then fails while
+  // those handles are still held (surfacing later as GC-time FileHandle
+  // closures). Reverse order tears dependents down before their bases.
+  const failures: unknown[] = []
+  for (const ctx of contexts.reverse()) {
+    try {
+      await ctx.fiber.dispose()
+    } catch (error) {
+      failures.push(error)
+    }
+  }
+  contexts.splice(0)
+  for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 })
+  if (failures.length > 0) throw new AggregateError(failures, 'Agent Teams test cleanup failed')
 })
 
 /** Detached durable Team read through the same projection definition as the service. */
@@ -60,6 +76,7 @@ async function setup(
   config: ConstructorParameters<typeof TeamService>[1] = {},
 ) {
   const ctx = new Context()
+  contexts.push(ctx)
   await mountAgentLoopTestDependencies(ctx)
   const storageRoot = mkdtempSync(join(tmpdir(), 'dsh-team-'))
   roots.push(storageRoot)
@@ -167,6 +184,7 @@ describe('Team identity and provisioning', () => {
 
   it('supports direct-constructor defaults and recovers roots that already exist', async () => {
     const ctx = new Context()
+    contexts.push(ctx)
     await mountAgentLoopTestDependencies(ctx)
     const storageRoot = mkdtempSync(join(tmpdir(), 'dsh-team-direct-'))
     roots.push(storageRoot)
@@ -1407,6 +1425,7 @@ describe('Team mailbox and waiting', () => {
 
   it('waits for one change, supports cancellation, times out, and releases waiters on HMR disposal', async () => {
     const ctx = new Context()
+    contexts.push(ctx)
     await mountAgentLoopTestDependencies(ctx)
     const storageRoot = mkdtempSync(join(tmpdir(), 'dsh-team-wait-'))
     roots.push(storageRoot)

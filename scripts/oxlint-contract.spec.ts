@@ -23,7 +23,7 @@ function runRepositoryOxlint(args: readonly string[], env: NodeJS.ProcessEnv = {
   return spawnSync(process.execPath, [tsxCli, 'scripts/run-oxlint.ts', ...args], {
     cwd: repositoryRoot,
     encoding: 'utf8',
-    env: { ...process.env, NO_COLOR: '1', ...env },
+    env: { ...process.env, NO_COLOR: '1', NODE_OPTIONS: '', ...env },
   })
 }
 
@@ -31,7 +31,7 @@ function runOxlint(args: readonly string[], env: NodeJS.ProcessEnv = {}) {
   return spawnSync(process.execPath, [oxlintCli, ...args], {
     cwd: repositoryRoot,
     encoding: 'utf8',
-    env: { ...process.env, NO_COLOR: '1', ...env },
+    env: { ...process.env, NO_COLOR: '1', NODE_OPTIONS: '', ...env },
   })
 }
 

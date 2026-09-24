@@ -1859,10 +1859,9 @@ describe('continuable review regressions', () => {
   it('reports the child\'s own terminal reason, not teardown success', async () => {
     // The child hits its token ceiling; teardown still succeeds.
     const { ctx, parent } = await setupWith(new MockAdapter([
-      [{ type: 'block-start', index: 0, blockType: 'text' },
-        { type: 'text-delta', index: 0, text: 'partial' },
-        { type: 'block-end', index: 0, block: { type: 'text', text: 'partial' } },
-        { type: 'finish', reason: { kind: 'max-tokens' } }],
+      maxTokensResponse('partial'),
+      maxTokensResponse('partial'),
+      maxTokensResponse('partial'),
     ]))
     const ends: SubagentRunEndInfo[] = []
     ctx.on('subagent/end', (info) => { ends.push(info) })
@@ -2514,7 +2513,11 @@ describe('continuable settlement delivery', () => {
   })
 
   it('delivers the terminal reason when the child never had a chance to report', async () => {
-    const { ctx, parent } = await setup([maxTokensResponse('half an ans'), textResponse('parent ack')])
+    const { ctx, parent } = await setup([
+      maxTokensResponse('half an ans'),
+      maxTokensResponse('half an ans'),
+      maxTokensResponse('half an ans'),
+    ])
     const started = await ctx.subagents.startContinuable(startSpec(parent))
     await waitNoActivation(ctx, started.childId)
 

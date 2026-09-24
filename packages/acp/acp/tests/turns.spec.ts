@@ -32,7 +32,9 @@ describe('ACP prompt lifecycle', () => {
   })
 
   it('reports a max-token turn without losing its committed text', async () => {
-    harness = await makeBridgeHarness({ script: [maxTokensResponse('cut off')] })
+    harness = await makeBridgeHarness({ script: [
+      maxTokensResponse('cut '), maxTokensResponse('off'), maxTokensResponse(''),
+    ] })
     const sessionId = await newSession(harness)
     const result = await harness.client.prompt({ sessionId, prompt: [{ type: 'text', text: 'go' }] })
     expect(result.stopReason).toBe('max_tokens')
