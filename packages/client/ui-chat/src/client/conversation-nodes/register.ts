@@ -3,7 +3,6 @@ import { registerAssistantConversationNode } from './assistant.ts'
 import { registerChatConversationView } from './chat-snapshot-builder.ts'
 import { registerCommandConversationNode } from './command.ts'
 import { registerCompactionConversationNode } from './compaction.ts'
-import { registerHooksConversationNode } from './hooks.ts'
 import { registerUnknownConversationFallback } from './fallback.ts'
 import { registerInboxConversationNodes } from './inbox.ts'
 import { registerMessageConversationNode } from './message.ts'
@@ -28,7 +27,6 @@ export function registerConversationNodes(ctx: Context): void {
   registerToolConversationNode(ctx)
   registerCommandConversationNode(ctx)
   registerCompactionConversationNode(ctx)
-  registerHooksConversationNode(ctx)
   registerRetryConversationNode(ctx)
   registerTurnErrorConversationNode(ctx)
   registerTurnMaxTokensConversationNode(ctx)

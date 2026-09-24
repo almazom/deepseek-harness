@@ -39,9 +39,6 @@
       "path": "../../core/tools"
     },
     {
-      "path": "../../hooks/hook-protocol"
-    },
-    {
       "path": "../../interaction/commands"
     },
     {

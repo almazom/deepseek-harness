@@ -5,8 +5,8 @@
 }
 
 .actions {
-  /* The tail row is spaced by the Chat flow's preceding-item offset alone: the
-     4px that used to sit here was inside the row's own box, so the interval
-     before the tail read 20px while every other pair read the column token. */
+  /* With tail content, this adds to the root gap; without it, the Chat flow's
+     preceding-item offset supplies the other 16px. */
+  margin-top: 4px;
   margin-left: -6px;
 }

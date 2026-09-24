@@ -1,9 +1,6 @@
 /* Two icon pills side by side under the composer, 13/20 tertiary text tier
    with a hover-pill affordance; each pill's click-open panel wears the shared
-   stat-dialog.module.css skin. The 4px top padding is composer-dock clearance,
-   not transcript rhythm: it pairs with the composer row's own 4px (InputBar's
-   `:has([data-composer-stats]) { padding-bottom: 4px }`) for the drawn 8px
-   rhythm under the dock. */
+   stat-dialog.module.css skin. */
 
 .root {
   display: flex;

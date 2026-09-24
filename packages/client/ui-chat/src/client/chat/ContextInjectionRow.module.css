@@ -5,6 +5,10 @@
   min-width: 0;
 }
 
+.root[data-open] {
+  padding-bottom: 4px;
+}
+
 .chevron {
   color: var(--dsw-alias-label-secondary);
 }

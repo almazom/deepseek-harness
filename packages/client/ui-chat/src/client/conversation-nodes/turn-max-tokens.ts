@@ -62,22 +62,12 @@ export const turnMaxTokensDefinition: ConversationNodeDefinition<TurnMaxTokensSt
   buildViewNode: (context) => {
     const state = context.state
     if (state === undefined) return null
-    const location = context.start?.location ?? context.matches[0]?.location
-    const closing = location?.kind === 'turn' || location?.kind === 'step'
-      ? location.turn.data.get('turn-tail')?.closing
-      : undefined
     const node: TurnMaxTokensNode = {
       kind: 'turn-max-tokens',
       seq: state.seq,
       time: state.time,
       turn: state.turn,
       step: lastStep(context),
-      // Empty vs mid-work notice split (lever D): a tail closing text
-      // Assistant means the turn produced text (hasContent true); a tail
-      // present but no closing text means it did not (false); no tail data
-      // (older logs) omits the field so the renderer keeps the original
-      // combined notice.
-      ...(closing === undefined ? {} : { hasContent: closing !== null }),
     }
     return chatNode(context, 'turn-max-tokens', noticeAnchor(context, state.seq), node)
   },

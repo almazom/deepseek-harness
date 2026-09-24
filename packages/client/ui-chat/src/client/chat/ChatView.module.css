@@ -57,6 +57,12 @@
   min-width: 0;
 }
 
+/* A closed process reads as one summary immediately followed by its answer.
+   Expanded process rows return to the ordinary 16px rhythm. */
+.flowItem[data-turn-process-answer] {
+  --dsh-chat-flow-gap: 8px;
+}
+
 /* A keyed renderer may intentionally decline its row after dispatch (the
    completed-turn tail does this when it owns neither actions nor extensions).
    An empty flex item must not consume the column gap. */
@@ -214,72 +220,4 @@
 /* Host open-path refusal: same dialog family as the workspace folder error. */
 .modalAction {
   min-width: 72px;
-}
-
-/* Per-turn hook telemetry card. */
-
-.hooksCard {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 8px 12px;
-  border: 0.5px solid var(--dsw-alias-border-l1);
-  border-radius: 10px;
-  background: var(--dsw-specific-tip);
-  /* The card paints an elevated rung and the sheet scrolls: per-element rebind
-     so the themed bar substitutes the l2 elevation pair here. */
-  --dsh-scrollbar-thumb: var(--dsw-alias-scrollbar-bg-l2);
-  --dsh-scrollbar-thumb-hover: var(--dsw-alias-scrollbar-hover-l2);
-}
-
-.hooksTitle {
-  font-size: 12px;
-  line-height: 18px;
-  font-weight: 500;
-  color: var(--dsw-alias-label-tertiary);
-}
-
-.hooksRuns {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.hooksRun {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  min-width: 0;
-  font-size: 12px;
-  line-height: 18px;
-}
-
-.hooksPoint {
-  flex: none;
-  color: var(--dsw-alias-label-secondary);
-}
-
-.hooksHandler {
-  overflow: hidden;
-  color: var(--dsw-alias-label-primary-dimmed);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.hooksDecision {
-  flex: none;
-  margin-left: auto;
-  color: var(--dsw-alias-label-tertiary);
-}
-
-.hooksRun[data-hook-decision='stop'] .hooksDecision {
-  color: var(--dsw-alias-state-error-primary);
-}
-
-.hooksDuration {
-  flex: none;
-  color: var(--dsw-alias-label-caption);
 }

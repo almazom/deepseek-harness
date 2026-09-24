@@ -89,9 +89,7 @@
 }
 
 .thinkBody {
-  /* Left rule: an inset box-shadow line at the container edge keeps the pinned
-     22px+delta text indent (the expanded think text reads as quoted process). */
-  box-shadow: inset 2px 0 0 0 var(--dsw-alias-label-caption);
+  /* Indent under the title, which starts at leading (16 + delta) + gap 6. */
   padding: 4px 0 4px calc(22px + var(--dsh-content-font-delta, 0px));
   color: var(--dsw-alias-label-tertiary);
   font-size: var(--dsh-content-font-size-secondary, 13px);
