@@ -8,10 +8,6 @@
  * - WorkspacePicker fills the conversation empty-state hole (menu + error
  *   dialog shared with the browser).
  *
- * - SessionsPage fills the `main` slot's `sessions` key — the full-width
- *   page surface over the same browsing core, reachable from the sidebar
- *   panel list (its entry id addresses this key).
- *
  * Each registration also declares one **directory-flow hole** (`single`
  * kind): the slot a composed picker package's client half fills with its
  * picking interaction — a renderless native-chooser driver or an in-app
@@ -22,7 +18,7 @@
  * including creating a new directory to hand back. That occupant-owned
  * creation is why adding a workspace has a single route: an unoccupied hole
  * leaves the surface with no add affordance at all.
- * The holes exist because the trigger surfaces are independent slot entries
+ * Two holes exist because the two menu surfaces are independent slot entries
  * and a hole has exactly one declaring entry — they carry the same owner
  * contract and the same occupant.
  */
@@ -61,16 +57,13 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
     'conversation.hero.workspace.directoryFlow': { kind: 'single'; scope: 'root'; owner: DirectoryFlowOwnerProps }
     /** Directory-flow hole under the sidebar browsing region (declared by the WorkspaceBrowser entry). */
     'sidebar.workspaces.directoryFlow': { kind: 'single'; scope: 'root'; owner: DirectoryFlowOwnerProps }
-    /** Directory-flow hole under the full-page Sessions surface (declared by the SessionsPage entry). */
-    'sessions.page.directoryFlow': { kind: 'single'; scope: 'root'; owner: DirectoryFlowOwnerProps }
   }
 }
 
-/** The directory-flow holes; a flow package's client half registers its one component into each. */
+/** The two directory-flow holes; a flow package's client half registers its one component into both. */
 export type DirectoryFlowSlotName =
   | 'conversation.hero.workspace.directoryFlow'
   | 'sidebar.workspaces.directoryFlow'
-  | 'sessions.page.directoryFlow'
 
 /**
  * Directory-picking share both trigger surfaces consume. Occupancy rides the
@@ -155,19 +148,6 @@ export type WorkspaceBrowserInjected = {
 export type WorkspaceBrowserProps =
   PropsRuntime<'sidebar.workspaces'>
   & PropsRenderSlots<'sidebar.workspaces.directoryFlow'>
-  & PropsStore<ReturnType<typeof createWorkspaceViewStore>>
-  & Omit<WorkspaceBrowserInjected, 'hooks'>
-  & PropsHooks<WorkspaceBrowserInjected['hooks']>
-  & PropsLocale<'workspace'>
-
-/**
- * Full page props: the keyed main runtime seat + the page's directory-flow
- * hole + the shared viewing store + the same injected Host actions the
- * sidebar region drives + the locale seat.
- */
-export type SessionsPageProps =
-  PropsRuntime<'main'>
-  & PropsRenderSlots<'sessions.page.directoryFlow'>
   & PropsStore<ReturnType<typeof createWorkspaceViewStore>>
   & Omit<WorkspaceBrowserInjected, 'hooks'>
   & PropsHooks<WorkspaceBrowserInjected['hooks']>

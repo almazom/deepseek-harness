@@ -76,20 +76,6 @@ describe('WorkspaceBrowser.module.css list', () => {
     expect(declarations('.groupSection + .groupSection')?.get('margin-top')).toBe('4px')
   })
 
-  it('gives the full-page landing one card per group with hairline-divided rows', () => {
-    const card = declarations('.wide .groupSection')
-    expect(card?.get('background')).toBe('var(--dsw-alias-button-floating-fill)')
-    expect(card?.get('border-radius')).toBe('16px')
-    expect(card?.get('padding')).toBe('0 8px')
-    for (const sel of ['.wide .flatList > * + *', '.wide .groupSection > * + *']) {
-      expect(declarations(sel)?.get('border-top')).toBe('0.5px solid var(--dsw-alias-border-l1)')
-      expect(declarations(sel)?.get('margin-top')).toBe('0')
-    }
-    expect(declarations('.wide .groupSection > .dayHeader + *')?.get('border-top')).toBe('none')
-    /* The sidebar keeps its dense, frameless rhythm. */
-    expect(declarations('.sidebar .groupSection')).toBeUndefined()
-  })
-
   it('draws drag targets as a leading chevron joined to the insertion line', () => {
     const listTopMarker = declarations('.listTopDropIndicator')
     const workspaceMarker = declarations('.workspaceDropBefore::before')
@@ -116,62 +102,10 @@ describe('WorkspaceBrowser.module.css list', () => {
     expect(declarations('.searchExpanded')?.get('height')).toBe('30px')
     expect(rowDeclarations('.projectRow')?.get('height')).toBe('34px')
     expect(rowDeclarations('.sessionRow')?.get('height')).toBe('32px')
-    expect(rowDeclarations('.flatSessionRowWithoutStatus .title')?.get('margin-left')).toBe('20px')
+    expect(rowDeclarations('.flatSessionRowWithoutStatus .title')?.get('margin-left')).toBe('0')
     expect(rowDeclarations('.searchResultRow')?.get('min-height')).toBe('48px')
     expect(rowDeclarations('.sessionRow.selected')?.get('background'))
       .toBe('var(--dsw-alias-interactive-bg-hover)')
-  })
-
-  it('keeps the session title one rung above its 12px meta and time', () => {
-    expect(rowDeclarations('.title')?.get('font-size')).toBe('16px')
-    expect(rowDeclarations('.title')?.get('line-height')).toBe('22px')
-    expect(rowDeclarations('.searchResultTitle')?.get('font-size')).toBe('16px')
-    expect(rowDeclarations('.renameInput')?.get('font-size')).toBe('16px')
-    expect(rowDeclarations('.meta')?.get('font-size')).toBe('12px')
-    expect(rowDeclarations('.time')?.get('font-size')).toBe('12px')
-  })
-
-  it('opens every session row title with a capital letter without touching the stored string', () => {
-    expect(rowDeclarations('.sessionRow .title::first-letter')?.get('text-transform')).toBe('uppercase')
-    expect(rowDeclarations('.searchResultTitle::first-letter')?.get('text-transform')).toBe('uppercase')
-  })
-
-  it('keeps the live card surface on the phone and leaves the desktop list unlit', () => {
-    const phoneAt = rowsCss.indexOf('@media (max-width: 768px)')
-    expect(phoneAt).toBeGreaterThan(-1)
-    const desktopCss = rowsCss.slice(0, phoneAt)
-    const phoneCss = rowsCss.slice(phoneAt)
-    const live = declarationsFrom(desktopCss, '.sessionRowLive')
-    expect(live?.get('--dsh-live-inset')).toBe('var(--dsh-session-list-edge-inset, 20px)')
-    expect(live?.get('--dsh-live-fill')).toBe('var(--dsw-alias-button-floating-fill)')
-    expect(live?.get('--dsh-live-hover')).toBe('var(--dsw-alias-interactive-bg-hover)')
-    /* Operator red pen 2026-09-23 («на десктопной версии у активной сессии
-       инвертированная фоновая подсветка… надо это убрать, она здесь мешает»):
-       the fill resolves LIGHTER than its panel while every other interactive
-       surface in the app darkens, so the painted card is a phone-only surface.
-       On desktop a live row is a plain row that keeps the ink/size hierarchy,
-       and hover/selection stay the app's own full-bleed tint.
-       The loud version (2px accent bar, full-bleed tint) must not come back
-       either, and the frame must stay the row's own background: a
-       pseudo-element frame painted ABOVE the text and washed the titles out. */
-    expect(live?.get('background')).toBeUndefined()
-    expect(live?.get('border-radius')).toBeUndefined()
-    expect(live?.get('box-shadow')).toBeUndefined()
-    expect(declarationsFrom(desktopCss, '.sessionRowLive::after')).toBeUndefined()
-    for (const state of ['.sessionRowLive:hover', '.sessionRowLive.selected', '.sessionRowLive.menuOpen']) {
-      expect(declarationsFrom(desktopCss, state)).toBeUndefined()
-    }
-    const phone = declarationsFrom(phoneCss, '.sessionRowLive')
-    expect(phone?.get('border-radius')).toBe('10px')
-    expect(phone?.get('background')).toContain('var(--dsh-live-inset) 1px / calc(100% - var(--dsh-live-inset)) calc(100% - 2px)')
-    for (const state of ['.sessionRowLive:hover', '.sessionRowLive.selected', '.sessionRowLive.menuOpen']) {
-      expect(declarationsFrom(phoneCss, state)?.get('background')).toContain('var(--dsh-live-hover)')
-    }
-    /* The ink and size hierarchy is surface-independent. */
-    expect(rowDeclarations('.sessionRowLive .time')?.get('color')).toBe('var(--dsw-alias-label-secondary)')
-    const settled = rowDeclarations('.sessionRow:not(.sessionRowLive):not(.selected) .title')
-    expect(settled?.get('font-size')).toBe('15px')
-    expect(settled?.get('color')).toBe('var(--dsw-alias-label-secondary)')
   })
 
   it('pins both rail controls to the shared left anchor during the column slide', () => {

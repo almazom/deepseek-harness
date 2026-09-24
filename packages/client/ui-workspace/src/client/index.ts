@@ -1,16 +1,12 @@
 /**
- * Workspace plugin, browser half. Registrations: WorkspaceBrowser fills the
- * sidebar shell's `sidebar.workspaces` hole (the whole browsing region),
- * WorkspacePicker fills the conversation hero's picker hole
- * (`conversation.hero.workspace` — both hero forms), SessionsPage fills the
- * layout's keyed `main` slot under key `sessions` (the full-width page
- * surface), and the page's panel-list row addresses that key so the sidebar
- * reaches it. All read real Host Workspaces through the global useWorkspaces
- * hook. The browser and the page share one viewing-store handle — one
- * arrangement (grouping, order accounts, pins) behind both surfaces — and
- * each declares its own `single` directory-flow child hole for the composed
- * picker package's client half (see the contract module doc). Export
- * discipline: packages/client/AGENTS.md.
+ * Workspace plugin, browser half. Two registrations: WorkspaceBrowser fills
+ * the sidebar shell's `sidebar.workspaces` hole (the whole browsing region),
+ * and WorkspacePicker fills the conversation hero's picker hole
+ * (`conversation.hero.workspace` — both hero forms). Both read real Host
+ * Workspaces through the global useWorkspaces hook, and each declares its
+ * own `single` directory-flow child hole for the composed picker package's
+ * client half (see the contract module doc). Export discipline:
+ * packages/client/AGENTS.md.
  */
 import type { Context } from '@deepseek-ai/cordis'
 import type { RemoteHostFacts } from '@deepseek-ai/dsh-api-remotes/client'
@@ -27,21 +23,17 @@ import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
 // Type-only: pulls the Session root standard-hook merge.
 import type {} from '@deepseek-ai/dsh-client-ui-session/client'
-import type {
-  DirectoryFlowSlotName, WorkspaceBrowserInjected, WorkspacePickerInjected,
-} from './contract/slots.ts'
+import type { WorkspaceBrowserInjected, WorkspacePickerInjected } from './contract/slots.ts'
 import { UiWorkspaceService } from './navigation.ts'
 import { createWorkspaceViewStore } from './stores.ts'
 import { WorkspaceBrowser } from './rows/WorkspaceBrowser.tsx'
-import { SessionsPage, SessionsPanelGlyph } from './rows/SessionsPage.tsx'
 import { WorkspacePicker } from './WorkspacePicker.tsx'
 import { en, zh, type WorkspaceKey } from './locales.ts'
 
 export type { UiWorkspace } from './navigation.ts'
 export type {
   DirectoryFlowOwnerProps, DirectoryFlowSlotName, DirectoryPickingHooks, DirectoryPickingInjected,
-  SessionsPageProps, WorkspaceBrowserInjected, WorkspaceBrowserProps, WorkspacePickerInjected,
-  WorkspacePickerProps,
+  WorkspaceBrowserInjected, WorkspaceBrowserProps, WorkspacePickerInjected, WorkspacePickerProps,
 } from './contract/slots.ts'
 export type { WorkspaceKey } from './locales.ts'
 
@@ -94,7 +86,7 @@ export function apply(ctx: Context): void {
 
   // Stable per-surface occupancy sources (the renderer's hook cache keys by
   // source identity): true while the surface's directory-flow hole is filled.
-  const flowSource = (hole: DirectoryFlowSlotName): HostObservable<boolean> => ({
+  const flowSource = (hole: 'sidebar.workspaces.directoryFlow' | 'conversation.hero.workspace.directoryFlow'): HostObservable<boolean> => ({
     getSnapshot: () => ctx.slots.entries(hole).length > 0,
     subscribe: listener => ctx.slots.subscribe(hole, listener),
   })
@@ -104,14 +96,10 @@ export function apply(ctx: Context): void {
     subscribe: listener => ctx.on('connection/reset', listener),
   }
   const pickerFlowSource = flowSource('conversation.hero.workspace.directoryFlow')
-  const pageFlowSource = flowSource('sessions.page.directoryFlow')
   const openSession: WorkspaceBrowserInjected['open'] = (sessionId) => {
     uiWorkspace.openSession(sessionId)
   }
-  // One Host-action face for every surface that drives the browsing core:
-  // the sidebar region and the full-page Sessions surface differ only in
-  // which directory-flow hole their add affordance tracks.
-  const browsingInjected = (directoryFlow: HostObservable<boolean>): WorkspaceBrowserInjected => ({
+  const browserInjected = (): WorkspaceBrowserInjected => ({
     // Explicit group actions keep their target; unscoped New Session inherits
     // the current Session Workspace before the recent-Workspace fallback.
     startSession: (workspaceId) => { uiWorkspace.startSession(workspaceId) },
@@ -142,28 +130,19 @@ export function apply(ctx: Context): void {
       await workspaces.insertSessionBefore(workspaceId, sessionId, beforeSessionId)
     },
     createWorkspace: input => workspaces.create(input),
-    hooks: { directoryFlow, hostInfo },
+    hooks: { directoryFlow: browserFlowSource, hostInfo },
   })
-  const browserInjected = (): WorkspaceBrowserInjected => browsingInjected(browserFlowSource)
-  const pageInjected = (): WorkspaceBrowserInjected => browsingInjected(pageFlowSource)
   const pickerInjected = (): WorkspacePickerInjected => ({
     createWorkspace: input => workspaces.create(input),
     hooks: { directoryFlow: pickerFlowSource },
   })
-  // The sidebar region and the page share one viewing-store handle, so both
-  // surfaces render — and persist — one arrangement (grouping, order
-  // accounts, pins) instead of racing two instances on one localStorage key.
-  const workspaceViewStore = createWorkspaceViewStore()
-  // Copy freshness is framework-owned: the panel row's label is a thunk the
-  // sidebar shell resolves per render — no locale/change re-registration.
-  const t = ctx.locale.bind(NS)
   // Each registration declares its directory-flow child in the same call;
   // slot injection follows both the owner and declaration HMR lifetimes.
   ctx.slots.inject('sidebar.workspaces', () => ctx.slots.register(
     {
       name: 'sidebar.workspaces',
       children: { 'sidebar.workspaces.directoryFlow': { kind: 'single', scope: 'root' } },
-      store: workspaceViewStore,
+      store: createWorkspaceViewStore(),
       inject: browserInjected,
       locale: NS,
     },
@@ -177,29 +156,5 @@ export function apply(ctx: Context): void {
       locale: NS,
     },
     WorkspacePicker,
-  ))
-  // The full-page Sessions surface: a keyed `main` entry whose key doubles
-  // as the sidebar panel-list row id below (layout.selectPanel validates ids
-  // against this live main registry).
-  ctx.slots.inject('main', () => ctx.slots.register(
-    {
-      name: 'main',
-      key: 'sessions',
-      children: { 'sessions.page.directoryFlow': { kind: 'single', scope: 'root' } },
-      store: workspaceViewStore,
-      inject: pageInjected,
-      locale: NS,
-    },
-    SessionsPage,
-  ))
-  ctx.slots.inject('sidebar.panellist', () => ctx.slots.register(
-    {
-      name: 'sidebar.panellist',
-      id: 'sessions',
-      order: 10,
-      label: () => t('panel.sessions'),
-      locale: NS,
-    },
-    SessionsPanelGlyph,
   ))
 }

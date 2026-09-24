@@ -5,8 +5,8 @@ import type { SessionPendingInteractionBase } from '@deepseek-ai/dsh-client-ui-s
 import type { ScheduleId, ScheduleRecord } from '@deepseek-ai/dsh-schedule/client'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import {
-  dayBucketKey, deriveDayGroups, deriveFlat, deriveGroups, deriveSearchResults, owningGroupKey,
-  workspaceLabel, UNGROUPED_KEY,
+  deriveFlat, deriveGroups, deriveSearchResults, owningGroupKey, workspaceLabel,
+  UNGROUPED_KEY,
 } from '../src/client/tree.ts'
 import { createWorkspaceViewStore } from '../src/client/stores.ts'
 
@@ -45,70 +45,6 @@ describe('owningGroupKey', () => {
     const workspaces = [workspace('first', ['owned'])]
     expect(owningGroupKey(workspaces, sid('owned'))).toBe('first')
     expect(owningGroupKey(workspaces, sid('loose'))).toBe(UNGROUPED_KEY)
-  })
-})
-
-describe('dayBucketKey', () => {
-  const now = new Date('2026-09-22T12:00:00').getTime()
-  const daysAgoAt = (days: number, from: number): number => {
-    const date = new Date(from - days * 86_400_000)
-    date.setHours(12, 0, 0, 0)
-    return date.getTime()
-  }
-  it('names the near timeline buckets and the range buckets', () => {
-    expect(dayBucketKey(daysAgoAt(0, now), now)).toBe('today')
-    expect(dayBucketKey(daysAgoAt(1, now), now)).toBe('yesterday')
-    expect(dayBucketKey(daysAgoAt(2, now), now)).toBe('twoDaysAgo')
-    expect(dayBucketKey(daysAgoAt(3, now), now)).toBe('threeDaysAgo')
-    expect(dayBucketKey(daysAgoAt(4, now), now)).toBe('lastWeek')
-    expect(dayBucketKey(daysAgoAt(13, now), now)).toBe('lastWeek')
-    expect(dayBucketKey(daysAgoAt(14, now), now)).toBe('lastMonth')
-    expect(dayBucketKey(daysAgoAt(60, now), now)).toBe('lastMonth')
-  })
-  it('buckets older instants per calendar month and keeps same-day in Today', () => {
-    expect(dayBucketKey(new Date('2026-06-15T12:00:00').getTime(), now)).toBe('month:2026-06')
-    expect(dayBucketKey(new Date('2026-09-22T00:00:01').getTime(), now)).toBe('today')
-    expect(dayBucketKey(now + 5_000, now)).toBe('today')
-  })
-})
-
-describe('deriveDayGroups', () => {
-  const DAY = 86_400_000
-  it('buckets visible top-level sessions newest-first with topic-only rows', () => {
-    const now = Date.now()
-    const sessions = list(
-      summary('today-late', now - 3_600_000),
-      summary('today-early', now - 7_200_000),
-      summary('yesterday', now - DAY - 3_600_000),
-      summary('last-week', now - 5 * DAY),
-    )
-    const groups = deriveDayGroups(sessions, [], noArchive, noAttention, now)
-    expect(groups.map(group => group.dayKey)).toEqual(['today', 'yesterday', 'lastWeek'])
-    expect(groups[0]!.sessions.map(row => row.id)).toEqual([sid('today-late'), sid('today-early')])
-    // No Workspace membership and no cwd: the day row stays topic-only — the
-    // label stays undefined so the row renders the time alone.
-    expect(groups[0]!.sessions[0]!.workspaceLabel).toBeUndefined()
-  })
-  it('labels day rows with their Workspace membership title', () => {
-    const now = Date.now()
-    const sessions = list(summary('today-one', now - 1_000), summary('loose', now - 2_000))
-    const workspaces = [workspace('alpha', ['today-one'])]
-    const groups = deriveDayGroups(sessions, workspaces, noArchive, noAttention, now)
-    const rows = new Map(groups[0]!.sessions.map(row => [row.id, row]))
-    expect(rows.get(sid('today-one'))!.workspaceLabel).toBe('alpha')
-    // An ungrouped session with no cwd gets no label rather than an empty one.
-    expect(rows.get(sid('loose'))!.workspaceLabel).toBeUndefined()
-  })
-  it('hides archived sessions and orders month buckets newest-first', () => {
-    const now = Date.now()
-    const sessions = list(
-      summary('kept', now),
-      summary('hidden', now - DAY),
-      summary('june', new Date('2026-06-20T12:00:00').getTime()),
-      summary('may', new Date('2026-05-20T12:00:00').getTime()),
-    )
-    const groups = deriveDayGroups(sessions, [], archived('hidden'), noAttention, now)
-    expect(groups.map(group => group.dayKey)).toEqual(['today', 'month:2026-06', 'month:2026-05'])
   })
 })
 

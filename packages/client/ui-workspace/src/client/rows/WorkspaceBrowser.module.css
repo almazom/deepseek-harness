@@ -356,17 +356,6 @@
   margin-top: 2px;
 }
 
-/* By-day grouping: small caps day label opening each bucket. */
-.dayHeader {
-  padding: 10px 12px 4px;
-  font-size: 11px;
-  line-height: 16px;
-  font-weight: 500;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--dsw-alias-label-tertiary);
-}
-
 .searchStatus,
 .searchWarning {
   padding: 10px 12px;
@@ -384,48 +373,8 @@
   position: relative;
 }
 
-/* Landing grouped body ONLY (`.wide` = the full-page sessions body): ONE
-   surface per group with hairline-divided rows — the card grammar the operator
-   brought as reference (2026-09-23): a group is a card, a row is a row, and the
-   frame lives on the group instead of on every row. The sidebar keeps its
-   dense, frameless rhythm. */
-.wide .groupSection {
-  padding: 0 8px;
-  border-radius: 16px;
-  background: var(--dsw-alias-button-floating-fill);
-}
-
-.wide .flatList > * + *,
-.wide .groupSection > * + * {
-  margin-top: 0;
-  border-top: 0.5px solid var(--dsw-alias-border-l1);
-}
-
-/* No divider under the group's own header or above its first row. */
-.wide .groupSection > .dayHeader + *,
-.wide .flatList > :first-child {
-  border-top: none;
-}
-
-.wide .dayHeader {
-  padding-left: 12px;
-}
-
 .groupSection + .groupSection {
   margin-top: 4px;
-}
-
-/* Pinned / Today / Earlier sub-section headings inside one workspace group.
-   Same micro-label spec as .dayHeader: one small-label treatment per surface
-   (Nielsen #4 — consistency). */
-.sectionHeading {
-  padding: 6px 12px 2px;
-  font-size: 11px;
-  line-height: 16px;
-  font-weight: 500;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--dsw-alias-label-caption);
 }
 
 .listTopDropIndicator,
@@ -553,39 +502,4 @@
   .headerActions {
     transition: none;
   }
-}
-
-/* Recency pager under the landing list bodies: one bounded page of rows. */
-.sessionsPager {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  padding: 10px 12px 14px;
-}
-
-.pagerStep {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border: 0.5px solid var(--dsw-alias-border-default);
-  border-radius: 16px;
-  background: transparent;
-  color: var(--dsw-alias-label-primary);
-  font-size: 18px;
-  line-height: 1;
-  cursor: pointer;
-}
-
-.pagerStep:disabled {
-  opacity: 0.4;
-  cursor: default;
-}
-
-.pagerStatus {
-  font-size: 12px;
-  line-height: 18px;
-  color: var(--dsw-alias-label-tertiary);
 }

@@ -6,32 +6,25 @@
  * share from the return type.
  */
 import { defineStore, type EngineStoreHandle } from '@deepseek-ai/dsh-client-store'
-import type { SessionId } from '@deepseek-ai/dsh-session/types'
 
 /** Browser-local order account for the hierarchy-free flat Session list. */
 export const FLAT_SESSION_ORDER_KEY = '__flat_session_order__'
 
-/** Session-list grouping mode: Workspace sections, local calendar days, or one flat recency list. */
-export type SessionGroupBy = 'workspace' | 'day' | 'flat'
+/** Session-list grouping mode: workspace sections or one flat recency list. */
+export type SessionGroupBy = 'workspace' | 'flat'
 /** Session order: user-arranged only, or user-arranged plus activity promotion. */
 export type SessionOrderBy = 'manual' | 'updated'
-/** Session filter: show all sessions or only active (running) ones. */
-export type SessionFilterActive = boolean
 
 /** Workspace browser viewing state persisted across surface remounts and reloads. */
 type WorkspaceViewState = {
   groupBy: SessionGroupBy
   orderBy: SessionOrderBy
-  /** When true, only sessions with `running === true` are shown. */
-  filterActive: boolean
   /** Explicit zero-or-five-session state keyed by Workspace group identity. */
   groupExpansion: Record<string, boolean>
   /** Shared editable order per Workspace group plus the browser-local flat-list account. */
   sessionOrderByAccount: Record<string, string[]>
   /** Last observed update timestamps per order account for one-time promotion events. */
   sessionUpdatedAtByAccount: Record<string, Record<string, number>>
-  /** Pinned session ids rendered in the Pinned section above the time buckets. */
-  pinnedIds: SessionId[]
 }
 
 /**
@@ -41,7 +34,6 @@ type WorkspaceViewState = {
 type WorkspaceViewActions = {
   setGroupBy: (draft: WorkspaceViewState, mode: SessionGroupBy) => void
   setOrderBy: (draft: WorkspaceViewState, mode: SessionOrderBy) => void
-  setFilterActive: (draft: WorkspaceViewState, active: boolean) => void
   setGroupExpanded: (draft: WorkspaceViewState, key: string, expanded: boolean) => void
   retainAccountKeys: (draft: WorkspaceViewState, workspaceKeys: readonly string[]) => void
   syncSessionOrderAccount: (
@@ -51,26 +43,6 @@ type WorkspaceViewActions = {
     updatedAt: Record<string, number>,
   ) => void
   setSessionOrder: (draft: WorkspaceViewState, accountKey: string, order: string[]) => void
-  pinSession: (draft: WorkspaceViewState, sessionId: SessionId) => void
-  unpinSession: (draft: WorkspaceViewState, sessionId: SessionId) => void
-}
-
-/** Local calendar-day bucket of a session's latest activity. */
-export type SessionDayBucket = 'today' | 'earlier'
-
-/**
- * Bucket a session update time against the local calendar day of `now`.
- * @param updatedAt - Session update epoch milliseconds.
- * @param now - Reference instant.
- * @returns `today` inside the current local calendar day, otherwise `earlier`.
- */
-export function todayBucket(updatedAt: number, now: Date): SessionDayBucket {
-  const updated = new Date(updatedAt)
-  return updated.getFullYear() === now.getFullYear()
-    && updated.getMonth() === now.getMonth()
-    && updated.getDate() === now.getDate()
-    ? 'today'
-    : 'earlier'
 }
 
 /**
@@ -82,17 +54,14 @@ export function createWorkspaceViewStore(): EngineStoreHandle<WorkspaceViewState
     init: (): WorkspaceViewState => ({
       groupBy: 'workspace',
       orderBy: 'updated',
-      filterActive: false,
       groupExpansion: {},
       sessionOrderByAccount: {},
       sessionUpdatedAtByAccount: {},
-      pinnedIds: [],
     }),
-    persist: 'dsh.workspace.view.v7',
+    persist: 'dsh.workspace.view.v5',
     actions: {
       setGroupBy: (d, mode: SessionGroupBy) => { d.groupBy = mode },
       setOrderBy: (d, mode: SessionOrderBy) => { d.orderBy = mode },
-      setFilterActive: (d, active: boolean) => { d.filterActive = active },
       setGroupExpanded: (d, key: string, expanded: boolean) => { d.groupExpansion[key] = expanded },
       retainAccountKeys: (d, workspaceKeys: readonly string[]) => {
         const retained = new Set(workspaceKeys)
@@ -112,12 +81,6 @@ export function createWorkspaceViewStore(): EngineStoreHandle<WorkspaceViewState
       },
       setSessionOrder: (d, accountKey: string, order: string[]) => {
         d.sessionOrderByAccount[accountKey] = order
-      },
-      pinSession: (d, sessionId: SessionId) => {
-        if (!d.pinnedIds.includes(sessionId)) d.pinnedIds.push(sessionId)
-      },
-      unpinSession: (d, sessionId: SessionId) => {
-        d.pinnedIds = d.pinnedIds.filter(pinned => pinned !== sessionId)
       },
     },
   })

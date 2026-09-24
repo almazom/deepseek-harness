@@ -190,9 +190,9 @@ describe('WorkspaceBrowser', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '视图选项' }))
     expect(screen.getByText('分组方式')).toBeTruthy() // the menu heading label
-    expect(screen.getAllByRole('separator').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getByRole('separator')).toBeTruthy()
     expect(screen.getAllByRole('menuitem').map(item => item.textContent)).toEqual([
-      '按工作区', '按日期', '单列表', '手动排序', '最近更新', '仅显示活跃会话',
+      '按工作区', '单列表', '手动排序', '最近更新',
     ])
     expect(screen.getByRole('menuitem', { name: '按工作区' }).querySelector('svg')).toBeTruthy()
     expect(screen.getByRole('menuitem', { name: '手动排序' }).querySelector('svg')).toBeTruthy()
@@ -216,29 +216,6 @@ describe('WorkspaceBrowser', () => {
     fireEvent.keyDown(document, { key: 'Escape' })
     expect(screen.queryByRole('menu')).toBeNull()
     expect(b.store.getSnapshot().groupBy).toBe('workspace')
-  })
-
-  it('groups by timeline buckets whose rows read Workspace · time', () => {
-    const DAY = 86_400_000
-    const now = Date.now()
-    const b = mount({
-      useSessions: hook(sessionState([
-        summary('today-one', now - 1_000),
-        summary('last-week-one', now - 5 * DAY),
-      ])),
-      useWorkspaces: hook(workspaceState([workspace('alpha', ['today-one'])])),
-    })
-    fireEvent.click(screen.getByRole('button', { name: '视图选项' }))
-    fireEvent.click(screen.getByRole('menuitem', { name: '按日期' }))
-    expect(b.store.getSnapshot().groupBy).toBe('day')
-    // The section label stays Sessions, and day headers open each bucket.
-    expect(screen.getByText('会话')).toBeTruthy()
-    expect(screen.getByText('今天')).toBeTruthy()
-    expect(screen.getByText('上周')).toBeTruthy()
-    // Day-group rows name their Workspace because the group is not one.
-    const row = screen.getByText('today-one').closest('[role="treeitem"]')
-    expect(row?.textContent).toContain('alpha')
-    expect(row?.textContent).not.toContain('last-week-one')
   })
 
   it('persists flat-list drag order locally and applies Last updated within that account', async () => {

@@ -376,28 +376,10 @@ export function SearchResultItem({ result, currentId, onOpen, t }: {
  * @param props.t - the browser root's locale seat.
  * @returns the session row.
  */
-/** Pin/unpin menu glyph; package-local because the shared icon registry's export set is count-pinned by test. */
-function PinIcon() {
-  return (
-    <svg width={16} height={16} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path
-        fillRule="evenodd"
-        clipRule="evenodd"
-        d="M8.7 1.5 14.5 7.3 12.1 7.7 10.4 7.5 7.2 10.7 7.6 13.1 6.5 14.2 1.8 9.5 2.9 8.4 5.3 8.8 8.5 5.6 8.3 3.9 8.7 1.5Z"
-        fill="currentColor"
-      />
-    </svg>
-  )
-}
-
 export function SessionNodeItem({
-  node, pinned = false, onPinToggle = undefined, currentId, now, onOpen, onRename, onFork, onArchive, onReveal, drag, flat = false, t,
+  node, currentId, now, onOpen, onRename, onFork, onArchive, onReveal, drag, flat = false, t,
 }: {
   node: SessionNode
-  /** The session sits in the persisted pinned set (menu shows Unpin). */
-  pinned?: boolean
-  /** Toggle pinned membership; absent for search rows (no menu action). */
-  onPinToggle?: ((sessionId: SessionNode['id'], pinned: boolean) => void) | undefined
   currentId: string | undefined
   now: number
   onOpen: (id: SessionNode['id']) => void
@@ -421,11 +403,6 @@ export function SessionNodeItem({
   const statuses = sessionStatuses(node, t)
   const primaryStatus = statuses[0]
   const showStatus = primaryStatus.state !== 'done' || row.completed
-  /* A session that is moving right now (its own run, or a user it is waiting
-     on) is the list's focal row: it carries the block thread and the bright
-     ink, while every settled row steps down one rung in size and ink so the
-     eye lands on what is actually working (operator 2026-09-23). */
-  const live = row.running || row.pendingInteraction !== undefined
   const [menuOpen, setMenuOpen] = useState(false)
   const rowRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
@@ -437,13 +414,6 @@ export function SessionNodeItem({
   // touches the session log, so it is not styled as destructive and needs no
   // confirmation dialog.
   const sessionMenuItems = [
-    // Flat and search rows have no pinned section to render the state in, so
-    // the affordance is withheld there instead of no-oping on click.
-    ...(onPinToggle === undefined ? [] : [{
-      id: pinned ? 'unpin' : 'pin',
-      label: pinned ? t('menu.unpin') : t('menu.pin'),
-      icon: <PinIcon />,
-    }]),
     { id: 'rename', label: t('rename'), icon: <IconEditOutline16 /> },
     { id: 'fork', label: t('menu.fork'), icon: <IconBranchOutline16 /> },
     // 20-native glyph in the menu's 16px icon slot (Menu.module.css .itemIcon).
@@ -455,14 +425,9 @@ export function SessionNodeItem({
       ref={rowRef}
       className={clsx(
         css.sessionRow, selected && css.selected, menuOpen && css.menuOpen,
-        live && css.sessionRowLive,
         flat && !showStatus && css.flatSessionRowWithoutStatus,
         drag?.marker === 'before' && css.dropBefore, drag?.marker === 'after' && css.dropAfter,
       )}
-      data-live={live ? 'true' : undefined}
-      /* tc-p2i-est TC-004: stable id anchor — the injected flake/EST layer
-         matches the frozen home row by EXACT id (never by title, D4). */
-      data-session-id={row.id}
       role="treeitem"
       aria-selected={selected}
       onClick={() => { onOpen(node.id) }}
@@ -505,15 +470,7 @@ export function SessionNodeItem({
           happened in it yet, so a "now" timestamp and the row verbs
           (rename/fork/archive) would all act on content that does not
           exist — both trailing cells stay off until the first prompt. */}
-      {/* Day-group rows sit under a day header instead of a Workspace
-          group, so the row names its Workspace before the time. */}
-      {!row.blank && (
-        <span className={css.time}>
-          {row.workspaceLabel !== undefined
-            && <span className={css.workspaceMeta}>{row.workspaceLabel}</span>}
-          {timeLabel(row.updatedAt, now, t)}
-        </span>
-      )}
+      {!row.blank && <span className={css.time}>{timeLabel(row.updatedAt, now, t)}</span>}
       {!row.blank && (
         <span className={css.rowActions}>
           <Menu
@@ -522,8 +479,6 @@ export function SessionNodeItem({
             items={sessionMenuItems}
             onSelect={(id) => {
               setMenuOpen(false)
-              if (id === 'pin') onPinToggle?.(node.id, true)
-              if (id === 'unpin') onPinToggle?.(node.id, false)
               if (id === 'rename') onRename(node.id, row.title)
               if (id === 'fork') onFork(node.id)
               if (id === 'archive') onArchive(node.id)
