@@ -7,6 +7,7 @@ import type {
   IWorkspaces, WorkspaceId, WorkspaceSnapshot, WorkspaceView,
 } from '@deepseek-ai/dsh-api-workspace-controller/client'
 import type { ClientRemote, DirectoryListing } from '@deepseek-ai/dsh-api-remotes/client'
+import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
 import { RemoteError } from '@deepseek-ai/dsh-client-test-runtime'
 import type { RemoteResult } from '@deepseek-ai/dsh-api-remotes/client'
 import { SessionId } from '@deepseek-ai/dsh-session/types'
@@ -188,6 +189,7 @@ class FakeDirectoryPicker {
 interface BenchOptions {
   readonly workspaces?: WorkspaceSnapshot
   readonly sessions?: SessionListState
+  readonly narrow?: boolean
 }
 
 function bench(options: BenchOptions = {}) {
@@ -196,7 +198,7 @@ function bench(options: BenchOptions = {}) {
     selectPanel: vi.fn(), retainMainPanels: vi.fn(),
     setSidebar: vi.fn(), toggleSidebar: vi.fn(), setViewportWidth: vi.fn(),
     setRightbar: vi.fn(), openRightbar: vi.fn(), closeRightbar: vi.fn(),
-  }, () => true)
+  }, () => true, createSnapshotStore<boolean>(options.narrow ?? false))
   const selectPanel = vi.spyOn(layout, 'selectPanel')
   ctx.provide('layout', layout)
   ctx.effect(() => () => { layout.dispose() })
@@ -418,6 +420,50 @@ describe('UiWorkspaceService', () => {
     await vi.waitFor(() => {
       expect(warning).toHaveBeenCalledWith('new session failed:', expect.any(Error))
     })
+  })
+
+  it('lands narrow boots without a Session on the Sessions page', () => {
+    const b = bench({
+      narrow: true,
+      workspaces: workspaceState([workspace('recent')]),
+      sessions: sessionState(),
+    })
+    expect(b.selectPanel).toHaveBeenCalledWith('sessions' as MainPanelId)
+    expect(b.sessions.create).not.toHaveBeenCalled()
+    expect(b.sessions.open).not.toHaveBeenCalled()
+  })
+
+  it('lands narrow boots that restore only a blank Session on the Sessions page', () => {
+    const blank = summary('blank', { blank: true })
+    const b = bench({
+      narrow: true,
+      workspaces: workspaceState([workspace('recent')]),
+      sessions: sessionState([blank], sid('blank')),
+    })
+    expect(b.selectPanel).toHaveBeenCalledWith('sessions' as MainPanelId)
+    expect(b.sessions.create).not.toHaveBeenCalled()
+    expect(b.sessions.open).not.toHaveBeenCalled()
+  })
+
+  it('keeps a restored real Session on narrow boots', () => {
+    const b = bench({
+      narrow: true,
+      workspaces: workspaceState([workspace('recent')]),
+      sessions: sessionState([summary('current')], sid('current')),
+    })
+    expect(b.selectPanel).not.toHaveBeenCalled()
+    expect(b.sessions.create).not.toHaveBeenCalled()
+    expect(b.sessions.open).not.toHaveBeenCalled()
+  })
+
+  it('restores a blank Session on wide boots', () => {
+    const blank = summary('blank', { blank: true })
+    const b = bench({
+      workspaces: workspaceState([workspace('recent')]),
+      sessions: sessionState([blank], sid('blank')),
+    })
+    expect(b.selectPanel).not.toHaveBeenCalled()
+    expect(b.sessions.open).not.toHaveBeenCalled()
   })
 
   it('opens the recent Workspace after both baselines arrive', async () => {
