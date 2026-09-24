@@ -19,7 +19,8 @@
          or the dsh.p2i.frozen.v1 localStorage cache it writes each poll. */
       (function () {
         try {
-          var KEY = "dsh.workspace.view.v6",
+          var KEY = "dsh.workspace.view.v7",
+              LEGACY_KEY = "dsh.workspace.view.v6",
               OWN = "dsh.p2i.autopin.v1",
               FEED_CACHE = "dsh.p2i.frozen.v1",
               STALE_MS = 600000; /* 10*60*1000 — parity with injected STALE_MS */
@@ -35,11 +36,15 @@
              object here would wipe groupExpansion etc. and crash SessionTree
              (Object.entries(groupExpansion)). Never write a partial shape. */
           var DEFAULTS = {
-            groupBy: "workspace", orderBy: "updated",
+            groupBy: "workspace", orderBy: "updated", filterActive: false,
             groupExpansion: {}, sessionOrderByAccount: {},
             sessionUpdatedAtByAccount: {}, pinnedIds: []
           };
+          /* v6→v7 carry-over: the store engine has no migration (whole-value
+             replace under one key), so seed from the legacy key exactly once —
+             line 68 below writes v7 and every later load finds it. */
           var raw = localStorage.getItem(KEY);
+          if (raw === null) raw = localStorage.getItem(LEGACY_KEY);
           var store = raw ? JSON.parse(raw) : {};
           if (!store || typeof store !== "object" || Array.isArray(store)) return; /* corrupt => untouched — fail-closed */
           var healed = {};
