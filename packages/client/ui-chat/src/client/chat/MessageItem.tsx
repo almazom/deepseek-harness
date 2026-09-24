@@ -143,26 +143,17 @@ function TurnMaxTokensItem({ hasContent, t }: {
   hasContent?: boolean | undefined
   t: ChatViewSlotProps['t']
 }) {
-  if (hasContent !== undefined) {
-    return (
-      <div className={css.turnErrorRow} role="status">
-        <StateDot state="warning" className={css.turnErrorDot} />
-        <div className={css.turnErrorCopy}>
-          <span className={css.maxTokensTitle}>
-            {hasContent
-              ? t('message.turnMaxTokensMidWork')
-              : t('message.turnMaxTokensEmpty')}
-          </span>
-        </div>
-      </div>
-    )
-  }
+  /* One row shell for all three renderings: undefined keeps the legacy
+     title+hint pair, a boolean swaps in the precise empty/mid-work copy. */
+  const title = hasContent === undefined
+    ? t('message.maxTokens')
+    : hasContent ? t('message.turnMaxTokensMidWork') : t('message.turnMaxTokensEmpty')
   return (
     <div className={css.turnErrorRow} role="status">
       <StateDot state="warning" className={css.turnErrorDot} />
       <div className={css.turnErrorCopy}>
-        <span className={css.maxTokensTitle}>{t('message.maxTokens')}</span>
-        <span className={css.turnErrorMessage}>{t('message.maxTokens.hint')}</span>
+        <span className={css.maxTokensTitle}>{title}</span>
+        {hasContent === undefined && <span className={css.turnErrorMessage}>{t('message.maxTokens.hint')}</span>}
       </div>
     </div>
   )
