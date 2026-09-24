@@ -31,15 +31,19 @@ Measured live at 1440x900 over 79 flow items with the probe added here
 1. **The visible interval is the contract.** For two neighbouring rows it is
    `air(previous row) + flow token + air(next row)`. The column owns the token;
    the other two terms are defects unless they are the row's own typography.
-2. **One row height for every one-line step row: 25px**, the height the inline
-   pills already force. The operator chose this over shrinking his badges, and
-   over the 44px touch-target floor it replaces.
+2. **One row height for every one-line step row: 22px** (amended 2026-09-24; was
+   25px, the height the inline pills forced). The operator reported the vertical
+   white space had become too much — "there is still a big reserve" — so the row
+   box shrank to the badge's own 18px plus 2px of air per side. Uniformity still
+   outranks density: one height for every one-line step row.
 3. **Air is removed at its source, not compensated per pair**, wherever it can be:
    a row's trailing paragraph margin and half-leading, the `.source` carrier of a
-   context-injection row, the shared row box height. Where a neighbour's air is
-   unavoidable (after an expanded thought block; at the turn tail) that pair gets
-   the token minus the measured air — the compensating shape upstream used for its
-   process-answer rule.
+   context-injection row, the shared row box height. The per-pair compensation
+   this item used to prescribe was **removed on 2026-09-24**: it set the token to
+   10px beside an expanded thought block or the turn tail, and a day later the
+   operator saw exactly those pairs as a second, tighter rhythm ("again
+   degradation in intervals space consistency"). It also double-counted air that
+   already lived inside the neighbouring boxes. One column, one token.
 4. **The gate measures flow items, not row units**, because an expanded tool card
    keeps its body as a sibling of the title row: judging row boxes reported four
    pairs as 8px defects that were not defects.
@@ -47,11 +51,16 @@ Measured live at 1440x900 over 79 flow items with the probe added here
    than the token plus the two neighbours' measured typographic air plus 2px of
    rounding slack. A pair tighter than the token is content overflow, reported,
    not failed.
-6. **Step rows step 4px out to the left of the message text** (operator, voice
-   2026-09-23 22:37): the row box that owns a title takes `margin-left: -4px`,
-   one parallel offset for every step row, no outline of any kind, so the bright
-   conclusion text gains volume. Measured: row box at 480 against the text column
-   at 484; every tool row's text at 502 (was 506).
+6. **Step rows sit to the RIGHT of the message text** (amended 2026-09-24; the
+   2026-09-23 voice note asked for the opposite). The row box that owns a title
+   takes `margin-left: 6px` — 10px further right than the `-4px` outdent it
+   replaces — one parallel offset for every step row, no outline of any kind, so
+   the tool calls read as subordinate to the human-facing message column.
+   Measured: tool-row text at 512 against the thought/message text at 484.
+7. **One token, but a denser one** (amended 2026-09-24): the desktop column
+   token dropped from 16px to 12px and the phone token from 10px to 8px, with the
+   22px rows. The 16px token was sized for 25px rows and read as reserve once the
+   rows shrank. Still exactly one value per viewport class; no pair exceptions.
 
 ## Process lesson
 
@@ -85,9 +94,9 @@ every gate run reports the numbers it actually measured.
 
 ## Consequences
 
-- Every one-line row is 25px: 50/50 in the rich session and 30/30 in the
-  operator's, at 1440x900 and at 390x664; dominant visible cadence 25px (44 of 79
-  intervals).
+- Every one-line row is 22px (25px before the 2026-09-24 amendment); at 1440x900
+  the dominant visible cadence is 18px (48 intervals of 90, was 25px) and the
+  collapsed reasoning row measures box 22 / leading 18 / delta 4.
 - No pair is wider than token + neighbours' air + 2px in three sessions plus the
   phone viewport, where the same column previously read 8–44px.
 - Residuals, measured and accepted: four pairs read 8px because a failed-tool
