@@ -119,7 +119,7 @@ describe('QueueAdvisorService.run', () => {
     const { ctx, session } = await bootedContext(new ScriptedAdapter(broken))
     const runId = await ctx.queueAdvisor!.run({ session, queuedItemId: 'queued-1', queuedMessage: 'send it now?' })
     const events = eventsOf(session)
-    expect(events.at(-1)).toMatchObject({ type: 'advisor/failed', data: { runId, reason: 'verdict section did not match the advisory contract' } })
+    expect(events.at(-1)).toMatchObject({ type: 'advisor/failed', data: { runId, reason: 'fixture/fixture-advisor: verdict section did not match the advisory contract' } })
   })
 
   it('lands advisor/failed when the stream closes before the verdict section', async () => {
@@ -132,7 +132,7 @@ describe('QueueAdvisorService.run', () => {
     const runId = await ctx.queueAdvisor!.run({ session, queuedItemId: 'queued-1', queuedMessage: 'send it now?' })
     expect(eventsOf(session).at(-1)).toMatchObject({
       type: 'advisor/failed',
-      data: { runId, reason: 'advisory output closed before the verdict section' },
+      data: { runId, reason: 'fixture/fixture-advisor: advisory output closed before the verdict section' },
     })
   })
 
@@ -141,7 +141,7 @@ describe('QueueAdvisorService.run', () => {
     const runId = await ctx.queueAdvisor!.run({ session, queuedItemId: 'queued-1', queuedMessage: 'send it now?' })
     expect(eventsOf(session).at(-1)).toMatchObject({
       type: 'advisor/failed',
-      data: { runId, reason: 'route exploded' },
+      data: { runId, reason: 'fixture/fixture-advisor: route exploded' },
     })
   })
 
@@ -150,7 +150,7 @@ describe('QueueAdvisorService.run', () => {
     const runId = await ctx.queueAdvisor!.run({ session, queuedItemId: 'queued-1', queuedMessage: 'send it now?' })
     expect(eventsOf(session).at(-1)).toMatchObject({
       type: 'advisor/failed',
-      data: { runId, reason: 'no adapter registered for provider "fixture"' },
+      data: { runId, reason: 'fixture/fixture-advisor: no adapter registered for provider "fixture"' },
     })
   })
 
@@ -163,7 +163,7 @@ describe('QueueAdvisorService.run', () => {
     expect(eventsOf(session).map(event => event.type)).not.toContain('advisor/run-requested')
     expect(eventsOf(session).at(-1)).toMatchObject({
       type: 'advisor/failed',
-      data: { runId: null, reason: 'smart_steer: queued message exceeds maxInputBytes' },
+      data: { runId: null, reason: 'fixture/fixture-advisor: smart_steer: queued message exceeds maxInputBytes' },
     })
   })
 

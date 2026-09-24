@@ -81,6 +81,18 @@ export default class QueueAdvisorService extends Service {
   }
 
   /**
+   * Settle a failed run: one stderr line (route, run id, raw reason) so the
+   * web log answers "which model refused and why" without unpacking the
+   * session archive, and an `advisor/failed` event whose reason carries the
+   * same route prefix the client bubble shows.
+   */
+  private fail(session: Session, runId: AdvisorRunId | null, reason: string): void {
+    const route = `${this.route.provider}/${this.route.model}`
+    console.error(`smart_steer: advisor/failed run=${runId ?? 'pre-request'} route=${route} reason=${reason}`)
+    session.append('advisor/failed', { runId, reason: `${route}: ${reason}` })
+  }
+
+  /**
    * Run one advisory side question to settlement. Emits `advisor/run-requested`
    * before dispatch, `advisor/step` as each contract section closes, and
    * `advisor/verdict` or `advisor/failed` at settlement. A failure before the
@@ -115,10 +127,7 @@ export default class QueueAdvisorService extends Service {
     } catch (error) {
       /* v8 ignore next 1 -- framing and read failures are Error instances; the string
          arm only guards exotic throws so the run still settles in the log. */
-      request.session.append('advisor/failed', {
-        runId: null,
-        reason: error instanceof Error ? error.message : String(error),
-      })
+      this.fail(request.session, null, error instanceof Error ? error.message : String(error))
       return null
     }
   }
@@ -147,7 +156,7 @@ export default class QueueAdvisorService extends Service {
             ? chunk.reason.failure
             : undefined
           if (failure !== undefined) {
-            session.append('advisor/failed', { runId, reason: failure.message })
+            this.fail(session, runId, failure.message)
             return
           }
         }
@@ -156,12 +165,12 @@ export default class QueueAdvisorService extends Service {
       }
       const health = watcher.finish()
       if (!health.closed || !health.keys.includes('verdict')) {
-        session.append('advisor/failed', { runId, reason: 'advisory output closed before the verdict section' })
+        this.fail(session, runId, 'advisory output closed before the verdict section')
       }
     } catch (error) {
       /* v8 ignore next 1 -- route and deadline failures are Error instances; the string
          arm only guards exotic throws so the run still settles in the log. */
-      session.append('advisor/failed', { runId, reason: error instanceof Error ? error.message : String(error) })
+      this.fail(session, runId, error instanceof Error ? error.message : String(error))
     }
   }
 
@@ -170,7 +179,7 @@ export default class QueueAdvisorService extends Service {
     if (key === 'verdict') {
       const parsed = advisorVerdictSection.safeParse(safeJson(raw))
       if (!parsed.success) {
-        session.append('advisor/failed', { runId, reason: 'verdict section did not match the advisory contract' })
+        this.fail(session, runId, 'verdict section did not match the advisory contract')
         return
       }
       session.append('advisor/verdict', {
