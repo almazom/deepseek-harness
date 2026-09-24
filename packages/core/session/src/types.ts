@@ -218,6 +218,8 @@ export interface TurnEndReasonMap {
    * the events recorded before the crash remain intact.
    */
   interrupted: { kind: 'interrupted' }
+  /** The assistant repeated the compaction placeholder until the rep-loop guard fired. */
+  'rep-loop-detected': { kind: 'rep-loop-detected' }
 }
 
 /** The union over {@link TurnEndReasonMap} — why a turn ended; plugins extend it by merging variants into the map. */

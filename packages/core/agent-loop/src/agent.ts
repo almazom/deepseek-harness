@@ -20,6 +20,7 @@ import type { GenerateOptions, LlmCallConfig, Message, PreparedLlmCall } from '@
 import {
   LlmError,
   createAssistantMessage,
+  createUserMessage,
   errorChain,
   markAgentLoopRequest,
 } from '@deepseek-ai/dsh-llm'
@@ -37,6 +38,19 @@ import { RuntimeContextProjection } from './runtime-context.ts'
 import { AssistantStreamAttempt } from './assistant-stream.ts'
 import { SystemPromptProjection } from './runtime-context.ts'
 import { executeToolCalls } from './tool-calls.ts'
+import { REP_LOOP_LIMIT, isPlaceholderEcho, placeholderCopies } from './rep-loop.ts'
+
+/**
+ * Maximum automatic continuations per turn after a max-tokens cut
+ * (bc-p0-closeout TC-008, lever B). The provider enforces a hard ~32K output
+ * ceiling regardless of the requested maxTokens, so continuation past that
+ * ceiling is a guaranteed infinite loop — the bound makes it finite.
+ */
+export const AUTO_CONTINUE_BOUND = 2
+
+/** Instruction appended when resuming a step cut off by the output-token cap. */
+export const AUTO_CONTINUE_INSTRUCTION =
+  'Your previous reply was cut off by the output token limit. Continue exactly where you stopped, without repeating any earlier text.'
 
 type Phase =
   | { kind: 'idle'; lastTurn: number }
@@ -48,7 +62,7 @@ type Phase =
   }
   | { kind: 'running'; abort: AbortController; turn: number; step: number; wakeRequested: boolean }
 
-type StepEndReason = Extract<TurnEndReason, { kind: 'completed' | 'max-tokens' }>
+type StepEndReason = Extract<TurnEndReason, { kind: 'completed' | 'max-tokens' | 'rep-loop-detected' }>
 
 type PreparedStep =
   | { kind: 'reject' }
@@ -265,6 +279,11 @@ export class ReactLoopAgent implements Agent {
     return !headerEquals(baseline, canonicalHeader({ ...baseline, tools: [...tools] }))
   }
 
+  /** Consecutive placeholder-echo steps in the current turn (rep-loop guard, TC-007). */
+  private repEchoRun = 0
+  /** Automatic continuations used in the current turn (bounded auto-continue, TC-008). */
+  private autoContinuations = 0
+
   /** Open one turn before claiming its first proposed step. */
   private async turn(): Promise<boolean> {
     if (this.phase.kind !== 'running') {
@@ -281,6 +300,8 @@ export class ReactLoopAgent implements Agent {
     }
     phase.turn = turn
     let turnEnds: TurnEndReason | null = null
+    this.repEchoRun = 0
+    this.autoContinuations = 0
     let target: InboxTarget = 'next-turn'
     try {
       while (true) {
@@ -481,7 +502,45 @@ export class ReactLoopAgent implements Agent {
             stream: live.stream,
           }, { surfaceOp: 'append' }).seq,
         )
-        if (finish.kind === 'max-tokens') return { kind: 'max-tokens' }
+        // Repetition-loop guard (bc-p0-closeout TC-007): stop the turn after
+        // REP_LOOP_LIMIT consecutive placeholder echoes instead of running to
+        // the output-token cap. Runs before the max-tokens route so a cap-cut
+        // echo still reports the loop.
+        const echoText = message.content
+          .flatMap(block => block.type === 'text' ? [block.text] : [])
+          .join('')
+        if (placeholderCopies(echoText) >= REP_LOOP_LIMIT) {
+          this.repEchoRun = 0
+          return { kind: 'rep-loop-detected' }
+        }
+        if (isPlaceholderEcho(echoText)) {
+          this.repEchoRun += 1
+          if (this.repEchoRun >= REP_LOOP_LIMIT) {
+            this.repEchoRun = 0
+            return { kind: 'rep-loop-detected' }
+          }
+        } else {
+          this.repEchoRun = 0
+        }
+        // Bounded auto-continue (bc-p0-closeout TC-008, lever B): on a
+        // max-tokens cut with text on the page, resume the SAME step by up to
+        // AUTO_CONTINUE_BOUND continuations so a truncated reply finishes
+        // without a manual nudge. Ordering contract with the guard above:
+        // guard first, continue second. Empty content never continues
+        // (TC-006's empty-state notice owns it), and exhausting the bound
+        // falls through to the durable max-tokens turn end — an unbounded
+        // continuation would loop forever against the provider's hard ceiling.
+        if (finish.kind === 'max-tokens') {
+          if (echoText.trim().length > 0 && this.autoContinuations < AUTO_CONTINUE_BOUND) {
+            this.autoContinuations += 1
+            this.session.append('user/message', createUserMessage({
+              content: [{ type: 'text', text: AUTO_CONTINUE_INSTRUCTION }],
+              source: { kind: 'plugin', plugin: 'agent-loop' },
+            }), { surfaceOp: 'append' })
+            continue
+          }
+          return { kind: 'max-tokens' }
+        }
 
         const toolCalls = message.content.filter(block => block.type === 'tool-call')
         if (toolCalls.length === 0) return { kind: 'completed' }

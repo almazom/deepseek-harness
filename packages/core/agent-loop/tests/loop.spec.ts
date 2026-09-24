@@ -10,6 +10,7 @@ import AgentRegistry, { type Agent, type AssistantStreamFrame } from '@deepseek-
 import AgentLoop from '@deepseek-ai/dsh-agent-loop'
 import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 import { MockAdapter, maxTokensResponse, textResponse, toolCallResponse } from './mock-adapter.ts'
+import { AUTO_CONTINUE_INSTRUCTION } from '../src/agent.ts'
 
 function driverDone(agent: Agent): Promise<void> {
   return (agent as Agent & { done: Promise<void> }).done
@@ -1288,9 +1289,14 @@ describe('agent loop', () => {
   })
 
   it('surfaces max-tokens as the turn-end reason when the last step is cut off', async () => {
-    // A single step that ends with a max-tokens finish (no tool calls): the
-    // turn stops by default and ends max-tokens, not completed.
-    const adapter = new MockAdapter([maxTokensResponse('truncat')])
+    // A step cut off three times exhausts the bounded auto-continue (TC-008,
+    // AUTO_CONTINUE_BOUND = 2): the third cut ends the step max-tokens, the
+    // turn stops by default — max-tokens, not completed.
+    const adapter = new MockAdapter([
+      maxTokensResponse('truncat'),
+      maxTokensResponse('ed reply'),
+      maxTokensResponse(' ends here'),
+    ])
     const ctx = await harness(adapter)
     const agent = await ctx.agentLoop.create(SessionId('a1'), { provider: 'mock', model: 'mock' })
 
@@ -1300,7 +1306,7 @@ describe('agent loop', () => {
     send(agent, 'go')
     await waitForIdle(ctx, agent)
 
-    expect(adapter.requests).toHaveLength(1)
+    expect(adapter.requests).toHaveLength(3)
     expect(reasons).toEqual([{ kind: 'max-tokens' }])
     // Assert the durable row, not only the live listener.
     const turnEnd = agent.session.snapshotEvents().findLast(e => e.type === 'turn/end')
@@ -1308,10 +1314,13 @@ describe('agent loop', () => {
   })
 
   it('a max-tokens step earlier in a turn still surfaces as max-tokens after a later completed step', async () => {
-    // Step 1 is cut off (max-tokens, no tool calls → would stop by default), so continuation
-    // must be FORCED to reach step 2 which finishes normally (stop).
+    // Step 1 is cut off three times (bounded auto-continue TC-008 exhausts
+    // AUTO_CONTINUE_BOUND), so the step ends max-tokens; continuation must be
+    // FORCED to reach step 2 which finishes normally (stop).
     const adapter = new MockAdapter([
       maxTokensResponse('first half'),
+      maxTokensResponse(' more to go'),
+      maxTokensResponse('nearly done'),
       textResponse('second half'),
     ])
     const ctx = await harness(adapter)
@@ -1334,8 +1343,8 @@ describe('agent loop', () => {
     await waitForIdle(ctx, agent)
 
     expect(steps).toBe(2)
-    expect(adapter.requests).toHaveLength(2)
-    expect(adapter.requests[1]!.messages.slice(1)).toEqual([
+    expect(adapter.requests).toHaveLength(4)
+    expect(adapter.requests[3]!.messages.slice(1)).toEqual([
       {
         id: expect.any(String) as unknown,
         role: 'user',
@@ -1351,6 +1360,30 @@ describe('agent loop', () => {
       {
         id: expect.any(String) as unknown,
         role: 'user',
+        content: [{ type: 'text', text: AUTO_CONTINUE_INSTRUCTION }],
+        source: { kind: 'plugin', plugin: 'agent-loop' },
+      },
+      {
+        id: expect.any(String) as unknown,
+        role: 'assistant',
+        content: [{ type: 'text', text: ' more to go' }],
+        source: { kind: 'model', provider: 'mock', model: 'mock' },
+      },
+      {
+        id: expect.any(String) as unknown,
+        role: 'user',
+        content: [{ type: 'text', text: AUTO_CONTINUE_INSTRUCTION }],
+        source: { kind: 'plugin', plugin: 'agent-loop' },
+      },
+      {
+        id: expect.any(String) as unknown,
+        role: 'assistant',
+        content: [{ type: 'text', text: 'nearly done' }],
+        source: { kind: 'model', provider: 'mock', model: 'mock' },
+      },
+      {
+        id: expect.any(String) as unknown,
+        role: 'user',
         content: [{ type: 'text', text: 'continue after truncation' }],
         source: { kind: 'plugin', plugin: 'max-tokens-test' },
       },
@@ -1361,9 +1394,15 @@ describe('agent loop', () => {
   })
 
   it('a completed step after no max-tokens keeps the turn completed (max-tokens does not leak across turns)', async () => {
-    // Two consecutive turns: turn 1 is cut off (max-tokens), turn 2 is a clean
-    // stop. The per-turn reason must be independent — turn 2 ends completed.
-    const adapter = new MockAdapter([maxTokensResponse('cut'), textResponse('clean')])
+    // Two consecutive turns: turn 1 is cut off three times (auto-continue
+    // bound TC-008 exhausted → max-tokens), turn 2 is a clean stop. The
+    // per-turn reason must be independent — turn 2 ends completed.
+    const adapter = new MockAdapter([
+      maxTokensResponse('cut'),
+      maxTokensResponse(' cut'),
+      maxTokensResponse(' cut'),
+      textResponse('clean'),
+    ])
     const ctx = await harness(adapter)
     const agent = await ctx.agentLoop.create(SessionId('a1'), { provider: 'mock', model: 'mock' })
 
@@ -1526,7 +1565,7 @@ describe('agent loop', () => {
         reason: { kind: 'max-tokens' },
         replayState: { response: { responseId: 'resp-1' }, blocks: ['text-meta', 'tool-meta'] },
       },
-    ], textResponse('continued')])
+    ], textResponse('continued'), maxTokensResponse('')])
     const ctx = await harness(adapter)
     const agent = await ctx.agentLoop.create(SessionId('a1'), { provider: 'mock', model: 'mock' })
 
@@ -1536,8 +1575,8 @@ describe('agent loop', () => {
     await waitForIdle(ctx, agent)
 
     expect(agent.session.snapshotEvents().some(e => e.type === 'tool/call')).toBe(false)
-    // The follow-up request replays the truncated message with its replay
-    // metadata pruned in step with the dropped tool call.
+    // The auto-continue request (TC-008) replays the truncated message with
+    // its replay metadata pruned in step with the dropped tool call.
     expect(adapter.requests[1]?.messages[2]?.source).toEqual({
       kind: 'model',
       provider: 'mock',
@@ -1565,13 +1604,25 @@ describe('agent loop', () => {
       {
         id: expect.any(String) as unknown,
         role: 'user',
+        content: [{ type: 'text', text: AUTO_CONTINUE_INSTRUCTION }],
+        source: { kind: 'plugin', plugin: 'agent-loop' },
+      },
+      {
+        id: expect.any(String) as unknown,
+        role: 'assistant',
+        content: [{ type: 'text', text: 'continued' }],
+        source: { kind: 'model', provider: 'mock', model: 'mock' },
+      },
+      {
+        id: expect.any(String) as unknown,
+        role: 'user',
         content: [{ type: 'text', text: 'continue' }],
         source: { kind: 'user' },
       },
       {
         id: expect.any(String) as unknown,
         role: 'assistant',
-        content: [{ type: 'text', text: 'continued' }],
+        content: [{ type: 'text', text: '' }],
         source: { kind: 'model', provider: 'mock', model: 'mock' },
       },
     ])
