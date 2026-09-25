@@ -42,9 +42,12 @@ import { REP_LOOP_LIMIT, isPlaceholderEcho, placeholderCopies } from './rep-loop
 
 /**
  * Maximum automatic continuations per turn after a max-tokens cut
- * (bc-p0-closeout TC-008, lever B). The provider enforces a hard ~32K output
- * ceiling regardless of the requested maxTokens, so continuation past that
- * ceiling is a guaranteed infinite loop — the bound makes it finite.
+ * (bc-p0-closeout TC-008, lever B). The bound keeps a provider that keeps
+ * cutting at the requested cap from looping forever. The earlier note here
+ * claimed a hard ~32K provider ceiling on Xiaomi MiMo; that was falsified by a
+ * live probe (`max_tokens: 131072` → `completion_tokens: 131072`,
+ * `finish_reason: "repetition_truncation"`), so the bound is a safety net for
+ * repeated cuts, not a model of a vendor wall.
  */
 export const AUTO_CONTINUE_BOUND = 2
 

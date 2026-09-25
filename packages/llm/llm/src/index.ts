@@ -326,6 +326,36 @@ export interface DirectoryRegistrationHandle {
   replace(entries: readonly LlmConfigurableProvider[]): void
 }
 
+/** Named diagnostic emitted when a request output cap is clamped to the model's declared capability. */
+export const MAX_TOKENS_CLAMPED_CODE = 'LLM_MAX_TOKENS_CLAMPED'
+
+/**
+ * Clamp a request output cap to the capability the resolved model declares.
+ * A provider rejects an over-cap body outright, and today that rejection is the
+ * only feedback an over-cap value produces (a raw `max_completion_tokens is too
+ * large` 400 from the vendor, with no harness-side trace of where the value came
+ * from). Naming the mismatch here keeps the failure inside DSH and greppable.
+ * @param config - the config whose cap was requested explicitly or materialized from the adapter.
+ * @param info - resolved model metadata declaring the model's capability.
+ * @param warn - sink for the named diagnostic line.
+ * @returns the same object when no cap is set or the cap is within the declared
+ *   value; otherwise a detached copy carrying the declared value.
+ */
+export function clampMaxTokensToDeclaredCap(
+  config: LlmCallConfig,
+  info: LlmResolvedModelInfo,
+  warn: (message: string) => void,
+): LlmCallConfig {
+  const requested = config.maxTokens
+  const declared = info.defaultMaxTokens
+  if (requested === undefined || declared === undefined || requested <= declared) return config
+  warn(
+    `${MAX_TOKENS_CLAMPED_CODE}: provider "${config.provider}" model "${config.model}" declares at most `
+    + `${declared} output tokens, but the request asked for ${requested}; clamping to ${declared}`,
+  )
+  return { ...config, maxTokens: declared }
+}
+
 /**
  * The abstract `llm` service: an adapter registry plus a streaming model-call
  * API, interceptable via the `llm/stream` waterfall.
@@ -876,9 +906,15 @@ export class LlmRuntime extends TypertRemoteService {
     const defaulted = config.maxTokens === undefined && info.defaultMaxTokens !== undefined
       ? { ...config, maxTokens: info.defaultMaxTokens }
       : config
+    // An over-cap value would otherwise leave as a raw provider 400; catch it here.
+    const guarded = clampMaxTokensToDeclaredCap(
+      defaulted,
+      info,
+      message => this.ctx.logger.warn(message),
+    )
     const reasoning = info.reasoning
-    const requested = defaulted.reasoningEffort
-    let resolvedConfig = defaulted
+    const requested = guarded.reasoningEffort
+    let resolvedConfig = guarded
     if (reasoning === undefined) {
       if (requested !== undefined) {
         throw new LlmError(
@@ -895,7 +931,7 @@ export class LlmRuntime extends TypertRemoteService {
             'UNSUPPORTED_REASONING_EFFORT',
           )
         }
-        if (requested !== effective) resolvedConfig = { ...defaulted, reasoningEffort: effective }
+        if (requested !== effective) resolvedConfig = { ...guarded, reasoningEffort: effective }
       }
     }
     return {
