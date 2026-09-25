@@ -68,6 +68,30 @@ function classifyPiAiError(message: string): string {
 }
 
 /**
+ * Debug-level sink for a non-standard provider signal. The harness `max-tokens`
+ * reason carries no payload, so this line is the only place the provider's raw
+ * `finish_reason` survives for a post-mortem.
+ * @param message - the diagnostic line to emit.
+ */
+function debugProviderSignal(message: string): void {
+  console.debug(message)
+}
+
+/**
+ * Provider finish reasons that mean "the response was cut", not "the request
+ * failed". Xiaomi's MiMo reports `repetition_truncation` once it exhausts the
+ * completion budget; pi-ai renders every unknown reason as
+ * `Provider finish_reason: <reason>` on an error stop (its
+ * `dist/api/openai-completions.js` mapStopReason), so without this list an
+ * ordinary truncation would end the turn as INVALID_REQUEST instead of a
+ * continuable max-tokens stop.
+ */
+const LENGTH_STOP_FINISH_REASONS = new Set(['repetition_truncation', 'repetition'])
+
+/** pi-ai's rendering of an unrecognized provider finish reason. */
+const PROVIDER_FINISH_REASON = /Provider finish_reason:\s*(\S+)/
+
+/**
  * Map a terminal pi-ai event to the harness finish reason.
  * @param message - the assistant message carried by the `done` or `error` event.
  * @param contextWindow - resolved catalog capacity for usage-based overflow detection.
@@ -75,7 +99,9 @@ function classifyPiAiError(message: string): string {
  *   `contextWindow`, and zero-output `length` usage that fills the window map
  *   to `CONTEXT_WINDOW_EXCEEDED`; a `stop` with no content blocks maps to an
  *   `EMPTY_RESPONSE` error, while terminal `pending` and `deferred` states map
- *   to non-retryable `PI_AI_ERROR` failures.
+ *   to non-retryable `PI_AI_ERROR` failures. An error whose message names a
+ *   length-ish provider `finish_reason` (`repetition_truncation`) maps to
+ *   `max-tokens`, so a provider cut stays continuable.
  */
 export function mapStopReason(message: AssistantMessage, contextWindow?: number): FinishReason {
   const piAiOverflow = isContextOverflow(message, contextWindow)
@@ -122,6 +148,15 @@ export function mapStopReason(message: AssistantMessage, contextWindow?: number)
     }
     case 'error': {
       const text = message.errorMessage ?? 'pi-ai stream error'
+      const providerReason = PROVIDER_FINISH_REASON.exec(text)?.[1]
+      if (providerReason !== undefined) {
+        const lengthish = LENGTH_STOP_FINISH_REASONS.has(providerReason)
+        const mapped = lengthish ? 'max-tokens' : 'error'
+        debugProviderSignal(
+          `provider finish_reason "${providerReason}" for model "${message.model}" -> ${mapped} — raw: ${text}`,
+        )
+        if (lengthish) return { kind: 'max-tokens' }
+      }
       return { kind: 'error', failure: { message: text, code: classifyPiAiError(text) } }
     }
   }
