@@ -13,6 +13,24 @@ import {
   writeClientBuildRecord,
 } from './client-build-environment.ts'
 import { pnpmInvocation } from './pnpm-invocation.ts'
+import { collectClientBundleViolations } from './verify-client-bundle-externals.ts'
+
+/**
+ * Fail the build before the web shell consumes the artifacts when a built
+ * client bundle requires a specifier its module table cannot answer — the
+ * boot failure class the loader can only report per-browser after a deploy.
+ * @param root - repository root whose packages hold built `lib/client.js` artifacts.
+ * @param after - build step label used in the failure message.
+ */
+function verifyClientBundleExternals(root: string, after: string): void {
+  const violations = collectClientBundleViolations(root)
+  if (violations.length > 0) {
+    const lines = violations.map(violation =>
+      `${violation.artifact}: require("${violation.specifier}") is not in ${violation.packageName}'s module-table requests`,
+    )
+    throw new Error(`${after}: ${lines.length} unanswerable client-bundle require(s)\n${lines.join('\n')}`)
+  }
+}
 
 /** Run one package script through the package manager that invoked this build. */
 function runScript(script: string, environment: NodeJS.ProcessEnv): void {
@@ -43,6 +61,7 @@ function main(): void {
   rmSync(resolve(root, CLIENT_BUILD_RECORD_PATH), { force: true })
   runScript('build:native-system', buildEnvironment)
   runScript('build:lib', buildEnvironment)
+  verifyClientBundleExternals(root, 'build:lib')
   runScript('build:web', buildEnvironment)
   const record = writeClientBuildRecord(root, clientEnvironment)
   console.log(
