@@ -2,6 +2,7 @@ export declare const DEFAULT_TARGET: string
 export declare const FN_NAME: string
 export declare const HELPER_NAME: string
 export declare const MARKER: string
+export declare const KNOWN_PRE_PATCH_SHAS: Set<string>
 export declare const ORIGINAL_TEXT: string
 export declare const PATCHED_TEXT: string
 export interface LocatedFunction { start: number; end: number; text: string }

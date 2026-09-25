@@ -14,12 +14,15 @@
 //
 // Usage:
 //   node scripts/patch-bili-restore.mjs --check  [--file <path>]
-//   node scripts/patch-bili-restore.mjs --apply  [--file <path>]
+//   node scripts/patch-bili-restore.mjs --apply  [--file <path>] [--allow-unknown-origin]
 //   node scripts/patch-bili-restore.mjs --revert [--file <path>]
 //
 // Exit 0 when the state is known and the requested action succeeded; 1 when the
-// anchors are absent (the patcher refuses instead of guessing). --apply is
-// idempotent: a second run prints "already patched" and writes nothing.
+// anchors are absent or the build is unfamiliar (the patcher refuses instead of
+// guessing). --apply is idempotent: a second run prints "already patched" and
+// writes nothing. --apply checks the pre-patch sha256 against KNOWN_PRE_PATCH_SHAS
+// and refuses an unknown build unless --allow-unknown-origin is passed, so a
+// billion-context bump cannot be rewritten silently.
 
 import { createHash } from "node:crypto";
 import { readFileSync, renameSync, statSync, writeFileSync } from "node:fs";
@@ -29,6 +32,14 @@ export const DEFAULT_TARGET = "/Users/mac-mini-m4-almazom/.dsh/profiles/web/node
 export const FN_NAME = "restoreOutputBudget";
 export const HELPER_NAME = "launcherModelMaxOutput";
 export const MARKER = "outputBudgetHighWaterByModel";
+
+// Dist shas this patcher has been verified against. --apply refuses any other
+// pre-patch build unless --allow-unknown-origin is passed: upstream is free to
+// rewrite restoreOutputBudget, and silently patching such a build could corrupt it.
+export const KNOWN_PRE_PATCH_SHAS = new Set([
+  "5c8b1711cc8f6b2fd0dd7b689afe513f2410ac4c33597fbfc18a7e15aa49bc64"
+  // billion-context 0.1.138, the pinned build in ~/.dsh/profiles/web/package.json
+]);
 
 export const ORIGINAL_TEXT = [
   "function restoreOutputBudget(parsed, session, log2) {",
@@ -142,15 +153,16 @@ export function revertPatch(src) {
 }
 
 function usage() {
-  console.log("usage: node scripts/patch-bili-restore.mjs --check|--apply|--revert [--file <path>]");
+  console.log("usage: node scripts/patch-bili-restore.mjs --check|--apply|--revert [--file <path>] [--allow-unknown-origin]");
   console.log("default target: " + DEFAULT_TARGET);
 }
 
 function parseArgs(argv) {
-  const out = { action: null, file: DEFAULT_TARGET };
+  const out = { action: null, file: DEFAULT_TARGET, allowUnknownOrigin: false };
   for (let i = 0; i < argv.length; i += 1) {
     const a = argv[i];
     if (a === "--check" || a === "--apply" || a === "--revert") out.action = a.slice(2);
+    else if (a === "--allow-unknown-origin") out.allowUnknownOrigin = true;
     else if (a === "--file") { i += 1; out.file = argv[i]; }
     else if (a === "--help" || a === "-h") out.action = "help";
     else { console.error("unknown argument: " + a); out.action = "bad"; }
@@ -194,7 +206,12 @@ function main(argv) {
     return state === "missing" ? 1 : 0;
   }
   if (args.action === "apply") {
-    report(args.file, source);
+    const state = report(args.file, source);
+    if (state === "original" && !KNOWN_PRE_PATCH_SHAS.has(before) && !args.allowUnknownOrigin) {
+      console.error("REFUSED: " + before + " is not a known pre-patch billion-context dist;");
+      console.error("patching an unfamiliar build could corrupt it. Re-run with --allow-unknown-origin to override.");
+      return 1;
+    }
     const res = applyPatch(source);
     if (!res.ok) { console.error("REFUSED: " + res.reason); return 1; }
     if (!res.changed) { console.log("already patched; file left byte-identical (" + before + ")"); return 0; }

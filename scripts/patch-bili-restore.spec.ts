@@ -3,7 +3,16 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'no
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { afterAll, describe, expect, it } from 'vitest'
-import { DEFAULT_TARGET, ORIGINAL_TEXT, applyPatch, countOccurrences, detectState, revertPatch } from './patch-bili-restore.mjs'
+import {
+  DEFAULT_TARGET,
+  KNOWN_PRE_PATCH_SHAS,
+  ORIGINAL_TEXT,
+  applyPatch,
+  countOccurrences,
+  detectState,
+  revertPatch,
+  sha256,
+} from './patch-bili-restore.mjs'
 
 interface StepResult {
   parsed: Record<string, unknown>
@@ -203,11 +212,11 @@ describe('patcher mechanics', () => {
     expect(check.status).toBe(0)
     expect(check.stdout).toContain('anchor hits (function restoreOutputBudget): 1')
     expect(check.stdout).toContain('verdict: READY-TO-PATCH')
-    const apply = cli(['--apply', '--file', target])
+    const apply = cli(['--apply', '--allow-unknown-origin', '--file', target])
     expect(apply.status).toBe(0)
     const patched = readFileSync(target, 'utf8')
     expect(detectState(patched).state).toBe('patched')
-    const second = cli(['--apply', '--file', target])
+    const second = cli(['--apply', '--allow-unknown-origin', '--file', target])
     expect(second.status).toBe(0)
     expect(second.stdout).toContain('already patched; file left byte-identical')
     expect(readFileSync(target, 'utf8')).toBe(patched)
@@ -216,6 +225,22 @@ describe('patcher mechanics', () => {
     const revert = cli(['--revert', '--file', target])
     expect(revert.status).toBe(0)
     expect(readFileSync(target, 'utf8')).toBe(original)
+  })
+
+  it('refuses an unknown build unless --allow-unknown-origin is passed', () => {
+    const target = join(tmp, 'cli-unknown-origin.mjs')
+    const original = fixtureSource()
+    writeFileSync(target, original, 'utf8')
+    const refused = cli(['--apply', '--file', target])
+    expect(refused.status).toBe(1)
+    expect(refused.stderr).toContain('not a known pre-patch billion-context dist')
+    expect(readFileSync(target, 'utf8')).toBe(original)
+    const forced = cli(['--apply', '--allow-unknown-origin', '--file', target])
+    expect(forced.status).toBe(0)
+    expect(detectState(readFileSync(target, 'utf8')).state).toBe('patched')
+    const reApplied = cli(['--apply', '--file', target])
+    expect(reApplied.status).toBe(0)
+    expect(reApplied.stdout).toContain('already patched; file left byte-identical')
   })
 
   it('exits non-zero when the anchor is absent', () => {
@@ -236,5 +261,8 @@ describe.skipIf(!existsSync(DEFAULT_TARGET))('installed billion-context dist', (
     const source = readFileSync(DEFAULT_TARGET, 'utf8')
     expect(countOccurrences(source, 'function restoreOutputBudget(')).toBe(1)
     expect(detectState(source).state).not.toBe('missing')
+    // The deployed dist is either untouched-known or already patched; anything else
+    // means --apply would refuse until a human re-verifies the new build.
+    expect(detectState(source).state === 'patched' || KNOWN_PRE_PATCH_SHAS.has(sha256(source))).toBe(true)
   })
 })
