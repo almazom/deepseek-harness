@@ -7393,8 +7393,6 @@ importers:
         specifier: workspace:^
         version: link:../../core/tools
 
-  packages/mail/mail: {}
-
   packages/mcp/mcp-client:
     dependencies:
       '@deepseek-ai/schemastery':
@@ -8378,6 +8376,7 @@ importers:
       '@deepseek-ai/dsh-session-projection':
         specifier: workspace:^
         version: link:../session-projection
+
   packages/session/session-stats:
     dependencies:
       zod:
