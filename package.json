@@ -181,7 +181,8 @@
     "demo:inspector": "node --import tsx/esm apps/cli/src/bin.ts web --patch ./packages/experimental/inspector/cordis.source.patch.yml",
     "mock:llm": "node --import tsx packages/test-support/llm-mock-server/src/bin.ts",
     "dev:web": "tsx scripts/dev-web.ts --poll",
-    "postinstall": "node scripts/install-lefthook.mjs"
+    "postinstall": "node scripts/install-lefthook.mjs",
+    "verify-i18n-mail": "tsx packages/mail/mail/src/cli.ts i18n"
   },
   "devDependencies": {
     "@deepseek-ai/dsh-agent": "workspace:^",

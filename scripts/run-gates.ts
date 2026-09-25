@@ -303,6 +303,7 @@ function ciSharedStaticGates(): Gate[] {
     pnpmScript('package-dependencies', 'verify-package-dependencies', { label: 'package dependencies' }),
     pnpmScript('dsh-package-licenses', 'verify-dsh-package-licenses', { label: 'DSH package licenses' }),
     pnpmScript('package-invariants', 'verify-package-invariants', { label: 'package invariants' }),
+    pnpmScript('mail-i18n', 'verify-i18n-mail', { label: 'mail template i18n' }),
     pnpmScript('cordis-config', 'verify-cordis-config', { label: 'Cordis config' }),
     pnpmScript('optional-dependency-imports', 'verify-optional-dependency-imports', {
       label: 'optional dependency imports',
