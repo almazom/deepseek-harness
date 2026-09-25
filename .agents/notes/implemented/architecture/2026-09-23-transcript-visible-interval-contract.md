@@ -61,6 +61,20 @@ Measured live at 1440x900 over 79 flow items with the probe added here
    token dropped from 16px to 12px and the phone token from 10px to 8px, with the
    22px rows. The 16px token was sized for 25px rows and read as reserve once the
    rows shrank. Still exactly one value per viewport class; no pair exceptions.
+8. **No descendant of a step row may exceed the row height** (2026-09-25). A 44px
+   touch-target blanket injected for the mobile chrome
+   (`plugins/ui/dsh-web-almaz-mobile/lib/client.js`) also matched the diff-stat
+   link *inside* `Write`/`Edit` rows, so those rows inflated to 44px around 18px
+   of ink: 13 of 95 rows on the phone, pitch 30/41/52. The exclusion written for
+   them on 2026-09-24 was a `[data-slot=...] [class*="flowItem"] button`
+   descendant selector and **never matched** — the probe's rules scan, not the
+   source, proved it. The blanketing rule keeps the chrome targets; buttons under
+   `[class*="flowItem"]`/`[class*="turnStatus"]` are pinned to the contract height
+   by `#root [class*="flowItem"] button:not(.dsh-v2-chip44) { min-height: 22px }`
+   in `dsh-web-almaz-mobile-v2` (`installStepPolish`), whose (1,2,1) specificity
+   outranks the (0,1,1) blanket. `min-height: 0` is NOT the fix: the 44px floor
+   was the only thing holding 49 of 95 phone rows at 22px, so blanking it dropped
+   them to their 18px text height and produced a *second* rhythm.
 
 ## Process lesson
 
@@ -70,14 +84,26 @@ was never in the file, and its README documented behaviour that did not exist.
 Every patch in this work is followed by a grep for the string it introduced, and
 every gate run reports the numbers it actually measured.
 
+Second lesson (2026-09-25): **a rule that never matches cannot be told from a rule
+that is absent by reading source.** The 44px row inflation above survived a fix
+that was committed, served and grepped for — because the selector it hung on
+never matched anything. `RHYTHM_MODE=outline RHYTHM_RULES='<selector>'` walks the
+CSSOM and lists every live `min-height` rule that matches the element under test,
+with its sheet; that list, not the file, is the ground truth about who sizes a
+row.
+
 ## Files
 
-- `plugins/ui/dsh-mobile-ui-inject/probes/transcript-rhythm.mjs` (gate, added)
+- `plugins/ui/dsh-mobile-ui-inject/probes/transcript-rhythm.mjs` (gate, added;
+  `RHYTHM_RULES` CSSOM rules scan)
 - `plugins/ui/dsh-web-almaz-mobile-v2/lib/client.js` (row height, trailing air,
-  pair compensation, 4px outdent)
+  pair compensation removal, 6px indent, flow-item button height)
+- `plugins/ui/dsh-web-almaz-mobile/lib/client.js` (mobile chrome touch targets;
+  its never-matching flow-item exclusion removed 2026-09-25)
 - `packages/client/ui-chat/src/client/chat/{ChatView,ContextInjectionRow,ReasoningRow,TurnProcessNodeView,TurnTailNodeView}.module.css`
   and `packages/client/ui-chat/tests/turn-tail-spacing.client.spec.ts`
 - Plan and numbers: `plans/2026-09-23_transcript-vertical-interval.md`
+- Skill: `~/.agents/skills/dsh-transcript-rhythm/SKILL.md`
 
 ## Alternatives considered
 
@@ -91,6 +117,10 @@ every gate run reports the numbers it actually measured.
 - **Compensate every row kind with its own constant.** Measured air varies 0–6px
   with the last line's inline content (code spans, cards), so a per-kind constant
   leaves a 2px spread and is not maintainable.
+- **Blank flow-item buttons to `min-height: 0`.** Measured and rejected: the 44px
+  floor was the only rule holding 49 of 95 phone rows at 22px, so blanking it
+  dropped them to their 18px text height (pitch 26 beside 30). The buttons are
+  pinned to 22px instead — the same height as the row.
 
 ## Consequences
 
@@ -99,6 +129,10 @@ every gate run reports the numbers it actually measured.
   collapsed reasoning row measures box 22 / leading 18 / delta 4.
 - No pair is wider than token + neighbours' air + 2px in three sessions plus the
   phone viewport, where the same column previously read 8–44px.
+- Phone rhythm after the 2026-09-25 button fix: 390x664/390x1200 render 22px rows
+  with a 30px pitch (22 + the 8px phone token) and no 44px row; 702x936 renders
+  90 of 93 rows at 22px with a 34px dominant pitch. Before the fix the same phone
+  pass had 13 of 95 rows at 44px and pitches 30/41/52.
 - Residuals, measured and accepted: four pairs read 8px because a failed-tool
   row's content overflows its row box (containment, not spacing); pairs adjacent
   to an expanded thought block or the turn tail still vary 1–3px with the last
