@@ -22,8 +22,8 @@ import { collectClientBundleViolations } from './verify-client-bundle-externals.
  * @param root - repository root whose packages hold built `lib/client.js` artifacts.
  * @param after - build step label used in the failure message.
  */
-function verifyClientBundleExternals(root: string, after: string): void {
-  const violations = collectClientBundleViolations(root)
+async function verifyClientBundleExternals(root: string, after: string): Promise<void> {
+  const violations = await collectClientBundleViolations(root)
   if (violations.length > 0) {
     const lines = violations.map(violation =>
       `${violation.artifact}: require("${violation.specifier}") is not in ${violation.packageName}'s module-table requests`,
@@ -47,7 +47,7 @@ function runScript(script: string, environment: NodeJS.ProcessEnv): void {
 }
 
 /** Run the full build selected by `--profile` or `DSH_BUILD_CLIENT_PROFILE`. */
-function main(): void {
+async function main(): Promise<void> {
   const { values } = parseArgs({
     options: { profile: { type: 'string' } },
     allowPositionals: false,
@@ -61,7 +61,7 @@ function main(): void {
   rmSync(resolve(root, CLIENT_BUILD_RECORD_PATH), { force: true })
   runScript('build:native-system', buildEnvironment)
   runScript('build:lib', buildEnvironment)
-  verifyClientBundleExternals(root, 'build:lib')
+  await verifyClientBundleExternals(root, 'build:lib')
   runScript('build:web', buildEnvironment)
   const record = writeClientBuildRecord(root, clientEnvironment)
   console.log(

@@ -24,49 +24,49 @@ function buildPackage(root: string, external: readonly string[] = []): string {
   return join(libDir, 'client.js')
 }
 
-function scan(root: string, bundleSource: string, external: readonly string[] = []): readonly string[] {
+async function scan(root: string, bundleSource: string, external: readonly string[] = []): Promise<readonly string[]> {
   const artifact = buildPackage(root, external)
   writeFileSync(artifact, bundleSource)
-  return collectArtifactViolations('@deepseek-ai/dsh-sample', artifact, root).map(violation => violation.specifier)
+  return (await collectArtifactViolations('@deepseek-ai/dsh-sample', artifact, root)).map(violation => violation.specifier)
 }
 
 describe('collectArtifactViolations', () => {
-  it('rejects an unrequested npm require — the served-boot-failure class', () => {
+  it('rejects an unrequested npm require — the served-boot-failure class', async () => {
     const root = mkdtempSync(join(tmpdir(), 'dsh-bundle-externals-'))
     roots.push(root)
-    expect(scan(root, 'let zod = require("zod");\n')).toEqual(['zod'])
+    expect(await scan(root, 'let zod = require("zod");\n')).toEqual(['zod'])
   })
 
-  it('accepts a specifier the package declares in dsh.client.external', () => {
+  it('accepts a specifier the package declares in dsh.client.external', async () => {
     const root = mkdtempSync(join(tmpdir(), 'dsh-bundle-externals-'))
     roots.push(root)
-    expect(scan(root, 'let x = require("left-pad");\n', ['left-pad'])).toEqual([])
+    expect(await scan(root, 'let x = require("left-pad");\n', ['left-pad'])).toEqual([])
   })
 
-  it('accepts platform modules and relative artifacts', () => {
+  it('accepts platform modules and relative artifacts', async () => {
     const root = mkdtempSync(join(tmpdir(), 'dsh-bundle-externals-'))
     roots.push(root)
-    expect(scan(root, 'let a = require("@deepseek-ai/cordis");\nlet b = require("./chunk.js");\n')).toEqual([])
+    expect(await scan(root, 'let a = require("@deepseek-ai/cordis");\nlet b = require("./chunk.js");\n')).toEqual([])
   })
 
-  it('ignores require-shaped text inside comments and template strings', () => {
+  it('ignores require-shaped text inside comments and template strings', async () => {
     const root = mkdtempSync(join(tmpdir(), 'dsh-bundle-externals-'))
     roots.push(root)
-    expect(scan(root, '\t* const pm = require("picomatch");\n\tthrow new Error(`require("${spec}") missed`);\n')).toEqual([])
+    expect(await scan(root, '\t* const pm = require("picomatch");\n\tthrow new Error(`require("${spec}") missed`);\n')).toEqual([])
   })
 
-  it('ignores node builtins tsdown leaves external by design', () => {
+  it('ignores node builtins tsdown leaves external by design', async () => {
     const root = mkdtempSync(join(tmpdir(), 'dsh-bundle-externals-'))
     roots.push(root)
-    expect(scan(root, 'let u = require("url");\nlet f = require("node:fs");\n')).toEqual([])
+    expect(await scan(root, 'let u = require("url");\nlet f = require("node:fs");\n')).toEqual([])
   })
 
-  it('fails loud when the manifest next to lib/ is missing', () => {
+  it('fails loud when the manifest next to lib/ is missing', async () => {
     const root = mkdtempSync(join(tmpdir(), 'dsh-bundle-externals-'))
     roots.push(root)
     const libDir = join(root, 'packages', 'client', 'sample', 'lib')
     mkdirSync(libDir, { recursive: true })
-    expect(() => collectArtifactViolations('@deepseek-ai/dsh-sample', join(libDir, 'client.js'), root))
-      .toThrowError(/no readable package\.json/)
+    await expect(collectArtifactViolations('@deepseek-ai/dsh-sample', join(libDir, 'client.js'), root))
+      .rejects.toThrowError(/no readable package\.json/)
   })
 })

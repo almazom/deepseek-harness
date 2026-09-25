@@ -13,8 +13,29 @@ import { globSync } from 'node:fs'
 import { builtinModules } from 'node:module'
 import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { requestedExternals } from '../packages/client/tsdown.client.ts'
-import { PLATFORM_MODULES, PRELOADED_CLIENT_EXTERNALS } from '../packages/client/web/src/platform.ts'
+/** Client-plane sources of the allowed set; loaded at runtime because
+ *  `packages/client` is outside the host face's tsconfig program (TS6307 on a
+ *  static import), while the gate itself runs under tsx/vitest loaders. */
+interface ClientExternals {
+  readonly requestedExternals: (packageName: string, dshClient: unknown) => readonly string[]
+  readonly PLATFORM_MODULES: readonly string[]
+  readonly PRELOADED_CLIENT_EXTERNALS: readonly string[]
+}
+let clientExternals: Promise<ClientExternals> | null = null
+
+/** @returns the client-plane module-table sources, loaded once per process. */
+async function loadClientExternals(): Promise<ClientExternals> {
+  clientExternals ??= (async () => {
+    // specifiers are built at runtime so the host tsc program never has to
+    // include the client-plane sources; tsx and vitest resolve the .ts imports
+    const [tsdown, platform] = await Promise.all([
+      import(new URL('../packages/client/tsdown.client.ts', import.meta.url).href) as unknown as Promise<ClientExternals>,
+      import(new URL('../packages/client/web/src/platform.ts', import.meta.url).href) as unknown as Promise<ClientExternals>,
+    ])
+    return { ...platform, requestedExternals: tsdown.requestedExternals }
+  })()
+  return clientExternals
+}
 
 const GATE = 'verify-client-bundle-externals'
 
@@ -57,7 +78,10 @@ function isRelative(specifier: string): boolean {
 }
 
 /** The module-table request set one package's factory may answer against. */
-function allowedSpecifiers(packageName: string, manifest: { dsh?: { client?: { external?: unknown } } }): ReadonlySet<string> {
+type ClientManifest = { dsh?: { client?: { external?: unknown } } }
+
+async function allowedSpecifiers(packageName: string, manifest: ClientManifest): Promise<ReadonlySet<string>> {
+  const { PLATFORM_MODULES, PRELOADED_CLIENT_EXTERNALS, requestedExternals } = await loadClientExternals()
   return new Set([
     ...PLATFORM_MODULES,
     ...PRELOADED_CLIENT_EXTERNALS,
@@ -72,11 +96,11 @@ function allowedSpecifiers(packageName: string, manifest: { dsh?: { client?: { e
  * @param root - repository root, used for violation diagnostics.
  * @returns the unanswerable specifiers found, empty when the bundle is clean.
  */
-export function collectArtifactViolations(
+export async function collectArtifactViolations(
   packageName: string,
   artifactPath: string,
   root: string,
-): readonly BundleExternalViolation[] {
+): Promise<readonly BundleExternalViolation[]> {
   let manifest: { name?: string; dsh?: { client?: { external?: unknown } } }
   const manifestPath = join(artifactPath, '..', '..', 'package.json')
   try {
@@ -87,15 +111,17 @@ export function collectArtifactViolations(
     )
   }
   const name = manifest.name ?? packageName
-  const allowed = allowedSpecifiers(name, manifest)
+  const allowed = await allowedSpecifiers(name, manifest)
   const source = readFileSync(artifactPath, 'utf8')
   const violations: BundleExternalViolation[] = []
   const seen = new Set<string>()
   for (const match of source.matchAll(REQUIRE_SPECIFIER)) {
     const specifier = match[2]
+    const matchIndex = match.index
+    if (specifier === undefined || matchIndex === undefined) continue
     if (seen.has(specifier) || isRelative(specifier) || allowed.has(specifier)) continue
     if (!BARE_SPECIFIER.test(specifier) || NODE_BUILTINS.has(specifier)) continue
-    const lineStart = source.lastIndexOf('\n', match.index) + 1
+    const lineStart = source.lastIndexOf('\n', matchIndex) + 1
     if (isCommentContext(source.slice(lineStart, match.index))) continue
     seen.add(specifier)
     violations.push({
@@ -112,20 +138,21 @@ export function collectArtifactViolations(
  * @param root - repository root whose packages hold built `lib/client.js` artifacts.
  * @returns all unanswerable specifiers across the built bundles, sorted.
  */
-export function collectClientBundleViolations(root: string): readonly BundleExternalViolation[] {
+export async function collectClientBundleViolations(root: string): Promise<readonly BundleExternalViolation[]> {
   const violations: BundleExternalViolation[] = []
   for (const artifact of globSync('packages/*/*/lib/client.js', { cwd: root }).sort()) {
     const artifactPath = resolve(root, artifact)
-    const packageName = artifact.split('/').at(-3) as string
-    violations.push(...collectArtifactViolations(packageName, artifactPath, root))
+    const packageName = artifact.split('/').at(-3)
+    if (packageName === undefined) continue
+    violations.push(...(await collectArtifactViolations(packageName, artifactPath, root)))
   }
   return violations
 }
 
 /** CLI entry: exit 1 listing every violation, silent clean pass prints one summary line. */
-function main(): void {
+async function main(): Promise<void> {
   const root = resolve(fileURLToPath(new URL('..', import.meta.url)))
-  const violations = collectClientBundleViolations(root)
+  const violations = await collectClientBundleViolations(root)
   if (violations.length > 0) {
     const lines = violations.map(violation =>
       `${violation.artifact}: require("${violation.specifier}") is not in ${violation.packageName}'s module-table requests`,
@@ -135,4 +162,4 @@ function main(): void {
   console.log(`${GATE}: all built client bundles require only answerable module-table specifiers`)
 }
 
-if (import.meta.main) main()
+if (import.meta.main) await main()
