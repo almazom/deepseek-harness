@@ -201,9 +201,10 @@ function finishError(finish: FinishReason): Error | undefined {
       return new LlmError(finish.failure.message, finish.failure.code, finish.failure)
     }
     case 'max-tokens': {
-      const error = new Error('summarization truncated at the token cap (incomplete checkpoint)') as Error & { code?: string }
-      error.code = 'MAX_TOKENS'
-      return error
+      // LlmError, not a plain Error: the agent loop keeps an LlmError's code
+      // in the turn/end failure instead of flattening it to UNKNOWN, so an
+      // output-limit stop stays machine-routable after failed compaction.
+      return new LlmError('summarization truncated at the token cap (incomplete checkpoint)', 'MAX_TOKENS')
     }
     default:
       return undefined

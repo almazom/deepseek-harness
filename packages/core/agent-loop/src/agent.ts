@@ -250,16 +250,24 @@ export class ReactLoopAgent implements Agent {
   }
 
   private async kick(): Promise<void> {
+    let providerFailure = false
     try {
       while (await this.turn()) {}
-    } catch (_error) {
+    } catch (error) {
+      providerFailure = error instanceof LlmError
       // Reported failures and cancellation are contained at the driver boundary.
     } finally {
       /* v8 ignore next -- kick owns a running phase until this driver boundary */
       if (this.phase.kind === 'running') {
         const { turn, wakeRequested } = this.phase
+        const aborted = abortedCancelCause(this.phase.abort.signal) !== undefined
         this.setPhase({ kind: 'idle', lastTurn: turn })
-        if (wakeRequested && this.inbox.hasPending) this.wakeDriver()
+        // A driver that died on a provider failure strands queued input it
+        // never claimed: the failed turn throws past the pending check, so
+        // re-claim it here and a queued prompt resumes the loop instead of
+        // waiting on a human. Internal failures park their input for a
+        // human, and an aborted driver parks latched input until a wake.
+        if (this.inbox.hasPending && (wakeRequested || (providerFailure && !aborted))) this.wakeDriver()
       }
     }
   }

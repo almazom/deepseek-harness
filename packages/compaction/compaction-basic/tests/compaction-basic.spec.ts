@@ -13,7 +13,7 @@ import {
   resolveTargetPolicy,
 } from '@deepseek-ai/dsh-compaction-basic/src/config.ts'
 import type { CompactionResult } from '@deepseek-ai/dsh-compaction'
-import LlmRuntime, { createUserMessage, ToolCallId, CONTEXT_WINDOW_EXCEEDED_CODE, createSystemMessage, createToolResultMessage, LlmAdapter , createMessage } from '@deepseek-ai/dsh-llm'
+import LlmRuntime, { createUserMessage, ToolCallId, CONTEXT_WINDOW_EXCEEDED_CODE, createSystemMessage, createToolResultMessage, LlmAdapter , createMessage, LlmError } from '@deepseek-ai/dsh-llm'
 import type { ContextFormed } from '@deepseek-ai/dsh-llm'
 import type {
   ContentBlock,
@@ -1627,6 +1627,9 @@ describe('default one-shot summarizer', () => {
         thrown = error
       }
       expect(thrown).toBeInstanceOf(Error)
+      // LlmError keeps the code machine-routable in a turn/end failure
+      // instead of the loop flattening it to UNKNOWN.
+      expect(thrown).toBeInstanceOf(LlmError)
       expect((thrown as Error).message).toMatch(pattern)
       expect((thrown as Error & { code?: string }).code).toBe(code)
     },
