@@ -64,15 +64,19 @@ export function createWorkspaceViewStore(): EngineStoreHandle<WorkspaceViewState
       setOrderBy: (d, mode: SessionOrderBy) => { d.orderBy = mode },
       setGroupExpanded: (d, key: string, expanded: boolean) => { d.groupExpansion[key] = expanded },
       retainAccountKeys: (d, workspaceKeys: readonly string[]) => {
+        /* Persisted v5 documents written by older builds lack the later record
+           fields (the framework rehydrates the stored JSON wholesale); the
+           localStorage boundary may hand undefined here — normalize, and the
+           unconditional rewrites below heal the draft shape for the render. */
         const retained = new Set(workspaceKeys)
         d.groupExpansion = Object.fromEntries(
-          Object.entries(d.groupExpansion).filter(([key]) => retained.has(key)),
+          Object.entries(d.groupExpansion ?? {}).filter(([key]) => retained.has(key)),
         )
         d.sessionOrderByAccount = Object.fromEntries(
-          Object.entries(d.sessionOrderByAccount).filter(([key]) => retained.has(key)),
+          Object.entries(d.sessionOrderByAccount ?? {}).filter(([key]) => retained.has(key)),
         )
         d.sessionUpdatedAtByAccount = Object.fromEntries(
-          Object.entries(d.sessionUpdatedAtByAccount).filter(([key]) => retained.has(key)),
+          Object.entries(d.sessionUpdatedAtByAccount ?? {}).filter(([key]) => retained.has(key)),
         )
       },
       syncSessionOrderAccount: (d, accountKey: string, order: string[], updatedAt: Record<string, number>) => {
